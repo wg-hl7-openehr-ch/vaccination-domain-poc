@@ -1,11 +1,9 @@
-# GovTech Hackathon 2026 — Digital Immunization Record (VACD)
+# Vaccination Domain POC — Digital Immunization Record (VACD)
 
-Dev harness for the Swiss GovTech Hackathon 2026 **VACD** challenge
-(28–29 May 2026, FOITT Zollikofen). Clone, open in VS Code with the
+Dev harness for the Vaccination Domain POC 
+Clone, open in VS Code with the
 Dev Containers extension, `docker compose up`, and you have the
-backing services the challenge revolves around. **Your team writes the
-platform layer** that mediates between the CH VACD FHIR API and an
-openEHR Clinical Data Repository — that's the challenge, not the harness.
+backing services the challenge revolves around.
 
 ## Quick start
 
