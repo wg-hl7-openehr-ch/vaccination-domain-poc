@@ -1,4 +1,4 @@
-# Swiss GovTech Hackathon 2026 — VACD harness backing services.
+# Vaccination Domain POC harness backing services.
 #
 # All backing services run default-on; the harness does not pick a topology.
 # Teams build the platform layer themselves (see
@@ -14,7 +14,7 @@
 # `docker compose up -d fhir-server-2`. The dev container forwards both
 # 9111 and 9112 either way.
 
-name: vacd-hackathon
+name: vaccination-domain-poc
 
 services:
   # BFF producer server
