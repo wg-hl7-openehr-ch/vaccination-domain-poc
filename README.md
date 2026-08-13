@@ -9,7 +9,9 @@ backing services the challenge revolves around.
 
 1. Open the repo in VS Code and choose **"Reopen in Container"**. The
    dev container ships Java 25, Maven/Gradle, Node 22, Python 3.13,
-   Kotlin 2.3.21, Docker, `gh`, and the Claude/Gemini/Codex CLIs.
+   Kotlin 2.3.21, Docker, `gh`, and the 
+   
+   Claude/Gemini/Codex CLIs.
 2. Inside the container terminal:
    ```sh
    docker compose up --wait
@@ -39,23 +41,39 @@ A small `Makefile` wraps the most-used compose calls. Run `make` (or
 Plain `docker compose ...` of course still works — the targets are just
 shortcuts.
 
+## Profiles
+
+### DB
+
+Take all db's up
+
+docker compose --profile db up --wait
+
+### BE
+
+Take all be's and db's up
+
+docker compose --profile be up --wait
+
+### FE
+
+Take all fe's, be's and db's up
+docker compose --profile fe up --wait
 
 ## What you get
-
-NAME                       PORTS
-vacd-bff-consumer          0.0.0.0:8001->8001/tcp, [::]:8001->8001/tcp
-vacd-bff-producer-server   0.0.0.0:9112->9112/tcp, [::]:9112->9112/tcp
-vacd-consumer-frontend     0.0.0.0:3004->80/tcp, [::]:3004->80/tcp
-vacd-ehrbase               0.0.0.0:8082->8080/tcp, [::]:8082->8080/tcp
-vacd-ehrbase-db            5432/tcp
-vacd-fhir-db               5432/tcp
-vacd-fhir-server-1         0.0.0.0:9111->9111/tcp, [::]:9111->9111/tcp
-vacd-iam-mock              0.0.0.0:9090->8080/tcp, [::]:9090->8080/tcp
+NAMES                      PORTS                                                   
 vacd-login-frontend        0.0.0.0:3003->80/tcp, [::]:3003->80/tcp
 vacd-openfhir              8080/tcp, 0.0.0.0:8083->8083/tcp, [::]:8083->8083/tcp
-vacd-openfhir-mongo        27017/tcp
-vacd-platform-example      0.0.0.0:8888->8888/tcp, [::]:8888->8888/tcp
+vacd-fhir-server-1         0.0.0.0:9111->9111/tcp, [::]:9111->9111/tcp
+vacd-consumer-frontend     0.0.0.0:3004->80/tcp, [::]:3004->80/tcp
+vacd-ehrbase               0.0.0.0:8082->8080/tcp, [::]:8082->8080/tcp
 vacd-producer-frontend     0.0.0.0:3002->80/tcp, [::]:3002->80/tcp
+vacd-mongo-db              27017/tcp
+vacd-fhir-db               0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp
+vacd-ehrbase-db            0.0.0.0:5434->5432/tcp, [::]:5434->5432/tcp
+vacd-iam-mock              0.0.0.0:9090->8080/tcp, [::]:9090->8080/tcp
+vacd-bff-producer-server   0.0.0.0:9112->9112/tcp, [::]:9112->9112/tcp
+vacd-bff-consumer-server   0.0.0.0:8001->8001/tcp, [::]:8001->8001/tcp
 
 
 Connection URLs are exported to the dev container as `FHIR_SERVER_1_URL`,
