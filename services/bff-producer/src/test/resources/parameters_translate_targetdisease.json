@@ -1,0 +1,89 @@
+{
+	"resourceType": "Parameters",
+	"parameter": [
+		{
+			"name": "match",
+			"part": [
+				{
+					"name": "concept",
+					"valueCoding": {
+						"system": "http://snomed.info/sct",
+						"code": "398102009"
+					}
+				},
+				{
+					"name": "equivalence",
+					"valueCode": "relatedto"
+				},
+				{
+					"name": "originMap",
+					"valueCanonical": "http://fhir.ch/ig/ch-vacd/ConceptMap/ch-vacd-vaccines-targetdiseases-cm|3.4.0"
+				}
+			]
+		},
+		{
+			"name": "match",
+			"part": [
+				{
+					"name": "concept",
+					"valueCoding": {
+						"system": "http://snomed.info/sct",
+						"code": "76902006"
+					}
+				},
+				{
+					"name": "equivalence",
+					"valueCode": "relatedto"
+				},
+				{
+					"name": "originMap",
+					"valueCanonical": "http://fhir.ch/ig/ch-vacd/ConceptMap/ch-vacd-vaccines-targetdiseases-cm|3.4.0"
+				}
+			]
+		},
+		{
+			"name": "match",
+			"part": [
+				{
+					"name": "concept",
+					"valueCoding": {
+						"system": "http://snomed.info/sct",
+						"code": "27836007"
+					}
+				},
+				{
+					"name": "equivalence",
+					"valueCode": "relatedto"
+				},
+				{
+					"name": "originMap",
+					"valueCanonical": "http://fhir.ch/ig/ch-vacd/ConceptMap/ch-vacd-vaccines-targetdiseases-cm|3.4.0"
+				}
+			]
+		},
+		{
+			"name": "match",
+			"part": [
+				{
+					"name": "concept",
+					"valueCoding": {
+						"system": "http://snomed.info/sct",
+						"code": "397430003"
+					}
+				},
+				{
+					"name": "equivalence",
+					"valueCode": "relatedto"
+				},
+				{
+					"name": "originMap",
+					"valueCanonical": "http://fhir.ch/ig/ch-vacd/ConceptMap/ch-vacd-vaccines-targetdiseases-cm|3.4.0"
+				}
+			]
+		},
+		{
+			"name": "result",
+			"valueBoolean": true
+		}
+	]
+}

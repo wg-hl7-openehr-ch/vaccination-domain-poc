@@ -44,7 +44,7 @@ async function createImmunization(personId, data) {
 }
 
 async function fetchVaccineCodes() {
-  const res = await fetch('/api/valuesets/vaccines', {
+  const res = await fetch('/api/bff-producer/valuesets/vaccines', {
     headers: { ...authHeaders() },
   });
   if (!res.ok) throw new Error('Fehler beim Laden der Impfstoff-Codes');

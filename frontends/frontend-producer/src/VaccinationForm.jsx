@@ -1,8 +1,16 @@
 // Screen 3 — New vaccination form (modal-style sheet)
 
 function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
-  const { vaccineCatalog, manufacturers, routes, sites, reasons } = window.AppData;
+  const { manufacturers, routes, sites, reasons } = window.AppData;
   const today = new Date().toISOString().slice(0, 10);
+
+  const [vaccineCatalog, setVaccineCatalog] = useState(window.AppData.vaccineCatalog);
+
+  useEffect(() => {
+    DataService.fetchVaccineCodes()
+      .then(setVaccineCatalog)
+      .catch(() => {/* keep fallback */});
+  }, []);
 
   const [form, setForm] = useState({
     vaccine: "",
@@ -32,7 +40,6 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
   const errors = {};
   if (!form.vaccine) errors.vaccine = "Pflichtfeld";
   if (!form.date) errors.date = "Pflichtfeld";
-  if (!form.manufacturer) errors.manufacturer = "Pflichtfeld";
   if (!form.batch) errors.batch = "Pflichtfeld";
   if (!form.amount) errors.amount = "Pflichtfeld";
 
@@ -40,7 +47,7 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
 
   const submit = async () => {
     if (!isValid) {
-      setTouched({ vaccine: 1, date: 1, manufacturer: 1, batch: 1, amount: 1 });
+      setTouched({ vaccine: 1, date: 1, batch: 1, amount: 1 });
       return;
     }
 
@@ -112,13 +119,16 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
                   {vaccineCatalog.map((r) => <option key={r.combined} value={r.combined}>{r.display}</option>)}
                 </select>
               </Field>
-              <Field label="Impfstoffcode" hint="z. B. ATC- oder GTIN-Code" required>
-                <input className="input mono" placeholder="J07CA02" value={form.vaccineCode}
+              <Field label="Chargennummer" required hint="Auf der Impfstoffpackung — z. B. EW0150" error={touched.batch && errors.batch}>
+                <input className="input mono" placeholder="A1B2C3" value={form.batch}
+                onChange={(e) => set("batch", e.target.value.toUpperCase())} onBlur={() => touch("batch")} />
+              </Field>
+              <Field label="Produktnummer" hint="z. B.GTIN-Code">
+                <input className="input mono" placeholder="7680006810037" value={form.vaccineCode}
                 onChange={(e) => set("vaccineCode", e.target.value)} />
               </Field>
               <Autocomplete
                 label="Zulassungsinhaberin / Hersteller"
-                required
                 placeholder="z. B. GlaxoSmithKline"
                 value={form.manufacturer}
                 onChange={(v) => set("manufacturer", v)}
@@ -126,10 +136,7 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
                 options={manufacturers}
                 error={touched.manufacturer && errors.manufacturer}
               />
-              <Field label="Chargennummer" required hint="Auf der Impfstoffpackung — z. B. EW0150" error={touched.batch && errors.batch}>
-                <input className="input mono" placeholder="A1B2C3" value={form.batch}
-                onChange={(e) => set("batch", e.target.value.toUpperCase())} onBlur={() => touch("batch")} />
-              </Field>
+             
               <Field label="Verfallsdatum" hint="laut Packung">
                 <input className="input tnum" type="date" value={form.expiry} onChange={(e) => set("expiry", e.target.value)} />
               </Field>

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.Calendar;
 
@@ -13,15 +14,19 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.StringType;
+import org.hl7.fhir.r4.model.ValueSet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import ca.uhn.fhir.context.FhirContext;
 import ch.bff.producer.client.FhirClient;
+import ch.bff.producer.client.TxClient;
 import ch.bff.producer.provider.models.AdministeredDose;
 import ch.bff.producer.provider.models.ImmunizationCreateDto;
 import ch.bff.producer.provider.models.RouteOfAdministration;
@@ -34,12 +39,14 @@ class ImmunizationAdministrationServiceTest {
 
 	private FhirClientStub fhirClient;
 	private ImmunizationAdministrationService service;
+	private TxClientStub txClient;
 
 	@BeforeEach
 	void setUp() {
 		fhirClient = new FhirClientStub();
 		fhirClient.patientToReturn = createMockPatient();
-		service = new ImmunizationAdministrationService(fhirClient);
+		txClient = new TxClientStub();
+		service = new ImmunizationAdministrationService(fhirClient, txClient);
 	}
 
 	@Test
@@ -51,6 +58,9 @@ class ImmunizationAdministrationServiceTest {
 		var bundle = fhirClient.postedBundle;
 		assertNotNull(bundle);
 		var json = FHIR_CTX.newJsonParser().encodeResourceToString(bundle);
+		
+		LoggerFactory.getLogger(ImmunizationAdministrationServiceTest.class).info("Generated Bundle JSON:\n{}", json);
+		
 		var root = MAPPER.readTree(json);
 
 		// ---- Bundle-level ----
@@ -141,7 +151,7 @@ class ImmunizationAdministrationServiceTest {
 		assertEquals("Dr. med. Sarah Müller", imm.get("performer").get(0).get("actor").get("display").asText());
 
 		// ---- Entry[4] Practitioner ----
-		var pract = root.get("entry").get(4).get("resource");
+		var pract = root.get("entry").get(2).get("resource");
 		assertEquals("Practitioner", pract.get("resourceType").asText());
 		assertEquals(1, pract.get("identifier").size());
 		assertEquals("urn:oid:2.51.1.3", pract.get("identifier").get(0).get("system").asText());
@@ -155,7 +165,7 @@ class ImmunizationAdministrationServiceTest {
 		assertEquals("Praxis am Bahnhof", org.get("name").asText());
 
 		// ---- Entry[5] PractitionerRole ----
-		var role = root.get("entry").get(2).get("resource");
+		var role = root.get("entry").get(4).get("resource");
 		assertEquals("PractitionerRole", role.get("resourceType").asText());
 		var rolePractRef = role.get("practitioner").get("reference").asText();
 		var roleOrgRef = role.get("organization").get("reference").asText();
@@ -163,16 +173,16 @@ class ImmunizationAdministrationServiceTest {
 		assertTrue(roleOrgRef.startsWith("urn:uuid:"));
 
 		// PractitionerRole references match Practitioner and Organization fullUrls
-		assertEquals(root.get("entry").get(4).get("fullUrl").asText(), rolePractRef);
+		assertEquals(root.get("entry").get(2).get("fullUrl").asText(), rolePractRef);
 		assertEquals(root.get("entry").get(3).get("fullUrl").asText(), roleOrgRef);
 	}
 
 	@Test
 	void createImmunizationAdministration_withoutSeriesDoses_omitsField() throws Exception {
-		var dto = new ImmunizationCreateDto("http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|637|Boostrix", "TESTCODE", "TestPharma AG", "LOT12345",
-				LocalDate.of(2026, 1, 1), LocalDate.of(2025, 6, 15), RouteOfAdministration.IM,
-				new AdministeredDose(0.5, "ml"), "Left upper arm", new VaccinationReason("840539006", "COVID-19", null),
-				3, null, false);
+		var dto = new ImmunizationCreateDto("http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|637|Boostrix",
+				"TESTCODE", "TestPharma AG", "LOT12345", LocalDate.of(2026, 1, 1), LocalDate.of(2025, 6, 15),
+				RouteOfAdministration.IM, new AdministeredDose(0.5, "ml"), "Left upper arm",
+				new VaccinationReason("840539006", "COVID-19", null), 3, null, false);
 
 		service.createImmunizationAdministration("test-patient", dto);
 
@@ -187,9 +197,10 @@ class ImmunizationAdministrationServiceTest {
 	@ParameterizedTest
 	@EnumSource(RouteOfAdministration.class)
 	void allRoutes_mapCorrectly(RouteOfAdministration route) throws Exception {
-		var dto = new ImmunizationCreateDto("http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|637|Boostrix", "TESTCODE", "TestPharma AG", "LOT12345",
-				LocalDate.of(2026, 1, 1), LocalDate.of(2025, 6, 15), route, new AdministeredDose(0.5, "ml"),
-				"Left upper arm", new VaccinationReason("840539006", "COVID-19", null), 3, 3, false);
+		var dto = new ImmunizationCreateDto("http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|637|Boostrix",
+				"TESTCODE", "TestPharma AG", "LOT12345", LocalDate.of(2026, 1, 1), LocalDate.of(2025, 6, 15), route,
+				new AdministeredDose(0.5, "ml"), "Left upper arm", new VaccinationReason("840539006", "COVID-19", null),
+				3, 3, false);
 
 		service.createImmunizationAdministration("test-patient", dto);
 
@@ -216,7 +227,8 @@ class ImmunizationAdministrationServiceTest {
 
 		assertNotNull(result);
 		assertNotNull(result.id());
-		assertEquals("http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|681|Boostrix Polio", result.vaccineName());
+		assertEquals("http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|681|Boostrix Polio",
+				result.vaccineName());
 		assertEquals("3/3", result.doseSequence());
 		assertEquals(LocalDate.of(2025, 6, 15), result.vaccinationDate());
 		assertEquals("TestPharma AG", result.manufacturer());
@@ -255,15 +267,14 @@ class ImmunizationAdministrationServiceTest {
 
 	private static ImmunizationCreateDto createDefaultDto() {
 		return new ImmunizationCreateDto(//
-				"http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|681|Boostrix Polio",//
-				"TestPharma AG",//
-				"LOT12345",//
-				"12345678987654",//
-				
-				LocalDate.of(2026, 1, 1),
-				LocalDate.of(2025, 6, 15), RouteOfAdministration.IM, new 
-				AdministeredDose(0.5, "ml"), "Left upper arm",
-				new VaccinationReason("840539006", "COVID-19", null), 3, 3, false);
+				"http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|681|Boostrix Polio", //
+				"TestPharma AG", //
+				"LOT12345", //
+				"12345678987654", //
+
+				LocalDate.of(2026, 1, 1), LocalDate.of(2025, 6, 15), RouteOfAdministration.IM,
+				new AdministeredDose(0.5, "ml"), "Left upper arm", new VaccinationReason("840539006", "COVID-19", null),
+				3, 3, false);
 	}
 
 	// ---- manual stub ----
@@ -298,5 +309,28 @@ class ImmunizationAdministrationServiceTest {
 			// TODO Auto-generated method stub
 			return null;
 		}
+	}
+
+	private static class TxClientStub implements TxClient {
+
+		@Override
+		public ValueSet getExpandedValueSet(Parameters parameters) {
+			return null;
+		}
+
+		@Override
+		public Parameters getTargetDiseasesForVaccine(Parameters parameters) {
+			InputStream is = this.getClass().getResourceAsStream("/parameters_translate_targetdisease.json");
+			Parameters retVal = FhirContext.forR4().newJsonParser().parseResource(Parameters.class, is);
+			return retVal;
+		}
+
+		@Override
+		public Parameters lookupCode(Parameters parameters) {
+			Parameters retVal = new Parameters();
+			retVal.addParameter().setName("display").setValue(new StringType("Acute poliomyelitis"));
+			return retVal;
+		}
+
 	}
 }

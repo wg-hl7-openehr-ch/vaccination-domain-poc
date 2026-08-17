@@ -1,6 +1,9 @@
 package ch.bff.producer.client;
 
+import org.hl7.fhir.r4.model.CodeableConcept;
+import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Parameters;
+import org.hl7.fhir.r4.model.Parameters.ParametersParameterComponent;
 import org.hl7.fhir.r4.model.ValueSet;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,4 +24,21 @@ public interface TxClient {
 	 */
 	@PostMapping("/ValueSet/$expand")
 	ValueSet getExpandedValueSet(@RequestBody Parameters parameters);
+
+	/**
+	 * Beispiel: POST https://tx.fhir.ch/r4/ConceptMap/$translate { "resourceType" :
+	 * "Parameters", "parameter" : [ { "name": "url", "valueUri":
+	 * "http://fhir.ch/ig/ch-vacd/ConceptMap/ch-vacd-vaccines-targetdiseases-cm" },
+	 * { "name": "sourceCode", "valueCode": "681" }, { "name": "system", "valueUri":
+	 * "http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs" } ] }
+	 * 
+	 * @param parameters the parameters to send to the $translate operation
+	 * @return the translated target diseases for the given vaccine code
+	 */
+	@PostMapping("/ConceptMap/$translate")
+	Parameters getTargetDiseasesForVaccine(@RequestBody Parameters parameters);
+
+	
+	@PostMapping("/CodeSystem/$lookup")
+	Parameters lookupCode(@RequestBody Parameters parameters);
 }

@@ -44,11 +44,11 @@ const sites = [
 ];
 
 const reasons = [
-  { code: "373068000", display: "Not known", swissLabel: "Grundimmunisierung" },
-  { code: "Booster", display: "Booster", swissLabel: "Auffrischimpfung (Booster)" },
-  { code: "Nachholimpfung", display: "Nachholimpfung", swissLabel: "Nachholimpfung" },
-  { code: "14747002", display: "Elective immunization for international travel", swissLabel: "Reiseimpfung" },
-  { code: "Postexpositionsprophylaxe", display: "Postexpositionsprophylaxe", swissLabel: "Postexpositionsprophylaxe" },
+  { code: "33879002", display: "Administration of vaccine to produce active immunity (procedure)", swissLabel: "Grundimmunisierung" },
+  { code: "359953009", display: "Booster vaccination (procedure)", swissLabel: "Auffrischimpfung (Booster)" },
+  { code: "308432007", display: "Immunization recall (procedure)", swissLabel: "Nachholimpfung" },
+  { code: "14747002", display: "Elective immunization for international travel (procedure)", swissLabel: "Reiseimpfung" },
+  { code: "409516001", display: "Post-exposure prophylaxis (procedure)", swissLabel: "Postexpositionsprophylaxe" },
   
   // Offizielle Schweizer Risikocodes aus dem Risks ValueSet (CH-VACD 6.0.0):
   { code: "223366009", display: "Healthcare professional", swissLabel: "Risikogruppe: Medizinisches Fachpersonal (beruflich)" },
