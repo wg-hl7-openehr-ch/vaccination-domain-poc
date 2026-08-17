@@ -16,12 +16,8 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Immunization;
-import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Patient;
-import org.hl7.fhir.r4.model.Practitioner;
-import org.hl7.fhir.r4.model.PractitionerRole;
-import org.hl7.fhir.r4.model.Reference;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdVaccinationRecordDocument;
 import org.slf4j.Logger;
@@ -55,14 +51,14 @@ public class PatientBusinessServiceImpl extends AbstractBusinessService implemen
 	@Override
 	public Patient createPatient(Patient patient) {
 		String type = patient.fhirType();
-		String json = fhirContext.newJsonParser().encodeResourceToString(patient);
+		//String json = fhirContext.newJsonParser().encodeResourceToString(patient);
 		String id = patient.getIdElement() != null && patient.getIdElement().hasIdPart()
 				? patient.getIdElement().getIdPart()
 				: UUID.randomUUID().toString();
 		patient.setId(type + "/" + id);
 		String ehrId = ehrbaseClient.findOrCreateEhr(id);
 		patient.addIdentifier().setSystem("urn:che:epr:ch-vacd:ehr-id").setValue("urn:uuid:" + ehrId);
-		json = fhirContext.newJsonParser().encodeResourceToString(patient);
+		//String json = fhirContext.newJsonParser().encodeResourceToString(patient);
 
 		createIfAbsent(patient, new HashMap<>());
 
@@ -124,7 +120,10 @@ public class PatientBusinessServiceImpl extends AbstractBusinessService implemen
 		}).toList();
 		List<Patient> out = new ArrayList<>();
 		for (ResourceEntity e : stored) {
-			out.add((Patient) fhirContext.newJsonParser().parseResource(e.getJson()));
+			var pat = (Patient) fhirContext.newJsonParser().parseResource(e.getJson());
+			if (pat.hasName()) {
+				out.add(pat);
+			}
 		}
 		return out;
 	}

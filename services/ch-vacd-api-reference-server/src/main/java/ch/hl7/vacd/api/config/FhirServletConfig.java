@@ -1,18 +1,14 @@
 package ch.hl7.vacd.api.config;
 
-import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.context.support.DefaultProfileValidationSupport;
-import ca.uhn.fhir.context.support.IValidationSupport;
-import ca.uhn.fhir.rest.server.RestfulServer;
-import ca.uhn.fhir.rest.server.interceptor.LoggingInterceptor;
-import ca.uhn.fhir.rest.server.interceptor.RequestValidatingInterceptor;
-import ca.uhn.fhir.rest.server.interceptor.ResponseValidatingInterceptor;
-import ca.uhn.fhir.validation.ResultSeverityEnum;
-import ca.uhn.fhir.rest.server.IResourceProvider;
-import jakarta.servlet.Servlet;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
 
-import org.hl7.fhir.common.hapi.validation.support.CachingValidationSupport;
+import org.hl7.fhir.common.hapi.validation.support.InMemoryTerminologyServerValidationSupport;
+import org.hl7.fhir.common.hapi.validation.support.PrePopulatedValidationSupport;
+import org.hl7.fhir.common.hapi.validation.support.SnapshotGeneratingValidationSupport;
 import org.hl7.fhir.common.hapi.validation.support.ValidationSupportChain;
+import org.hl7.fhir.common.hapi.validation.validator.FhirInstanceValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,9 +16,15 @@ import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.context.support.DefaultProfileValidationSupport;
+import ca.uhn.fhir.context.support.IValidationSupport;
+import ca.uhn.fhir.rest.server.IResourceProvider;
+import ca.uhn.fhir.rest.server.RestfulServer;
+import ca.uhn.fhir.rest.server.interceptor.RequestValidatingInterceptor;
+import ca.uhn.fhir.rest.server.interceptor.ResponseValidatingInterceptor;
+import ca.uhn.fhir.validation.ResultSeverityEnum;
+import jakarta.servlet.Servlet;
 
 @Configuration
 public class FhirServletConfig {
@@ -38,36 +40,64 @@ public class FhirServletConfig {
 	@Bean
 	FhirContext fhirContext() {
 		FhirContext ctx = FhirContext.forR4();
-		addNpmPackageValidationSupport(ctx);
+		// addNpmPackageValidationSupport(ctx);
 
 		return ctx;
 	}
-
-	private void addNpmPackageValidationSupport(FhirContext ctx) {
-		// Create a support chain including the NPM Package Support
-		ValidationSupportChain validationSupportChain = new ValidationSupportChain();
-
+	
+	@Bean
+	ChVacdNpmPackageValidationSupport npmPackageValidationSupport(FhirContext ctx) {
 		ChVacdNpmPackageValidationSupport npmPackageSupport = new ChVacdNpmPackageValidationSupport(ctx);
 		igFiles.forEach(file -> {
-//    				loggger.info("ig file: " + file);
+			loggger.info("ig file: " + file);
 			try {
 				// load the npm package of the ig
 				npmPackageSupport.loadPackageFromClasspath(file);
-//    					validationSupportChain.addValidationSupport(npmPackageSupport);
 			} catch (IOException e) {
 				loggger.error("Error loading IG from package for validation (" + file + ")", e);
 			}
 		});
-		validationSupportChain.addValidationSupport(new DefaultProfileValidationSupport(ctx));
+		return npmPackageSupport;
+	}
 
-		IValidationSupport validationSupport = new CachingValidationSupport(validationSupportChain);
-		ctx.setValidationSupport(validationSupport);
+	private ValidationSupportChain addNpmPackageValidationSupport(FhirContext ctx, ChVacdNpmPackageValidationSupport npmPackageSupport) {
+		// Create a support chain including the NPM Package Support
+		ValidationSupportChain validationSupportChain = new ValidationSupportChain();
+//		validationSupportChain.addValidationSupport(new DefaultProfileValidationSupport(ctx));
+		validationSupportChain.addValidationSupport(new PrePopulatedValidationSupport(ctx));
+		validationSupportChain.addValidationSupport(new DefaultProfileValidationSupport(ctx));
+		validationSupportChain.addValidationSupport(new SnapshotGeneratingValidationSupport(ctx));
+		validationSupportChain.addValidationSupport(new InMemoryTerminologyServerValidationSupport(ctx));
+//		validationSupportChain.addValidationSupport(new CommonCodeSystemsTerminologyService(ctx));
+		validationSupportChain.addValidationSupport(npmPackageSupport);
+		ctx.setValidationSupport(validationSupportChain);
+
+//		IValidationSupport validationSupport = new CachingValidationSupport(validationSupportChain);
+//		ctx.setValidationSupport(validationSupport);
+
+		return validationSupportChain;
 	}
 
 	@Bean
 	public ServletRegistrationBean<Servlet> fhirServlet(FhirContext fhirContext,
-			Collection<IResourceProvider> providers) {
+			Collection<IResourceProvider> providers, ChVacdNpmPackageValidationSupport npmPackageSupport) {
+
 		RestfulServer server = new RestfulServer(fhirContext);
+
+		// Try to register the HAPI OpenAPI interceptor if present on the classpath
+		try {
+//					OpenApiInterceptor openApiInterceptor = new OpenApiInterceptor();
+//					server.registerInterceptor(openApiInterceptor);
+			ChVacdOpenApiInterceptor openApiInterCept = new ChVacdOpenApiInterceptor();
+			openApiInterCept.setUseResourcePages(true);
+			server.registerInterceptor(openApiInterCept);
+
+		} catch (Exception ignored) {
+			// ignore - openapi support is optional
+			System.out
+					.println("OpenAPI interceptor not registered - OpenAPI support is not available on the classpath.");
+		}
+
 		// Register all discovered resource providers
 		if (resourceProviderClassNames.isEmpty()) {
 			server.setResourceProviders(providers);
@@ -80,12 +110,31 @@ public class FhirServletConfig {
 				}
 			});
 			server.setResourceProviders(filteredProviders);
-		}		
-		
+		}
+
+		ValidationSupportChain validationSupportChain = addNpmPackageValidationSupport(fhirContext, npmPackageSupport);
+		FhirInstanceValidator instanceValidator = new FhirInstanceValidator(validationSupportChain);
+		{
+			RequestValidatingInterceptor reqValidatorInterceptor = new RequestValidatingInterceptor();
+			reqValidatorInterceptor.setFailOnSeverity(ResultSeverityEnum.FATAL);
+			// reqValidatorInterceptor.setValidator(validator);
+			reqValidatorInterceptor.addValidatorModule(instanceValidator);
+			//reqValidatorInterceptor.setAddResponseHeaderOnSeverity(ResultSeverityEnum.WARNING);
+			server.registerInterceptor(reqValidatorInterceptor);
+		}
+
+		{
+			ResponseValidatingInterceptor resValidatorInterceptor = new ResponseValidatingInterceptor();
+			resValidatorInterceptor.setFailOnSeverity(ResultSeverityEnum.FATAL);
+			resValidatorInterceptor.addValidatorModule(instanceValidator);
+			//resValidatorInterceptor.setAddResponseHeaderOnSeverity(ResultSeverityEnum.WARNING);
+			server.registerInterceptor(resValidatorInterceptor);
+		}
+
 //		LoggingInterceptor logInterceptor = new LoggingInterceptor();
 //		logInterceptor.setLogger(loggger);
 //		server.registerInterceptor(logInterceptor);
-		
+
 		ChVacdLoggingInterceptor loggingInterceptor = new ChVacdLoggingInterceptor(fhirContext);
 		loggingInterceptor.setLoggerName("fhir.log");
 //		loggingInterceptor.setMessageFormat(
@@ -97,32 +146,7 @@ public class FhirServletConfig {
 		loggingInterceptor.setMessageFormat2(
 				"Source[${remoteAddr}] - Operation[${operationType} ${idOrResourceName}] - UA[${requestHeader.user-agent}] - Params[${requestParameters}]");
 		server.registerInterceptor(loggingInterceptor);
-		
 
-		RequestValidatingInterceptor reqValidatorInterceptor = new RequestValidatingInterceptor();
-		reqValidatorInterceptor.setFailOnSeverity(ResultSeverityEnum.ERROR);
-//		reqValidatorInterceptor.setAddResponseHeaderOnSeverity(ResultSeverityEnum.WARNING);
-		server.registerInterceptor(reqValidatorInterceptor);
-
-		ResponseValidatingInterceptor resValidatorInterceptor = new ResponseValidatingInterceptor();
-		resValidatorInterceptor.setFailOnSeverity(ResultSeverityEnum.ERROR);
-		resValidatorInterceptor.setAddResponseHeaderOnSeverity(ResultSeverityEnum.WARNING);
-		server.registerInterceptor(resValidatorInterceptor);
-
-		// Try to register the HAPI OpenAPI interceptor if present on the classpath
-		try {
-//			OpenApiInterceptor openApiInterceptor = new OpenApiInterceptor();
-//			server.registerInterceptor(openApiInterceptor);
-			ChVacdOpenApiInterceptor openApiInterCept = new ChVacdOpenApiInterceptor();
-			openApiInterCept.setUseResourcePages(true);
-			server.registerInterceptor(openApiInterCept);
-			
-			
-		} catch (Exception ignored) {
-			// ignore - openapi support is optional
-			System.out
-					.println("OpenAPI interceptor not registered - OpenAPI support is not available on the classpath.");
-		}
 		ServletRegistrationBean<Servlet> registration = new ServletRegistrationBean<>(server, "/fhir/*");
 		registration.setName("FhirServlet");
 		return registration;

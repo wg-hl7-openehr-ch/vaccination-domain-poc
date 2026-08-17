@@ -1,4 +1,4 @@
-# Swiss GovTech Hackathon 2026 — VACD harness backing services.
+# Vaccination Domain POC harness backing services.
 #
 # All backing services run default-on; the harness does not pick a topology.
 # Teams build the platform layer themselves (see
@@ -14,77 +14,47 @@
 # `docker compose up -d fhir-server-2`. The dev container forwards both
 # 9111 and 9112 either way.
 
-name: vacd-hackathon
+name: vaccination-domain-poc
+
+# ###################################################################################3
+# Netowrk
+networks:
+  default:
+    name: vacd-net
+    external: true
 
 services:
-  # BFF producer server
-  # Multi-stage build: Maven runs inside Docker, no local mvn/java prereqs.
-  # Postgres-backed (fhir-db) for persistence across restarts.
-  bff-producer-server:
-    build:
-      context: ./services/bff-producer
-    image: vacd/bff-producer-server:dev
-    container_name: vacd-bff-producer-server
-    environment:
-      FHIR_BASE_URL: "http://fhir-server-1:9111/ch-vacd-api-reference-server/fhir"
-    ports:
-      - "9112:9112"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9112/bff-producer-server/actuator/health | grep -q UP"]
-      interval: 10s
-      timeout: 5s
-      start_period: 60s
-      retries: 12
 
-  # CH VACD FHIR API reference server — instance 1.
-  # Multi-stage build: Maven runs inside Docker, no local mvn/java prereqs.
-  # Postgres-backed (fhir-db) for persistence across restarts.
-  fhir-server-1:
-    build:
-      context: ./services/ch-vacd-api-reference-server
-    image: vacd/ch-vacd-api-reference-server:dev
-    container_name: vacd-fhir-server-1
-    depends_on:
-      fhir-db:
-        condition: service_healthy
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://fhir-db:5432/chvacdapirefserver
-      SPRING_DATASOURCE_USERNAME: vacduser
-      SPRING_DATASOURCE_PASSWORD: vacduser
-      SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
-      SPRING_JPA_DATABASEPLATFORM: org.hibernate.dialect.PostgreSQLDialect
-    ports:
-      - "9111:9111"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9111/ch-vacd-api-reference-server/fhir/metadata | grep -q CapabilityStatement"]
-      interval: 10s
-      timeout: 5s
-      start_period: 60s
-      retries: 12
+# ###################################################################################3
+# Databases
 
-  # Optional second instance — uncomment to enable.
-  # Same image as fhir-server-1; only fhir-server-1 owns the build, so
-  # bring it up at least once before starting this one to avoid a
-  # parallel-build race on the shared image tag. SERVER_PORT moves Tomcat
-  # to 9112 so internal=external matches and startup logs match the URL
-  # participants hit. Shares fhir-db but uses its own database.
-  #
-  # fhir-server-2:
-  #   image: vacd/ch-vacd-api-reference-server:dev
-  #   pull_policy: never
-  #   container_name: vacd-fhir-server-2
-  #   depends_on:
-  #     fhir-db:
-  #       condition: service_healthy
-  #   environment:
-  #     SERVER_PORT: "9112"
-  #     SPRING_DATASOURCE_URL: jdbc:postgresql://fhir-db:5432/chvacdapirefserver2
-  #     SPRING_DATASOURCE_USERNAME: vacduser
-  #     SPRING_DATASOURCE_PASSWORD: vacduser
-  #     SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
-  #     SPRING_JPA_DATABASEPLATFORM: org.hibernate.dialect.PostgreSQLDialect
-  #   ports:
-  #     - "9112:9112"
+  # Pre-configured Postgres for EHRbase. This image (ehrbase/ehrbase-v2-postgres)
+  # bakes in the upstream createdb-docker.sql, so on first start it creates
+  # the `ehrbase` database, roles (ehrbase admin + ehrbase_restricted), the
+  # `ehr` and `ext` schemas, and the uuid-ossp extension automatically from
+  # the EHRBASE_* env vars below. No SQL mount needed.
+  # Port 5432 is NOT exposed on the host — only ehrbase reaches it over the
+  # compose default network.
+  ehrbase-db:
+    profiles: ["db", "be", "fe", "all"]
+    image: ehrbase/ehrbase-v2-postgres:16.2
+    container_name: vacd-ehrbase-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      EHRBASE_USER_ADMIN: ehrbase
+      EHRBASE_PASSWORD_ADMIN: ehrbase
+      EHRBASE_USER: ehrbase_restricted
+      EHRBASE_PASSWORD: ehrbase_restricted
+    volumes:
+      - ehrbase-db-data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   # Postgres for FHIR server(s). Plain postgres:16-alpine — Hibernate
   # auto-creates the schema on first connect, so no init SQL is needed
@@ -94,6 +64,7 @@ services:
   # Port is NOT exposed on the host — only the FHIR servers reach it over
   # the compose default network.
   fhir-db:
+    profiles: ["db", "be", "fe", "all"]
     image: postgres:16-alpine
     container_name: vacd-fhir-db
     environment:
@@ -110,6 +81,32 @@ services:
       timeout: 5s
       retries: 12
 
+  # Mongo for openFHIR. Internal-only (port 27017 not published). openFHIR
+  # is the only client of this Mongo instance, so we skip the usual
+  # init-mongo.js-creates-a-restricted-user dance and let openFHIR connect
+  # with admin creds via ?authSource=admin. Mongo lazily creates the
+  # `openfhir` database on first write — no init script needed. Removing
+  # that script also avoids the bind-mount-from-dev-container path issue
+  # docker-outside-of-docker has with host-relative paths.
+  openfhir-mongo:
+    profiles: ["db", "be", "fe", "all"]
+    image: mongo:7.0
+    container_name: vacd-mongo-db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    volumes:
+      - openfhir-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' | grep -q 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+
+# ###################################################################################3
+# Backends
+
   # openEHR Clinical Data Repository.
   # BASIC auth instead of upstream's Keycloak setup — keeps the working set
   # lean and removes a moving part participants don't need. Override via
@@ -117,6 +114,7 @@ services:
   # own IdP. Internal container port is 8080 (Spring Boot default); host
   # port is 8082 to avoid conflicts with common dev-server ports.
   ehrbase:
+    profiles: ["be", "fe", "all"]
     image: ehrbase/ehrbase:2.31.0
     container_name: vacd-ehrbase
     depends_on:
@@ -142,31 +140,6 @@ services:
       start_period: 30s
       retries: 12
 
-  # Pre-configured Postgres for EHRbase. This image (ehrbase/ehrbase-v2-postgres)
-  # bakes in the upstream createdb-docker.sql, so on first start it creates
-  # the `ehrbase` database, roles (ehrbase admin + ehrbase_restricted), the
-  # `ehr` and `ext` schemas, and the uuid-ossp extension automatically from
-  # the EHRBASE_* env vars below. No SQL mount needed.
-  # Port 5432 is NOT exposed on the host — only ehrbase reaches it over the
-  # compose default network.
-  ehrbase-db:
-    image: ehrbase/ehrbase-v2-postgres:16.2
-    container_name: vacd-ehrbase-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      EHRBASE_USER_ADMIN: ehrbase
-      EHRBASE_PASSWORD_ADMIN: ehrbase
-      EHRBASE_USER: ehrbase_restricted
-      EHRBASE_PASSWORD: ehrbase_restricted
-    volumes:
-      - ehrbase-db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-
   # FHIR ⇄ openEHR mapping engine. Persists FHIRconnect YAML mappings in
   # Mongo. Pinned to :2.2.1 (latest at 2026-05-04). Upstream does not
   # publish arm64 for tagged releases — only the moving :build tag is
@@ -177,6 +150,7 @@ services:
   # SERVER_PORT moves Tomcat to 8083 so internal=external, matching the
   # fhir-server-1 convention and what participants hit on the host.
   openfhir:
+    profiles: ["be", "fe", "all"]
     image: openfhir/openfhir:2.2.3
     platform: linux/amd64
     container_name: vacd-openfhir
@@ -194,6 +168,140 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 12
+
+ # CH VACD FHIR API reference server — instance 1.
+  # Multi-stage build: Maven runs inside Docker, no local mvn/java prereqs.
+  # Postgres-backed (fhir-db) for persistence across restarts.
+  fhir-server-1:
+    profiles: ["be", "fe", "all"]
+    build:
+      context: ./services/ch-vacd-api-reference-server
+    image: vacd/ch-vacd-api-reference-server:dev
+    container_name: vacd-fhir-server-1
+    depends_on:
+      fhir-db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://fhir-db:5432/chvacdapirefserver
+      SPRING_DATASOURCE_USERNAME: vacduser
+      SPRING_DATASOURCE_PASSWORD: vacduser
+      SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
+      SPRING_JPA_DATABASEPLATFORM: org.hibernate.dialect.PostgreSQLDialect
+    ports:
+      - "9111:9111"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9111/ch-vacd-api-reference-server/fhir/metadata | grep -q CapabilityStatement"]
+      interval: 120s
+      timeout: 5s
+      start_period: 60s
+      retries: 12
+
+
+# ###################################################################################3
+# Backends to Frontends
+  # IAM Mock — simple authentication service for development.
+  # Provides 5 mock users (4 patient, 1 doctor) and issues JWTs.
+  iam-mock:
+    profiles: ["be", "fe", "all"]
+    build:
+      context: ./services/iam-mock
+    image: vacd/iam-mock:dev
+    container_name: vacd-iam-mock
+    volumes:
+      - iam-mock-data:/app/data
+    ports:
+      - "9090:8080"
+    healthcheck:
+      test: python -c "import http.client; c=http.client.HTTPConnection('localhost',8080); c.request('POST','/authenticate'); assert c.getresponse().status==401"
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 6
+
+  # BFF producer server
+  # Multi-stage build: Maven runs inside Docker, no local mvn/java prereqs.
+  # Postgres-backed (fhir-db) for persistence across restarts.
+  bff-producer-server:
+    profiles: ["be", "fe", "all"]
+    build:
+      context: ./services/bff-producer
+    image: vacd/bff-producer-server:dev
+    container_name: vacd-bff-producer-server
+    environment:
+      FHIR_BASE_URL: "http://fhir-server-1:9111/ch-vacd-api-reference-server/fhir"
+    ports:
+      - "9112:9112"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9112/bff-producer-server/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 12
+
+# Consumer BFF (FastAPI). Reads CH VACD Immunizations from fhir-server-1
+  bff-consumer:
+    profiles: ["be", "fe", "all"]
+    build:
+      context: ./services/bff-consumer
+    image: vacd/bff-consumer:dev
+    container_name: vacd-bff-consumer-server
+#    depends_on:
+#      fhir-server-1:
+#        condition: service_healthy
+    environment:
+      FHIR_BASE_URL: "http://fhir-server-1:9111/ch-vacd-api-reference-server/fhir"
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys,json; sys.exit(0 if json.loads(urllib.request.urlopen('http://localhost:8001/healthz').read())['ok'] else 1)\""]
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 12
+
+# ###################################################################################3
+# Frontends
+
+# Login Frontend
+  login-frontend:
+    profiles: ["fe", "all"]
+    build:
+      context: ./frontends/login
+    container_name: vacd-login-frontend
+    depends_on:
+      bff-consumer:
+        condition: service_healthy
+      producer-frontend:
+        condition: service_started
+      consumer-frontend:
+        condition: service_started
+    ports:
+      - "3003:80"
+
+  # Producer (Arzt Frontend)
+  producer-frontend:
+    profiles: ["fe", "all"]
+    build:
+      context: ./frontends/frontend-producer
+    container_name: vacd-producer-frontend
+    ports:
+      - "3002:80"
+
+  # Consumer (Patient Frontend)
+  consumer-frontend:
+    profiles: ["fe", "all"]
+    build:
+      context: ./frontends/frontend-consumer
+    container_name: vacd-consumer-frontend
+    depends_on:
+      bff-consumer:
+        condition: service_healthy
+    ports:
+      - "3004:80"
+
+
+# ###################################################################################3
+# examples - obsolete
 
   # Example platform layer — harness smoke-test (Kotlin/Ktor).
   # Profile-gated: only starts with `docker compose --profile example up`.
@@ -230,99 +338,6 @@ services:
       start_period: 30s
       retries: 12
 
-  # Consumer BFF (FastAPI). Reads CH VACD Immunizations from fhir-server-1
-  bff-consumer:
-    build:
-      context: ./services/bff-consumer
-    image: vacd/bff-consumer:dev
-    container_name: vacd-bff-consumer
-    depends_on:
-      fhir-server-1:
-        condition: service_healthy
-    environment:
-      FHIR_BASE_URL: "http://fhir-server-1:9111/ch-vacd-api-reference-server/fhir"
-    ports:
-      - "8001:8001"
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request,sys,json; sys.exit(0 if json.loads(urllib.request.urlopen('http://localhost:8001/healthz').read())['ok'] else 1)\""]
-      interval: 10s
-      timeout: 5s
-      start_period: 15s
-      retries: 12
-
-  # Mongo for openFHIR. Internal-only (port 27017 not published). openFHIR
-  # is the only client of this Mongo instance, so we skip the usual
-  # init-mongo.js-creates-a-restricted-user dance and let openFHIR connect
-  # with admin creds via ?authSource=admin. Mongo lazily creates the
-  # `openfhir` database on first write — no init script needed. Removing
-  # that script also avoids the bind-mount-from-dev-container path issue
-  # docker-outside-of-docker has with host-relative paths.
-  openfhir-mongo:
-    image: mongo:7.0
-    container_name: vacd-openfhir-mongo
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin
-    volumes:
-      - openfhir-mongo-data:/data/db
-    healthcheck:
-      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' | grep -q 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-
-  # IAM Mock — simple authentication service for development.
-  # Provides 5 mock users (4 patient, 1 doctor) and issues JWTs.
-  iam-mock:
-    build:
-      context: ./services/iam-mock
-    image: vacd/iam-mock:dev
-    container_name: vacd-iam-mock
-    volumes:
-      - iam-mock-data:/app/data
-    ports:
-      - "9090:8080"
-    healthcheck:
-      test: python -c "import http.client; c=http.client.HTTPConnection('localhost',8080); c.request('POST','/authenticate'); assert c.getresponse().status==401"
-      interval: 10s
-      timeout: 5s
-      start_period: 5s
-      retries: 6
-    
-
-  # Login Frontend
-  login-frontend:
-    build:
-      context: ./frontends/login
-    container_name: vacd-login-frontend
-    depends_on:
-      bff-consumer:
-        condition: service_healthy
-      producer-frontend:
-        condition: service_started
-      consumer-frontend:
-        condition: service_started
-    ports:
-      - "3003:80"
-
-  # Producer (Arzt Frontend)
-  producer-frontend:
-    build:
-      context: ./frontends/frontend-producer
-    container_name: vacd-producer-frontend
-    ports:
-      - "3002:80"
-
-  # Consumer (Patient Frontend)
-  consumer-frontend:
-    build:
-      context: ./frontends/frontend-consumer
-    container_name: vacd-consumer-frontend
-    depends_on:
-      bff-consumer:
-        condition: service_healthy
-    ports:
-      - "3004:80"
 
 # All backing services join `vacd-net`, an external user-defined bridge that
 # the dev container also joins (via `--network=vacd-net` in
@@ -335,11 +350,28 @@ services:
 # are still exposed for host-side tools (browsers, Postman).
 volumes:
   fhir-db-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/roeland/development/ws-vaccination-domain/data/fhirdb
   ehrbase-db-data:
-  openfhir-mongo-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/roeland/development/ws-vaccination-domain/data/ehrdb
+  openfhir-mongo-data: 
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/roeland/development/ws-vaccination-domain/data/mongodb
   iam-mock-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/roeland/development/ws-vaccination-domain/data/iam-mock
 
-networks:
-  default:
-    name: vacd-net
-    external: true
+

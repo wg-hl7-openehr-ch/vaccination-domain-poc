@@ -14,15 +14,28 @@
 	<groupId>ch.govtech.2026</groupId>
 	<artifactId>bff-producer-server</artifactId>
 	<version>1.0.0-SNAPSHOT</version>
-	<name>GovTech 2026 BFF Producer Server</name>
-	<description>GovTech 2026 BFF Producer Server</description>
+	<name>Vaccination Domain BFF Producer Server</name>
+	<description>Vaccination Domain BFF Producer Server</description>
 
 	<properties>
 		<java.version>21</java.version>
 		<hapi.fhir.version>8.8.1</hapi.fhir.version>
+		<husky.version>3.4.1-SNAPSHOT</husky.version>
 		<spring-cloud.version>2025.0.2</spring-cloud.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
 	</properties>
+	
+	<repositories>
+		<repository>
+			<id>husky-snapshots</id>
+			<name>husky-snapshots</name>
+			<url>https://archiva.et-innovations.org/repository/snapshots/</url>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+
+	</repositories>
 
 	<dependencyManagement>
 		<dependencies>
@@ -48,10 +61,21 @@
 
 
 		<!-- FHIR structures R4 (align to HAPI major) -->
-		<dependency>
+		<!--<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-structures-r4</artifactId>
 			<version>${hapi.fhir.version}</version>
+		</dependency>-->
+		<dependency>
+			<groupId>org.projecthusky.fhir.vacd.ch</groupId>
+			<artifactId>husky-fhir-vacd-ch-common</artifactId>
+			<version>${husky.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.projecthusky.common</groupId>
+					<artifactId>husky-common-gen</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 

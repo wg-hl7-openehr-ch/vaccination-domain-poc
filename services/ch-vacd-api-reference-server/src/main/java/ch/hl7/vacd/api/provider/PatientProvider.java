@@ -1,57 +1,45 @@
 package ch.hl7.vacd.api.provider;
 
-import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.rest.annotation.Create;
-import ca.uhn.fhir.rest.annotation.IdParam;
-import ca.uhn.fhir.rest.annotation.Operation;
-import ca.uhn.fhir.rest.annotation.Read;
-import ca.uhn.fhir.rest.annotation.ResourceParam;
-import ca.uhn.fhir.rest.annotation.Search;
-import ca.uhn.fhir.rest.annotation.Update;
-import ca.uhn.fhir.rest.api.MethodOutcome;
-import ca.uhn.fhir.rest.annotation.OptionalParam;
-import ca.uhn.fhir.rest.param.StringParam;
-import ca.uhn.fhir.rest.server.IResourceProvider;
-import ch.hl7.vacd.api.repo.ResourceRepository;
-import ch.hl7.vacd.api.business.PatientBusinessService;
-import ch.hl7.vacd.api.client.impl.EhrbaseClientImpl;
-import ch.hl7.vacd.api.entity.ResourceEntity;
-import ch.hl7.vacd.api.exceptions.PatientNotFoundException;
+import java.util.List;
 
-import org.hl7.fhir.instance.model.api.IIdType;
-import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Patient;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.annotation.Create;
+import ca.uhn.fhir.rest.annotation.IdParam;
+import ca.uhn.fhir.rest.annotation.Operation;
+import ca.uhn.fhir.rest.annotation.OptionalParam;
+import ca.uhn.fhir.rest.annotation.Read;
+import ca.uhn.fhir.rest.annotation.ResourceParam;
+import ca.uhn.fhir.rest.annotation.Search;
+import ca.uhn.fhir.rest.annotation.Update;
+import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.param.StringParam;
+import ca.uhn.fhir.rest.server.IResourceProvider;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ch.hl7.vacd.api.business.PatientBusinessService;
+import ch.hl7.vacd.api.exceptions.PatientNotFoundException;
 
 @Component
-public class PatientProvider implements IResourceProvider {
+public class PatientProvider extends AbstractProvider implements IResourceProvider {
 
-	
-	@Autowired
-	public PatientBusinessService patientBusinessService;
-	
-	private final FhirContext fhirContext;
-//	private final ResourceRepository store;
-//	private final EhrbaseClientImpl ehrbaseClient;
+	public final PatientBusinessService patientBusinessService;
 
-	public PatientProvider(FhirContext fhirContext/*, ResourceRepository store, EhrbaseClientImpl ehrbaseClient*/) {
-		this.fhirContext = fhirContext;
-//		this.store = store;
-//		this.ehrbaseClient = ehrbaseClient;
+	public PatientProvider(FhirContext fhirContext, PatientBusinessService patientBusinessService) {
+		super(fhirContext);
+		this.patientBusinessService = patientBusinessService;
 	}
 
 	@Create
 	public MethodOutcome create(@ResourceParam Patient patient) {
-		
+
+		validatePatient(patient);
+
 		Patient createdPatient = patientBusinessService.createPatient(patient);
 
 		MethodOutcome outcome = new MethodOutcome();
@@ -62,10 +50,11 @@ public class PatientProvider implements IResourceProvider {
 
 	@Update
 	public MethodOutcome update(@IdParam IdType id, @ResourceParam Patient patient) {
-		
+
+		validatePatient(patient);
+
 		Patient updatedPatient = patientBusinessService.updatedPatient(patient);
-		
-		
+
 		MethodOutcome outcome = new MethodOutcome();
 		outcome.setId(new IdType(updatedPatient.fhirType(), updatedPatient.getId()));
 		outcome.setResource(updatedPatient);
@@ -84,7 +73,8 @@ public class PatientProvider implements IResourceProvider {
 	}
 
 	@Operation(name = "export-document", idempotent = false)
-	public Bundle exportDocument(@IdParam IdType theId, @ResourceParam Parameters parameters) throws PatientNotFoundException {
+	public Bundle exportDocument(@IdParam IdType theId, @ResourceParam Parameters parameters)
+			throws PatientNotFoundException {
 		if ((parameters.getParameter("type") != null) && //
 				(parameters.getParameter("type").getValue() instanceof Coding) && //
 				("urn:oid:2.16.756.5.30.1.127.3.10.10".equals(//
@@ -94,7 +84,8 @@ public class PatientProvider implements IResourceProvider {
 						((Coding) parameters.getParameter("type").getValue()).getCode()))//
 		) {
 
-			// In a real implementation, you would retrieve the patient and related resources based on the provided ID
+			// In a real implementation, you would retrieve the patient and related
+			// resources based on the provided ID
 			return patientBusinessService.exportDocument(theId, parameters);
 		} else {
 			throw new IllegalArgumentException("Unsupported type code!");
@@ -104,5 +95,21 @@ public class PatientProvider implements IResourceProvider {
 	@Override
 	public Class<Patient> getResourceType() {
 		return Patient.class;
+	}
+
+	private void validatePatient(Patient patient) {
+		if (patient.getName().isEmpty()) {
+			throw new InvalidRequestException("Patient name is required");
+		}
+		if (patient.getBirthDate() == null) {
+			throw new InvalidRequestException("Patient birth date is required");
+		}
+		if (patient.getGender() == null) {
+			throw new InvalidRequestException("Patient gender is required");
+		}
+		if (!patient.hasActive()) {
+			throw new InvalidRequestException("Patient active status is required");
+		}
+
 	}
 }
