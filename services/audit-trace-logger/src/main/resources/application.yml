@@ -1,0 +1,25 @@
+server:
+  port: 9113
+  servlet.context-path: /audit-trace-logger
+
+spring:
+  application.name: audit-trace-logger
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/vacd_audit_trace
+    username: vacduser
+    password: vacduser
+    driverClassName: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    hibernate.ddl-auto: update
+
+# HAPI FHIR server servlet mapping
+hapi:
+  fhir:
+    server:
+      path: /fhir/*
+    pretty_print: true
+    default_response_encoding: json
+    openapi_enabled: true
