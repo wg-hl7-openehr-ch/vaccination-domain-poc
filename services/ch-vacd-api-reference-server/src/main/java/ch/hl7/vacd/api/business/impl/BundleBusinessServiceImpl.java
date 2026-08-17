@@ -22,10 +22,8 @@ import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
 import org.hl7.fhir.r4.model.Resource;
-import org.projecthusky.fhir.vacd.ch.common.enums.ChVacdDocumentType;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationDocument;
-import org.projecthusky.fhir.vacd.ch.common.service.ChVacdParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,11 +31,9 @@ import org.springframework.stereotype.Service;
 import ca.uhn.fhir.context.FhirContext;
 import ch.hl7.vacd.api.business.BundleBusinessService;
 import ch.hl7.vacd.api.client.EhrbaseClient;
-import ch.hl7.vacd.api.client.FeederAuditEnricher;
 import ch.hl7.vacd.api.client.OpenFhirClient;
 import ch.hl7.vacd.api.domain.Peeled;
 import ch.hl7.vacd.api.entity.ResourceEntity;
-import ch.hl7.vacd.api.entity.ResourceReferenceEntity;
 import ch.hl7.vacd.api.exceptions.PatientNotFoundException;
 import ch.hl7.vacd.api.repo.ResourceRepository;
 import ch.hl7.vacd.api.utils.RessourceUtil;
@@ -61,8 +57,9 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 	@Override
 	@Transactional
 	public Bundle createBundle(Bundle bundle) throws PatientNotFoundException {
-		log.info("Creating Bundle:\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
-		
+		log.info("Creating Bundle:\n{}",
+				fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
+
 		// Validate and extract bundle structure.
 		Peeled peeled = RessourceUtil.peel(bundle);
 
@@ -93,7 +90,7 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 			createIfAbsent(organization, fullUrlMap);
 		}
 		for (PractitionerRole practitionerRole : peeled.practitionerRoles) {
-			ResourceEntity praRoleEntry = createIfAbsent(practitionerRole, fullUrlMap);
+			/*ResourceEntity praRoleEntry =*/ createIfAbsent(practitionerRole, fullUrlMap);
 		}
 
 //		patientId = RessourceUtil.removeUrn(patientId);
@@ -155,8 +152,8 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 //					.setFullUrl("urn:uuid:" + RessourceUtil.removeUrn(organizationOut.getId()));
 //		}
 		List<Immunization> immEntries = bundleFromEhr.getEntry().stream()
-				.filter(e -> e.getResource() instanceof Immunization)
-				.map(e -> (Immunization) e.getResource()).collect(Collectors.toList());
+				.filter(e -> e.getResource() instanceof Immunization).map(e -> (Immunization) e.getResource())
+				.collect(Collectors.toList());
 		for (Immunization immunization : immEntries) {
 			log.info("Immunization resource: id={}, status={}, vaccineCode={}", immunization.getId(),
 					immunization.getStatus(), immunization.getVaccineCode().getCodingFirstRep().getCode());

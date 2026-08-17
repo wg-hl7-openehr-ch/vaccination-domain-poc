@@ -1,9 +1,10 @@
 package ch.bff.producer.provider;
 
-import ch.bff.producer.VacctinationsReadService;
 import ch.bff.producer.provider.models.PractitionerDto;
 import ch.bff.producer.provider.models.VaccinationDto;
 import ch.bff.producer.provider.models.VaccinationReason;
+import ch.bff.producer.services.VaccinationsReadService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,9 +21,9 @@ public class VaccinationProvider {
 
     private static final Logger log = LoggerFactory.getLogger(VaccinationProvider.class);
 
-    private final VacctinationsReadService vacctinationsReadService;
+    private final VaccinationsReadService vacctinationsReadService;
 
-    public VaccinationProvider(VacctinationsReadService vacctinationsReadService) {
+    public VaccinationProvider(VaccinationsReadService vacctinationsReadService) {
         this.vacctinationsReadService = vacctinationsReadService;
     }
 

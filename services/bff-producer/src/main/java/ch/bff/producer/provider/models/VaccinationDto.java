@@ -1,6 +1,7 @@
 package ch.bff.producer.provider.models;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public record VaccinationDto(
@@ -14,7 +15,8 @@ public record VaccinationDto(
         String administrationRoute,
         String siteOfAdministration,
         PractitionerDto practitioner,
-        VaccinationReason vaccinationReason
+        VaccinationReason vaccinationReason,
+        List<CodingDto> targetDiseases
 ) {
     public VaccinationDto {
         if (id == null) {
@@ -23,7 +25,7 @@ public record VaccinationDto(
         if (vaccineName == null || vaccineName.isBlank()) {
             throw new IllegalArgumentException("Impfstoffname darf nicht leer sein");
         }
-        if (vaccineCode == null || vaccineCode.isBlank()) {
+        if (vaccineCode == null/* || vaccineCode.isBlank(*/) {
             throw new IllegalArgumentException("Impfstoffcode darf nicht leer sein");
         }
         if (doseSequence == null || doseSequence.isBlank()) {

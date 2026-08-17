@@ -1,9 +1,10 @@
 package ch.bff.producer.provider;
 
-import ch.bff.producer.PatientReadService;
 import ch.bff.producer.provider.models.AddressDto;
 import ch.bff.producer.provider.models.Gender;
 import ch.bff.producer.provider.models.PatientDto;
+import ch.bff.producer.services.PatientReadService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;

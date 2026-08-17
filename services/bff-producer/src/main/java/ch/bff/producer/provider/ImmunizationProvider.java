@@ -1,8 +1,9 @@
 package ch.bff.producer.provider;
 
-import ch.bff.producer.ImmunizationAdministrationService;
 import ch.bff.producer.provider.models.ImmunizationCreateDto;
 import ch.bff.producer.provider.models.VaccinationDto;
+import ch.bff.producer.services.ImmunizationAdministrationService;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

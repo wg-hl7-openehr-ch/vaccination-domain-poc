@@ -12,27 +12,22 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CanonicalType;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Composition;
-import org.hl7.fhir.r4.model.ContactPoint.ContactPointUse;
 import org.hl7.fhir.r4.model.Device;
-import org.hl7.fhir.r4.model.Device.FHIRDeviceStatus;
-import org.hl7.fhir.r4.model.Immunization.ImmunizationProtocolAppliedComponent;
 import org.hl7.fhir.r4.model.Device.DeviceNameType;
-import org.hl7.fhir.r4.model.DomainResource;
-import org.hl7.fhir.r4.model.HumanName;
+import org.hl7.fhir.r4.model.Device.FHIRDeviceStatus;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Immunization;
+import org.hl7.fhir.r4.model.Immunization.ImmunizationProtocolAppliedComponent;
 import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Meta;
 import org.hl7.fhir.r4.model.Organization;
@@ -55,8 +50,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import ch.hl7.vacd.api.domain.Peeled;
-import ch.hl7.vacd.api.entity.ResourceEntity;
-import ch.hl7.vacd.api.entity.ResourceIdentifierEntity;
 
 /**
  * 
@@ -389,7 +382,7 @@ public class RessourceUtil {
 //			immIn.copyValues(immEHR);
 
 			// replace recorder resource by reference
-			if(immIn.getRecorder() != null && immIn.getRecorder().getResource() != null) {
+			if (immIn.getRecorder() != null && immIn.getRecorder().getResource() != null) {
 				String immInRec = RessourceUtil.removeUrn(immIn.getRecorder().getResource().getIdElement().getIdPart());
 				immEHR.setRecorder(new Reference(immIn.getRecorder().getResource().fhirType() + "/" + immInRec));
 			}
