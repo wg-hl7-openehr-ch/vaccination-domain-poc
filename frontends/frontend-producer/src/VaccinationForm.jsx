@@ -107,16 +107,11 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
         <div className="sheet-body">
           <FormGroup title="Impfstoff" eyebrow="1">
             <div className="grid-2">
-              <Autocomplete
-                label="Impfstoff"
-                required
-                placeholder="z. B. Boostrix Polio"
-                value={form.vaccine}
-                onChange={(v) => set("vaccine", v)}
-                onBlur={() => touch("vaccine")}
-                options={vaccineCatalog}
-                error={touched.vaccine && errors.vaccine}
-              />
+              <Field label="Impfstoff" required>
+                <select className="select" value={form.vaccine} onChange={(e) => set("vaccine", e.target.value)}>
+                  {vaccineCatalog.map((r) => <option key={r.combined} value={r.combined}>{r.display}</option>)}
+                </select>
+              </Field>
               <Field label="Impfstoffcode" hint="z. B. ATC- oder GTIN-Code" required>
                 <input className="input mono" placeholder="J07CA02" value={form.vaccineCode}
                 onChange={(e) => set("vaccineCode", e.target.value)} />

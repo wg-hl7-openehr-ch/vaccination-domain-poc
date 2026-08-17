@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,7 +29,7 @@ import java.util.Set;
  * Runs synchronously (blocks startup) so the server only accepts requests once
  * the context mappers are configured.
  */
-@Component
+//@Component
 public class OpenFhirBootstrap implements ApplicationRunner {
 
 	private static final Logger log = LoggerFactory.getLogger(OpenFhirBootstrap.class);

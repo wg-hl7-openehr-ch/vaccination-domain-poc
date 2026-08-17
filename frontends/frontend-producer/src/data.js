@@ -11,33 +11,8 @@ window.AppData = { doctor };
 
 // Catalog used in form dropdowns
 const vaccineCatalog = [
-  "Boostrix",
-  "Boostrix Polio",
-  "Comirnaty (BNT162b2)",
-  "Comirnaty Omicron XBB.1.5",
-  "Efluelda (HD)",
-  "Encepur",
-  "Engerix-B",
-  "FSME-Immun CC",
-  "Fluarix Tetra",
-  "Gardasil 9",
-  "Havrix 1440",
-  "Influvac Tetra",
-  "Infanrix-IPV",
-  "Infanrix hexa",
-  "Menveo",
-  "MMR-VaxPro",
-  "Nimenrix",
-  "Pentavac",
-  "Prevenar 13",
-  "Priorix",
-  "Rabipur",
-  "Shingrix",
-  "Spikevax (mRNA-1273)",
-  "Stamaril",
-  "Td-pur",
-  "Twinrix",
-  "Varilrix",
+  { combined: "http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|681|Boostrix Polio", display: "Boostrix"},
+  { combined: "http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|637|Boostrix", display: "Boostrix Polio"}
 ];
 
 const manufacturers = [

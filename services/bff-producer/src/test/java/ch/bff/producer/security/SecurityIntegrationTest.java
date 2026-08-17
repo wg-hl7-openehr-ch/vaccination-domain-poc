@@ -1,7 +1,8 @@
 package ch.bff.producer.security;
 
-import ch.bff.producer.PatientReadService;
 import ch.bff.producer.provider.PatientProvider;
+import ch.bff.producer.services.PatientReadService;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;

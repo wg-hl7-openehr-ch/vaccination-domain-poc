@@ -43,6 +43,14 @@ async function createImmunization(personId, data) {
   return res.json();
 }
 
+async function fetchVaccineCodes() {
+  const res = await fetch('/api/valuesets/vaccines', {
+    headers: { ...authHeaders() },
+  });
+  if (!res.ok) throw new Error('Fehler beim Laden der Impfstoff-Codes');
+  return res.json();
+}
+
 function transformPatient(apiPatient, index) {
   const genderMap = { MÄNNLICH: 'M', WEIBLICH: 'F', DIVERS: 'D' };
   const addr = apiPatient.address;
@@ -127,6 +135,7 @@ window.DataService = {
   fetchPatients,
   fetchVaccinations,
   createImmunization,
+  fetchVaccineCodes,
   transformPatient,
   transformVaccination,
   routeToApi,

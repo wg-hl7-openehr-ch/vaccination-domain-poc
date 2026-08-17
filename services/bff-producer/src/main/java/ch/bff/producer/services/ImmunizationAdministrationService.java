@@ -1,39 +1,35 @@
 package ch.bff.producer.services;
 
+import java.util.Date;
+import java.util.UUID;
+
+import org.hl7.fhir.r4.model.CodeableConcept;
+import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.Extension;
+import org.hl7.fhir.r4.model.Immunization;
+import org.hl7.fhir.r4.model.Medication;
+import org.hl7.fhir.r4.model.Organization;
+import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.PositiveIntType;
+import org.hl7.fhir.r4.model.Practitioner;
+import org.hl7.fhir.r4.model.PractitionerRole;
+import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.SimpleQuantity;
+import org.projecthusky.fhir.core.ch.resource.r4.ChCoreOrganizationEpr;
+import org.projecthusky.fhir.core.ch.resource.r4.ChCorePractitionerEpr;
+import org.projecthusky.fhir.core.ch.resource.r4.ChCorePractitionerRoleEpr;
+import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationDocument;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
 import ca.uhn.fhir.context.FhirContext;
 import ch.bff.producer.client.FhirClient;
 import ch.bff.producer.provider.models.ImmunizationCreateDto;
 import ch.bff.producer.provider.models.PractitionerDto;
 import ch.bff.producer.provider.models.RouteOfAdministration;
 import ch.bff.producer.provider.models.VaccinationDto;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.CodeableConcept;
-import org.hl7.fhir.r4.model.Coding;
-import org.hl7.fhir.r4.model.Composition;
-import org.hl7.fhir.r4.model.DateTimeType;
-import org.hl7.fhir.r4.model.Extension;
-import org.hl7.fhir.r4.model.Identifier;
-import org.hl7.fhir.r4.model.Immunization;
-import org.hl7.fhir.r4.model.Medication;
-import org.hl7.fhir.r4.model.Patient;
-import org.hl7.fhir.r4.model.PositiveIntType;
-import org.hl7.fhir.r4.model.Practitioner;
-import org.hl7.fhir.r4.model.PractitionerRole;
-import org.hl7.fhir.r4.model.Organization;
-import org.hl7.fhir.r4.model.Reference;
-import org.hl7.fhir.r4.model.SimpleQuantity;
-import org.projecthusky.fhir.core.ch.resource.r4.ChCoreOrganizationEpr;
-import org.projecthusky.fhir.core.ch.resource.r4.ChCorePractitionerEpr;
-import org.projecthusky.fhir.core.ch.resource.r4.ChCorePractitionerRoleEpr;
-import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
-import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationDocument;
-import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
-import java.util.Date;
-import java.util.UUID;
 
 @Service
 public class ImmunizationAdministrationService {
@@ -101,12 +97,12 @@ public class ImmunizationAdministrationService {
 
 	// ---- Resource builders ----
 
-	private Patient copyPatient(Patient source, UUID patientUuid) {
-		var json = fhirContext.newJsonParser().encodeResourceToString(source);
-		var copy = fhirContext.newJsonParser().parseResource(Patient.class, json);
-		copy.setId("urn:uuid:" + patientUuid);
-		return copy;
-	}
+//	private Patient copyPatient(Patient source, UUID patientUuid) {
+//		var json = fhirContext.newJsonParser().encodeResourceToString(source);
+//		var copy = fhirContext.newJsonParser().parseResource(Patient.class, json);
+//		copy.setId("urn:uuid:" + patientUuid);
+//		return copy;
+//	}
 
 	private Immunization buildImmunization(ChVacdImmunizationAdministrationDocument bundle, ImmunizationCreateDto dto,
 			Patient fhirPatient, PractitionerRole practitionerRole) {
@@ -123,7 +119,8 @@ public class ImmunizationAdministrationService {
 		manufacturer.setName(dto.marketingAuthorizationHolder());
 		imm.setManufacturer(new Reference(manufacturer).setDisplay(dto.marketingAuthorizationHolder()));
 
-		Medication medication = new Medication();
+		Medication medication = new Medication(); // TODO Replace by bundle.addMedication() when the
+													// ChVacdImmunizationAdministrationDocument supports it
 		medication.getMeta()
 				.addProfile("http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-medication-for-immunization");
 		medication.setCode(
@@ -132,7 +129,7 @@ public class ImmunizationAdministrationService {
 		medication.setManufacturer(new Reference(manufacturer));
 		bundle.addEntry().setFullUrl("urn:uuid:" + UUID.randomUUID().toString()).setResource(medication);
 		bundle.addEntry().setFullUrl("urn:uuid:" + UUID.randomUUID().toString()).setResource(manufacturer);
-		
+
 		Extension medicationExt = imm.addExtension();
 		medicationExt.setUrl("http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-immunization-medication");
 		medicationExt.setValue(new Reference(medication));
@@ -190,7 +187,7 @@ public class ImmunizationAdministrationService {
 
 	private Organization buildOrganization(UUID organizationUuid) {
 		var org = new ChCoreOrganizationEpr();
-		//org.setId("urn:uuid:" + organizationUuid);
+		// org.setId("urn:uuid:" + organizationUuid);
 		org.addIdentifier().setSystem("urn:oid:2.51.1.3").setValue("7601000999999");
 		org.setName("Praxis am Bahnhof");
 		return org;
@@ -204,39 +201,39 @@ public class ImmunizationAdministrationService {
 		return pr;
 	}
 
-	private Composition buildComposition(UUID compositionUuid, UUID patientUuid, UUID practitionerRoleUuid,
-			UUID immunizationUuid) {
-		var comp = new Composition();
-		comp.setId("urn:uuid:" + compositionUuid);
-		comp.getMeta().addProfile(
-				"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-composition-immunization-administration");
-
-		comp.setIdentifier(new Identifier().setSystem("urn:ietf:rfc:3986").setValue("urn:uuid:" + compositionUuid));
-
-		comp.setStatus(Composition.CompositionStatus.FINAL);
-
-		var type = new CodeableConcept();
-		type.addCoding(new Coding("http://snomed.info/sct", "41000179103", "Immunization record"));
-		comp.setType(type);
-
-		var category = new CodeableConcept();
-		category.addCoding(new Coding("urn:oid:2.16.756.5.30.1.127.3.10.10",
-				"urn:che:epr:ch-vacd:immunization-administration:2022", "CH VACD Immunization Administration"));
-		comp.addCategory(category);
-
-		comp.setTitle("Immunization Administration");
-		comp.setDate(new Date());
-
-		comp.getSubject().setReference("urn:uuid:" + patientUuid);
-		comp.addAuthor().setReference("urn:uuid:" + practitionerRoleUuid);
-
-		var section = comp.addSection();
-		section.setTitle("Immunization Administration");
-		section.getCode().addCoding(new Coding("http://loinc.org", "11369-6", "Immunization Administration"));
-		section.addEntry().setReference("urn:uuid:" + immunizationUuid);
-
-		return comp;
-	}
+//	private Composition buildComposition(UUID compositionUuid, UUID patientUuid, UUID practitionerRoleUuid,
+//			UUID immunizationUuid) {
+//		var comp = new Composition();
+//		comp.setId("urn:uuid:" + compositionUuid);
+//		comp.getMeta().addProfile(
+//				"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-composition-immunization-administration");
+//
+//		comp.setIdentifier(new Identifier().setSystem("urn:ietf:rfc:3986").setValue("urn:uuid:" + compositionUuid));
+//
+//		comp.setStatus(Composition.CompositionStatus.FINAL);
+//
+//		var type = new CodeableConcept();
+//		type.addCoding(new Coding("http://snomed.info/sct", "41000179103", "Immunization record"));
+//		comp.setType(type);
+//
+//		var category = new CodeableConcept();
+//		category.addCoding(new Coding("urn:oid:2.16.756.5.30.1.127.3.10.10",
+//				"urn:che:epr:ch-vacd:immunization-administration:2022", "CH VACD Immunization Administration"));
+//		comp.addCategory(category);
+//
+//		comp.setTitle("Immunization Administration");
+//		comp.setDate(new Date());
+//
+//		comp.getSubject().setReference("urn:uuid:" + patientUuid);
+//		comp.addAuthor().setReference("urn:uuid:" + practitionerRoleUuid);
+//
+//		var section = comp.addSection();
+//		section.setTitle("Immunization Administration");
+//		section.getCode().addCoding(new Coding("http://loinc.org", "11369-6", "Immunization Administration"));
+//		section.addEntry().setReference("urn:uuid:" + immunizationUuid);
+//
+//		return comp;
+//	}
 
 	// ---- helpers ----
 

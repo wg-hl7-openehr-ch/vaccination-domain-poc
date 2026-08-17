@@ -5,10 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
-import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.DomainResource;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Identifier;
@@ -19,12 +16,9 @@ import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
-import org.projecthusky.fhir.vacd.ch.common.enums.ChVacdDocumentType;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdAbstractDocument;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationDocument;
-import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdVaccinationRecordDocument;
-import org.projecthusky.fhir.vacd.ch.common.service.ChVacdParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -195,6 +189,7 @@ public class AbstractBusinessService {
 
 	}
 
+	@SuppressWarnings("unchecked")
 	protected <T extends Resource> T getResourceEntry(String resourceType, String resourceId) {
 		List<ResourceEntity> entities = store.findByResourceTypeAndResourceId(resourceType, resourceId);
 		if (entities != null && !entities.isEmpty()) {
@@ -232,14 +227,15 @@ public class AbstractBusinessService {
 		log.info("Performer IDs for immunization {}: {}", immunization.getId(), perfomerIds);
 		ChVacdImmunization immun = new ChVacdImmunization();
 		immunization.copyValues(immun);
-		
+
 		for (String performerId : perfomerIds) {
 			if (performerId == null) {
 				continue;
 			}
 			IdType idType = new IdType(performerId);
-			log.info("Performer reference for id:\n{}: {} {}",performerId,  idType.getResourceType(), idType.getIdPart());
-			
+			log.info("Performer reference for id:\n{}: {} {}", performerId, idType.getResourceType(),
+					idType.getIdPart());
+
 			DomainResource perfomerDR = getResourceEntry(
 					(idType.getResourceType() != null) ? idType.getResourceType() : "PractitionerRole",
 					idType.getIdPart());
@@ -252,7 +248,6 @@ public class AbstractBusinessService {
 					perfomer.setIdElement(null);
 				}
 				immun.addPerformer().setActor(new Reference(perfomer));
-				
 
 			}
 			// complete practitionerrole with reference to practitioner and organization
@@ -280,7 +275,7 @@ public class AbstractBusinessService {
 				}
 				perfomer.setIdElement(null);
 				immun.addPerformer().setActor(new Reference(perfomer));
-				
+
 			}
 		}
 

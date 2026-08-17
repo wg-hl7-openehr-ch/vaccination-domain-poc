@@ -22,19 +22,24 @@ spring:
 # HAPI FHIR server servlet mapping
 hapi:
   fhir:
-    server.path: /fhir/*
+    server:
+      path: /fhir/*
+      server_validation_flag_fail_on_severity: error
     pretty_print: true
     default_response_encoding: json
     openapi_enabled: true
+    validation:
+      request_enabled: true
+      allow_local_references: true
 
 # define which resource providers to load (comma-separated list). empty list means "load all"
 fhir:
-  providers: BundleProvider, ImmunizationProvider, OrganizationProvider, PatientProvider, PractitionerProvider, PractitionerRoleProvider, RelatedPersonProvider
+  providers: BundleProvider, ImmunizationProvider, OrganizationProvider, PatientProvider, PractitionerProvider, PractitionerRoleProvider, RelatedPersonProvider, ValueSetProvider
   ig:
     files: >
-      classpath:/packages/ch-vacd_6.0.0.tgz,
-      classpath:/packages/ch-core_6.0.0.tgz,
-      classpath:/packages/ch-term_3.3.0.tgz
+      classpath:/packages/ch.fhir.ig.ch-core#7.0.0-ballot.tgz,
+      classpath:/packages/ch.fhir.ig.ch-term#3.4.0.tgz,
+      classpath:/packages/ch.fhir.ig.ch-vacd#7.0.0-ballot.tgz
 
 # EHRbase CDR connection
 ehrbase:

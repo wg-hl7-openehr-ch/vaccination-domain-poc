@@ -1,4 +1,4 @@
-package ch.bff.producer;
+package ch.bff.producer.services;
 
 import ch.bff.producer.client.FhirClient;
 import ch.bff.producer.mapstruct.VaccinationsMapper;
@@ -10,7 +10,6 @@ import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
 import org.hl7.fhir.r4.model.Reference;
-import org.hl7.fhir.r4.model.StringType;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -19,13 +18,13 @@ import java.util.Map;
 import java.util.Objects;
 
 @Service
-public class VacctinationsReadService {
+public class VaccinationsReadService {
 
     public static final String IMMUNIZATION_LOINC_CODE = "11369-6";
     private final FhirClient fhirClient;
     private final VaccinationsMapper vaccinationsMapper;
 
-    public VacctinationsReadService(FhirClient fhirClient, VaccinationsMapper vaccinationsMapper) {
+    public VaccinationsReadService(FhirClient fhirClient, VaccinationsMapper vaccinationsMapper) {
         this.fhirClient = fhirClient;
         this.vaccinationsMapper = vaccinationsMapper;
     }
