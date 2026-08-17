@@ -2,7 +2,6 @@ package ch.bff.producer.provider;
 
 import java.util.List;
 
-import org.hl7.fhir.r4.model.ValueSet;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

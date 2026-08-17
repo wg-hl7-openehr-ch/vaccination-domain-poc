@@ -51,7 +51,8 @@ public class VaccinationProvider {
                         "s.c.",
                         "Oberarm links",
                         new PractitionerDto("Dr. S. Müller", "7601000233456"),
-                        new VaccinationReason("223366009", "Grundimmunisierung", null)
+                        new VaccinationReason("223366009", "Grundimmunisierung", null),
+                        List.of()
                 ),
 
                 // 2. Impfung (Folgeimpfung MMR)
@@ -66,7 +67,8 @@ public class VaccinationProvider {
                         "s.c.",
                         "Oberarm rechts",
                         new PractitionerDto("Dr. S. Müller", "7601000233456"),
-                        new VaccinationReason("171257003", "Auffrischimpfung", null)
+                        new VaccinationReason("171257003", "Auffrischimpfung", null),
+                        List.of()
                 ),
 
                 // 3. Impfung (Starrkrampf / DTP)
@@ -81,7 +83,8 @@ public class VaccinationProvider {
                         "i.m.",
                         "Oberschenkel links",
                         new PractitionerDto("Dr. med. A. Pfister", "7601003445566"),
-                        new VaccinationReason("171257003", "Auffrischimpfung", null)
+                        new VaccinationReason("171257003", "Auffrischimpfung", null),
+                        List.of()
                 ),
 
                 // 4. Impfung (FSME / Zecken)
@@ -96,7 +99,8 @@ public class VaccinationProvider {
                         "i.m.",
                         "Oberarm links",
                         new PractitionerDto("Dr. S. Müller", "7601000233456"),
-                        new VaccinationReason("223366009", "Grundimmunisierung", null)
+                        new VaccinationReason("223366009", "Grundimmunisierung", null),
+                        List.of()
                 ),
 
                 // 5. Impfung (Grippe)
@@ -111,7 +115,8 @@ public class VaccinationProvider {
                         "i.m.",
                         "Oberarm rechts",
                         new PractitionerDto("Apotheke am Bahnhof", "7601009998877"),
-                        new VaccinationReason("386472008", "saisonale Influenza", null)
+                        new VaccinationReason("386472008", "saisonale Influenza", null),
+                        List.of()
                 )
         );
     }
