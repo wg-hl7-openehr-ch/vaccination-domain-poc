@@ -216,7 +216,7 @@ services:
     ports:
       - "9111:9111"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9111/ch-vacd-api-reference-server/fhir/metadata | grep -q CapabilityStatement"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9111/ch-vacd-api-reference-server | grep -q ch-vacd-API-reference-server"]
       interval: 120s
       timeout: 5s
       start_period: 60s
