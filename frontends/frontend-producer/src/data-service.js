@@ -30,6 +30,20 @@ async function fetchVaccinations(personId) {
   return res.json();
 }
 
+async function importVaccinations(personId, file) {
+  const format = file.name.endsWith('.xml') ? 'xml' : 'json';
+  const formData = new FormData();
+  formData.append('file', file);
+  const url = '/api/bff-producer/vaccinations/import?personId=' + encodeURIComponent(personId) + '&format=' + encodeURIComponent(format);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: formData,
+  });
+  if (!res.ok) throw new Error('Fehler beim Importieren des Impfausweises');
+  return res.json();
+}
+
 async function exportVaccinationRecord(personId, format) {
   const url = '/api/bff-producer/vaccinations/export?personId=' + encodeURIComponent(personId) + '&format=' + encodeURIComponent(format);
   const res = await fetch(url, {
@@ -146,6 +160,7 @@ window.DataService = {
   fetchVaccinations,
   createImmunization,
   fetchVaccineCodes,
+  importVaccinations,
   exportVaccinationRecord,
   transformPatient,
   transformVaccination,

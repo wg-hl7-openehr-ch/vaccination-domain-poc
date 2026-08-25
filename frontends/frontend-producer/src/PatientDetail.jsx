@@ -51,6 +51,23 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
     }
   };
 
+  const handleImportVaccination = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.xml';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        await DataService.importVaccinations(patientId, file);
+        loadVaccinations();
+      } catch (err) {
+        console.error('Import fehlgeschlagen:', err);
+      }
+    };
+    input.click();
+  };
+
   if (!patient) return <div className="page">Patient:in nicht gefunden.</div>;
 
   // Group by target disease, sort chronologically within group.
@@ -125,6 +142,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
           <h2 className="section-title">Impfausweis</h2>
         </div>
         <div className="detail-actions-right">
+          <button className="btn btn-secondary" onClick={handleImportVaccination}><Icon.Upload /> Impfausweis importieren</button>
           <button className="btn btn-secondary" onClick={handleExportVaccination}><Icon.Download /> Impfausweis exportieren</button>
           <button className="btn btn-primary" onClick={onAddVaccination}><Icon.Plus /> Neue Impfung erfassen</button>
         </div>
