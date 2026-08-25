@@ -1,6 +1,6 @@
 // Screen 2 — Patient vaccination history (Swiss Impfausweis style)
 
-function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVaccinationCreated }) {
+function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVaccinationCreated, onExportVaccination }) {
   const { patients } = window.AppData;
   const patient = (patients || []).find((p) => p.id === patientId);
   const [records, setRecords] = useState([]);
@@ -31,6 +31,25 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
       loadVaccinations();
     }
   }, [justAdded]);
+
+  const handleExportVaccination = async () => {
+    try {
+      const res = await DataService.exportVaccinationRecord(patientId, 'json');
+      const jsonContent = await res.json();
+      const blob = new Blob([JSON.stringify(jsonContent, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `VaccinationRecord-${patient.lastName}-${patient.firstName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (onExportVaccination) onExportVaccination(jsonContent);
+    } catch (err) {
+      console.error('Export fehlgeschlagen:', err);
+    }
+  };
 
   if (!patient) return <div className="page">Patient:in nicht gefunden.</div>;
 
@@ -106,6 +125,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
           <h2 className="section-title">Impfausweis</h2>
         </div>
         <div className="detail-actions-right">
+          <button className="btn btn-secondary" onClick={handleExportVaccination}><Icon.Download /> Impfausweis exportieren</button>
           <button className="btn btn-primary" onClick={onAddVaccination}><Icon.Plus /> Neue Impfung erfassen</button>
         </div>
       </div>
