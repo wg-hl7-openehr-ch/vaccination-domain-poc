@@ -8,8 +8,12 @@ import ch.bff.producer.services.VaccinationsReadService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -34,6 +38,17 @@ public class VaccinationProvider {
 		} catch (Exception e) {
 			log.warn("FHIR unavailable, falling back to sample vaccinations: {}", e.getMessage(), e);
 			return getSampleVaccinations();
+		}
+	}
+
+	@PostMapping(value = "/import", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+	public void importVaccinations(@RequestParam String personId, @RequestParam String format,
+			@RequestBody() MultipartFile file) {
+		try {
+			log.info("Importing vaccinations for personId: {}, format: {}, fileName: {}, contentType: {}",
+					personId, format, file.getOriginalFilename(), file.getContentType());
+		} catch (Exception e) {
+			log.warn("Import failed: {}", e.getMessage(), e);
 		}
 	}
 
