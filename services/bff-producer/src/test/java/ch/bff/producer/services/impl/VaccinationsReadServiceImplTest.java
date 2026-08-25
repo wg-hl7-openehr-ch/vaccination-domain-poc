@@ -1,4 +1,4 @@
-package ch.bff.producer.services;
+package ch.bff.producer.services.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -20,8 +20,9 @@ import ca.uhn.fhir.context.FhirContext;
 import ch.bff.producer.client.FhirClient;
 import ch.bff.producer.mapstruct.VaccinationsMapper;
 import ch.bff.producer.provider.models.VaccinationDto;
+import ch.bff.producer.services.VaccinationsReadService;
 
-class VacctinationsReadServiceTest {
+class VaccinationsReadServiceImplTest {
 
 	private static final FhirContext FHIR_CTX = FhirContext.forR4();
 
@@ -35,7 +36,7 @@ class VacctinationsReadServiceTest {
 			fhirClient.bundleToReturn = FHIR_CTX.newJsonParser().parseResource(Bundle.class, in);
 		}
 		var mapper = Mappers.getMapper(VaccinationsMapper.class);
-		service = new VaccinationsReadService(fhirClient, mapper);
+		service = new VaccinationsReadServiceImpl(fhirClient, mapper);
 	}
 
 	@Test
@@ -147,13 +148,13 @@ class VacctinationsReadServiceTest {
 
 		@Override
 		public Bundle postImmunizationAdministrationBundle(Bundle bundle) {
-			return null;
+			return bundleToReturn;
 		}
 
 		@Override
 		public Bundle getVaccinationRecord(String id, Parameters parameters) {
 			// TODO Auto-generated method stub
-			return null;
+			return bundleToReturn;
 		}
 	}
 }

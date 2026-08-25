@@ -1,4 +1,4 @@
-package ch.bff.producer.services;
+package ch.bff.producer.services.impl;
 
 import java.util.Date;
 import java.util.List;
@@ -38,21 +38,23 @@ import ch.bff.producer.provider.models.ImmunizationCreateDto;
 import ch.bff.producer.provider.models.PractitionerDto;
 import ch.bff.producer.provider.models.RouteOfAdministration;
 import ch.bff.producer.provider.models.VaccinationDto;
+import ch.bff.producer.services.ImmunizationAdministrationService;
 
 @Service
-public class ImmunizationAdministrationService extends AbstractReadService {
+public class ImmunizationAdministrationServiceImpl extends AbstractReadService implements ImmunizationAdministrationService {
 
-	private static final Logger log = LoggerFactory.getLogger(ImmunizationAdministrationService.class);
+	private static final Logger log = LoggerFactory.getLogger(ImmunizationAdministrationServiceImpl.class);
 
 	private final TxClient txClient;
 	private final FhirContext fhirContext;
 
-	public ImmunizationAdministrationService(FhirClient fhirClient, TxClient txClient) {
+	public ImmunizationAdministrationServiceImpl(FhirClient fhirClient, TxClient txClient) {
 		super(fhirClient);
 		this.txClient = txClient;
 		this.fhirContext = FhirContext.forR4();
 	}
 
+	@Override
 	public VaccinationDto createImmunizationAdministration(String patientIamId, ImmunizationCreateDto createDto) {
 
 		log.info("Creating Immunization Administration for patient IAM ID: {}\n{}", patientIamId, createDto);

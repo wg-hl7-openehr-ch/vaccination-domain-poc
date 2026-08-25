@@ -1,8 +1,10 @@
-package ch.bff.producer.services;
+package ch.bff.producer.services.impl;
 
 import ch.bff.producer.client.FhirClient;
 import ch.bff.producer.mapstruct.VaccinationsMapper;
 import ch.bff.producer.provider.models.VaccinationDto;
+import ch.bff.producer.services.VaccinationsReadService;
+
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Immunization;
@@ -12,22 +14,25 @@ import org.hl7.fhir.r4.model.PractitionerRole;
 import org.hl7.fhir.r4.model.Reference;
 import org.springframework.stereotype.Service;
 
+import ca.uhn.fhir.context.FhirContext;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 @Service
-public class VaccinationsReadService extends AbstractReadService {
+public class VaccinationsReadServiceImpl extends AbstractReadService implements VaccinationsReadService {
 
 	public static final String IMMUNIZATION_LOINC_CODE = "11369-6";
 	private final VaccinationsMapper vaccinationsMapper;
 
-	public VaccinationsReadService(FhirClient fhirClient, VaccinationsMapper vaccinationsMapper) {
+	public VaccinationsReadServiceImpl(FhirClient fhirClient, VaccinationsMapper vaccinationsMapper) {
 		super(fhirClient);
 		this.vaccinationsMapper = vaccinationsMapper;
 	}
 
+	@Override
 	public List<VaccinationDto> getVaccinationList(String patientIamId) {
 		var params = new Parameters();
 		// params.addParameter().setName("patientId").setValue(new
@@ -60,6 +65,36 @@ public class VaccinationsReadService extends AbstractReadService {
 					resolvePractitionerDisplay(imm, practitionerRoleDisplayMap);
 					return imm;
 				}).map(vaccinationsMapper::toVaccinationDto).toList();
+	}
+
+	@Override
+	public String exportVaccinations(String patientIamId, String format) {
+		var params = new Parameters();
+		// params.addParameter().setName("patientId").setValue(new
+		// StringType(patientIamId));
+		params.addParameter().setName("type").setValue(new Coding().setSystem("urn:oid:2.16.756.5.30.1.127.3.10.10")
+				.setCode("urn:che:epr:ch-vacd:vaccination-record:2022"));
+		var bundle = fhirClient.getVaccinationRecord(patientIamId, params);
+
+//		if ("json".equalsIgnoreCase(format)) {
+//			FhirContext ctx = FhirContext.forR4();
+//			return new ExportDto(patientIamId, format,
+//					ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle));
+//		} else if ("xml".equalsIgnoreCase(format)) {
+//			FhirContext ctx = FhirContext.forR4();
+//			return new ExportDto(patientIamId, format,
+//					ctx.newXmlParser().setPrettyPrint(true).encodeResourceToString(bundle));
+//		} else {
+//			throw new IllegalArgumentException("Unsupported format: " + format);
+//		}
+		FhirContext ctx = FhirContext.forR4();
+		if ("json".equalsIgnoreCase(format)) {
+			return ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle);
+		} else if ("xml".equalsIgnoreCase(format)) {
+			return ctx.newXmlParser().setPrettyPrint(true).encodeResourceToString(bundle);
+		} else {
+			return "";
+		}
 	}
 
 	private Immunization resolveImmunization(Reference ref, Map<String, Immunization> immunizationMap) {
@@ -124,4 +159,5 @@ public class VaccinationsReadService extends AbstractReadService {
 			}
 		}
 	}
+
 }
