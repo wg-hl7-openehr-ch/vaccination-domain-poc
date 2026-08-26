@@ -29,6 +29,14 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
     loadVaccinations();
   }, [patientId]);
 
+  // Sync browser back button with the in-app back navigation
+  useEffect(() => {
+    history.pushState({ patientDetail: patientId }, '');
+    const handlePop = () => onBack();
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, [patientId]);
+
   // Wenn eine neue Impfung via onVaccinationCreated hinzugefügt wurde, die Liste neu laden
   useEffect(() => {
     if (justAdded && justAdded.id) {
