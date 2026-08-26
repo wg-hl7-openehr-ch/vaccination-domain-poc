@@ -1,9 +1,11 @@
 package ch.bff.producer.services.impl;
 
+import java.io.InputStream;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
@@ -31,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.IParser;
 import ch.bff.producer.client.FhirClient;
 import ch.bff.producer.client.TxClient;
 import ch.bff.producer.provider.models.CodingDto;
@@ -41,7 +44,8 @@ import ch.bff.producer.provider.models.VaccinationDto;
 import ch.bff.producer.services.ImmunizationAdministrationService;
 
 @Service
-public class ImmunizationAdministrationServiceImpl extends AbstractReadService implements ImmunizationAdministrationService {
+public class ImmunizationAdministrationServiceImpl extends AbstractReadService
+		implements ImmunizationAdministrationService {
 
 	private static final Logger log = LoggerFactory.getLogger(ImmunizationAdministrationServiceImpl.class);
 
@@ -52,6 +56,34 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService i
 		super(fhirClient);
 		this.txClient = txClient;
 		this.fhirContext = FhirContext.forR4();
+	}
+
+	@Override
+	public void importVaccinations(String personId, String contentType, InputStream inputStream) {
+		log.debug("Importing Immunization Administration for patient IAM ID: {}, {}", personId, contentType);
+
+		var fhirPatient = fhirClient.getPatientById(personId);
+		if (fhirPatient == null) {
+			log.error("Patient not found for IAM ID: {}", personId);
+			throw new IllegalArgumentException("Patient not found for IAM ID: " + personId);
+		}
+		try {
+			IParser iparser = null;
+			if ("application/json".equalsIgnoreCase(contentType)) {
+				iparser = fhirContext.newJsonParser();
+			} else if ("application/xml".equalsIgnoreCase(contentType) || "text/xml".equalsIgnoreCase(contentType)) {
+				iparser = fhirContext.newXmlParser();
+			} else {
+				log.error("Unsupported content type: {}", contentType);
+				throw new IllegalArgumentException("Unsupported content type: " + contentType);
+			}
+			Bundle bundle = iparser.parseResource(org.hl7.fhir.r4.model.Bundle.class, inputStream);
+			var response = fhirClient.postImmunizationAdministrationBundle(bundle);
+			log.debug("Posted Bundle, response ID: {}", response.getIdElement().getIdPart());
+		} catch (Exception e) {
+			log.error("Error parsing bundle: {}", e.getMessage(), e);
+			throw new IllegalArgumentException("Error parsing bundle: " + e.getMessage());
+		}
 	}
 
 	@Override
@@ -307,4 +339,5 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService i
 		cc.setText(route.name());
 		return cc;
 	}
+
 }

@@ -260,6 +260,20 @@
 .toast-title { font-weight: 600; color: var(--success); font-size: 13px; }
 .toast-sub { color: var(--text-2); font-size: 12px; }
 
+.toast-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--danger-50);
+  border: 1px solid #F5C0BC;
+  border-radius: var(--r-md);
+  margin-bottom: 16px;
+  animation: slide-down 240ms ease-out;
+}
+.toast-error .toast-icon { background: var(--danger); }
+.toast-error .toast-title { color: var(--danger); }
+
 /* Hero */
 .patient-hero {
   display: grid;

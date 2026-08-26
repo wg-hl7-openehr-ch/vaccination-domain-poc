@@ -6,3 +6,4 @@ bin/
 .claude/settings.local.json
 **/__pycache__/
 services/ch-vacd-api-reference-server/doc/*
+.vscode/

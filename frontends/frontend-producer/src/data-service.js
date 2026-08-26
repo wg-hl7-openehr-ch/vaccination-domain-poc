@@ -31,10 +31,9 @@ async function fetchVaccinations(personId) {
 }
 
 async function importVaccinations(personId, file) {
-  const format = file.name.endsWith('.xml') ? 'xml' : 'json';
   const formData = new FormData();
   formData.append('file', file);
-  const url = '/api/bff-producer/vaccinations/import?personId=' + encodeURIComponent(personId) + '&format=' + encodeURIComponent(format);
+  const url = '/api/bff-producer/immunizations/import?personId=' + encodeURIComponent(personId);
   const res = await fetch(url, {
     method: 'POST',
     headers: { ...authHeaders() },
