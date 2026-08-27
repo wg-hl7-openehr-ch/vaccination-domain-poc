@@ -16,6 +16,7 @@ import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
+import org.projecthusky.fhir.core.ch.util.IdUtil;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdAbstractDocument;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationDocument;
@@ -225,7 +226,7 @@ public class AbstractBusinessService {
 		immunization.getPerformer().clear();
 
 		log.info("Performer IDs for immunization {}: {}", immunization.getId(), perfomerIds);
-		ChVacdImmunization immun = new ChVacdImmunization();
+		ChVacdImmunization immun = document.addImmunization();
 		immunization.copyValues(immun);
 
 		for (String performerId : perfomerIds) {
@@ -241,39 +242,46 @@ public class AbstractBusinessService {
 					idType.getIdPart());
 			if (perfomerDR != null && perfomerDR instanceof Practitioner) {
 				Practitioner perfomer = (Practitioner) perfomerDR;
-//				Practitioner practitioner = getResourceEntry("Practitioner",
-//						RessourceUtil.removeUrn(perfomer.getIdPart()));
-				if (checkEntryAbsent(document, perfomer)) {
-					document.addEntry().setResource(perfomer).setFullUrl("urn:uuid:" + perfomer.getIdPart());
-					perfomer.setIdElement(null);
-				}
+				document.addPractitioner(perfomer);
+//				IdUtil.checkId(perfomer);
+////				Practitioner practitioner = getResourceEntry("Practitioner",
+////						RessourceUtil.removeUrn(perfomer.getIdPart()));
+//				if (checkEntryAbsent(document, perfomer)) {
+//					document.addPractitioner(perfomer);
+////					document.addEntry().setResource(perfomer).setFullUrl("urn:uuid:" + perfomer.getIdPart());
+////					perfomer.setIdElement(null);
+//				}
 				immun.addPerformer().setActor(new Reference(perfomer));
 
 			}
 			// complete practitionerrole with reference to practitioner and organization
 			else if (perfomerDR != null && perfomerDR instanceof PractitionerRole) {
 				PractitionerRole perfomer = (PractitionerRole) perfomerDR;
-				Practitioner practitioner = getResourceEntry("Practitioner",
-						RessourceUtil.removeUrn(perfomer.getPractitioner().getReferenceElement().getIdPart()));
-				if (checkEntryAbsent(document, practitioner)) {
-					document.addEntry().setResource(practitioner).setFullUrl("urn:uuid:" + practitioner.getIdPart());
-					practitioner.setIdElement(null);
-				}
-				perfomer.setPractitioner(new Reference(practitioner));
-
-				Organization organization = getResourceEntry("Organization",
-						RessourceUtil.removeUrn(perfomer.getOrganization().getReferenceElement().getIdPart()));
-				if (checkEntryAbsent(document, organization)) {
-					document.addEntry().setResource(organization).setFullUrl("urn:uuid:" + organization.getIdPart());
-					organization.setIdElement(null);
-				}
-				perfomer.setOrganization(new Reference(organization));
-
-				if (checkEntryAbsent(document, perfomer)) {
-					document.addEntry().setResource(perfomer).setFullUrl("urn:uuid:" + perfomer.getIdPart());
-					perfomer.setIdElement(null);
-				}
-				perfomer.setIdElement(null);
+				document.addPractitionerRole(perfomer);
+//				IdUtil.checkId(perfomer);
+//				Practitioner practitioner = getResourceEntry("Practitioner",
+//						RessourceUtil.removeUrn(perfomer.getPractitioner().getReferenceElement().getIdPart()));
+//				IdUtil.checkId(practitioner);
+//				if (checkEntryAbsent(document, practitioner)) {
+//					document.addEntry().setResource(practitioner).setFullUrl("urn:uuid:" + practitioner.getIdPart());
+////					practitioner.setIdElement(null);
+//				}
+//				perfomer.setPractitioner(new Reference(practitioner));
+//
+//				Organization organization = getResourceEntry("Organization",
+//						RessourceUtil.removeUrn(perfomer.getOrganization().getReferenceElement().getIdPart()));
+//				IdUtil.checkId(organization);
+//				if (checkEntryAbsent(document, organization)) {
+//					document.addEntry().setResource(organization).setFullUrl("urn:uuid:" + organization.getIdPart());
+////					organization.setIdElement(null);
+//				}
+//				perfomer.setOrganization(new Reference(organization));
+//
+//				if (checkEntryAbsent(document, perfomer)) {
+//					document.addEntry().setResource(perfomer).setFullUrl("urn:uuid:" + perfomer.getIdPart());
+////					perfomer.setIdElement(null);
+//				}
+//				perfomer.setIdElement(null);
 				immun.addPerformer().setActor(new Reference(perfomer));
 
 			}

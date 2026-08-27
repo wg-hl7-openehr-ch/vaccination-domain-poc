@@ -7,7 +7,7 @@ COPY .mvn .mvn
 COPY mvnw .
 RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
 COPY src src
-RUN ./mvnw package -DskipTests -B && \
+RUN ./mvnw -U package -DskipTests -B && \
     cp target/ch-vacd-api-reference-server-*.jar /ch-vacd-api-server.jar
 
 # Stage 2 — runtime image

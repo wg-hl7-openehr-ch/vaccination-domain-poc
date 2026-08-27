@@ -24,6 +24,7 @@ import org.hl7.fhir.r4.model.UriType;
 import org.projecthusky.fhir.core.ch.resource.r4.ChCoreOrganization;
 import org.projecthusky.fhir.core.ch.resource.r4.ChCoreOrganizationEpr;
 import org.projecthusky.fhir.core.ch.resource.r4.ChCorePractitioner;
+import org.projecthusky.fhir.vacd.ch.common.narrative.ChVacdThymeleafNarrativeGenerator;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationDocument;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdMedicationForImmunization;
@@ -56,6 +57,7 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 		super(fhirClient);
 		this.txClient = txClient;
 		this.fhirContext = FhirContext.forR4();
+		this.fhirContext.setNarrativeGenerator(new ChVacdThymeleafNarrativeGenerator());
 	}
 
 	@Override
