@@ -310,6 +310,12 @@ class ImmunizationAdministrationServiceImplTest {
 			// TODO Auto-generated method stub
 			return null;
 		}
+
+		@Override
+		public Patient createPatient(Patient patient) {
+			// TODO Auto-generated method stub
+			return null;
+		}
 	}
 
 	private static class TxClientStub implements TxClient {

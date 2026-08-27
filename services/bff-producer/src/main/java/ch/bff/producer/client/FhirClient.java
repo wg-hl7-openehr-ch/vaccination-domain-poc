@@ -17,6 +17,9 @@ public interface FhirClient {
     @GetMapping("/Patient/{id}")
     org.hl7.fhir.r4.model.Patient getPatientById(@PathVariable("id") String id);
 
+    @PostMapping("/Patient")
+    org.hl7.fhir.r4.model.Patient createPatient(@RequestBody org.hl7.fhir.r4.model.Patient patient);
+
     /**
      * Beispiel: https://fhir.ch/ig/ch-vacd/4.0.0/Bundle-1-3-VaccinationRecord.json.html
      *

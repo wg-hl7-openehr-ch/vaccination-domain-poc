@@ -65,6 +65,19 @@ async function createImmunization(personId, data) {
   return res.json();
 }
 
+async function createPatient(data) {
+  const res = await fetch('/api/bff-producer/patients', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Fehler beim Anlegen des Patienten');
+  return res.json();
+}
+
 async function fetchVaccineCodes() {
   const res = await fetch('/api/bff-producer/valuesets/vaccines', {
     headers: { ...authHeaders() },
@@ -156,6 +169,7 @@ function loadMockFallback() {
 window.DataService = {
   getAuth,
   fetchPatients,
+  createPatient,
   fetchVaccinations,
   createImmunization,
   fetchVaccineCodes,

@@ -156,5 +156,11 @@ class VaccinationsReadServiceImplTest {
 			// TODO Auto-generated method stub
 			return bundleToReturn;
 		}
+
+		@Override
+		public Patient createPatient(Patient patient) {
+			// TODO Auto-generated method stub
+			return null;
+		}
 	}
 }

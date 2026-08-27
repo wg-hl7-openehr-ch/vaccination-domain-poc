@@ -1,7 +1,7 @@
 package ch.bff.producer.security;
 
 import ch.bff.producer.provider.PatientProvider;
-import ch.bff.producer.services.PatientReadService;
+import ch.bff.producer.services.PatientService;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,7 +34,7 @@ class SecurityIntegrationTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private PatientReadService patientReadService;
+    private PatientService patientReadService;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

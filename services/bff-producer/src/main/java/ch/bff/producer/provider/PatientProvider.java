@@ -6,13 +6,16 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import ch.bff.producer.provider.models.AddressDto;
 import ch.bff.producer.provider.models.Gender;
+import ch.bff.producer.provider.models.PatientCreateDto;
 import ch.bff.producer.provider.models.PatientDto;
-import ch.bff.producer.services.PatientReadService;
+import ch.bff.producer.services.PatientService;
 
 @RestController
 @RequestMapping("/api/patients")
@@ -20,9 +23,9 @@ public class PatientProvider {
 
 	private static final Logger log = LoggerFactory.getLogger(PatientProvider.class);
 
-	private final PatientReadService patientReadService;
+	private final PatientService patientReadService;
 
-	public PatientProvider(PatientReadService patientReadService) {
+	public PatientProvider(PatientService patientReadService) {
 		this.patientReadService = patientReadService;
 	}
 
@@ -34,6 +37,25 @@ public class PatientProvider {
 			log.warn("FHIR server unavailable, falling back to sample patients: {}", e.getMessage(), e);
 			return getSamplePatients();
 		}
+	}
+	
+	@PostMapping
+	public PatientDto createPatient(@RequestBody PatientCreateDto patientDto) {
+		try {
+			return patientReadService.createPatient(patientDto);
+		} catch (Exception e) {
+			log.warn("FHIR server unavailable, falling back to sample patients: {}", e.getMessage(), e);
+			return getSamplePatient();
+		}
+	}
+	
+	
+
+	private PatientDto getSamplePatient() {
+		// TODO Auto-generated method stub
+		return new PatientDto("00000000-0000-0000-0000-000000000010", "Brunner", "Noah", LocalDate.of(2018, 12, 3), 7,
+				Gender.MÄNNLICH, "756.6789.0123.45", new AddressDto("Hauptstrasse 45", "8400", "Winterthur"),
+				"eltern.brunner@hotmail.com", "+41 79 456 78 90");
 	}
 
 	public static List<PatientDto> getSamplePatients() {
