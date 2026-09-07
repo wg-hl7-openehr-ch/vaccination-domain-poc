@@ -173,10 +173,10 @@ class PatientMapperTest {
 		Date expectedBirthDate = Date.from(LocalDate.of(1980, 6, 15).atStartOfDay(ZoneId.systemDefault()).toInstant());
 		assertEquals(expectedBirthDate, patient.getBirthDate());
 
-//		List<Identifier> identifiers = patient.getIdentifier();
-//		assertEquals(1, identifiers.size());
-//		assertEquals(AHV_SYSTEM, identifiers.get(0).getSystem());
-//		assertEquals("756.1234.5678.90", identifiers.get(0).getValue());
+		List<Identifier> identifiers = patient.getIdentifier();
+		assertEquals(1, identifiers.size());
+		assertEquals(PatientMapper.AHV_SYSTEM, identifiers.get(0).getSystem());
+		assertEquals("756.1234.5678.90", identifiers.get(0).getValue());
 
 		Address address = patient.getAddressFirstRep();
 		assertTrue(address.getLine().stream().anyMatch(l -> l.getValue().contains("Bahnhofstrasse 1")));
@@ -196,7 +196,7 @@ class PatientMapperTest {
 
 	@Test
 	void toPatient_maleGender_mapsToFhirMale() {
-		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, null, null);
+		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, null, null, null);
 
 		Patient patient = mapper.toPatient(dto);
 
@@ -205,7 +205,7 @@ class PatientMapperTest {
 
 	@Test
 	void toPatient_femaleGender_mapsToFhirFemale() {
-		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.WEIBLICH, null, null, null);
+		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.WEIBLICH, null, null, null, null);
 
 		Patient patient = mapper.toPatient(dto);
 
@@ -214,7 +214,7 @@ class PatientMapperTest {
 
 	@Test
 	void toPatient_diversGender_mapsToFhirOther() {
-		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.DIVERS, null, null, null);
+		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.DIVERS, null, null, null, null);
 
 		Patient patient = mapper.toPatient(dto);
 
@@ -223,7 +223,7 @@ class PatientMapperTest {
 
 	@Test
 	void toPatient_nullBirthDate_birthDateIsNull() {
-		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, null, null);
+		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, null, null, null);
 
 		Patient patient = mapper.toPatient(dto);
 
@@ -232,7 +232,7 @@ class PatientMapperTest {
 
 	@Test
 	void toPatient_nullAhvNumber_noIdentifiers() {
-		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, null, null);
+		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, null, null, null);
 
 		Patient patient = mapper.toPatient(dto);
 
@@ -241,7 +241,7 @@ class PatientMapperTest {
 
 	@Test
 	void toPatient_nullAddress_noAddresses() {
-		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, null, null);
+		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, null, null, null);
 
 		Patient patient = mapper.toPatient(dto);
 
@@ -250,7 +250,7 @@ class PatientMapperTest {
 
 	@Test
 	void toPatient_nullEmailAndPhone_noTelecom() {
-		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, null, null);
+		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, null, null, null);
 
 		Patient patient = mapper.toPatient(dto);
 
@@ -259,7 +259,7 @@ class PatientMapperTest {
 
 	@Test
 	void toPatient_onlyEmail_onlyEmailTelecom() {
-		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, "test@example.com", null);
+		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, "test@example.com", null, null);
 
 		Patient patient = mapper.toPatient(dto);
 
@@ -277,7 +277,7 @@ class PatientMapperTest {
 		Patient original = buildFullFhirPatient();
 
 		PatientDto dto = mapper.toPatientDto(original);
-		PatientCreateDto cdto = new PatientCreateDto(dto.lastName(), dto.firstName(), dto.birthDate(), dto.gender(),dto.address(), dto.email(), dto.phoneNumber());
+		PatientCreateDto cdto = new PatientCreateDto(dto.lastName(), dto.firstName(), dto.birthDate(), dto.gender(), dto.address(), dto.email(), dto.phoneNumber(), dto.ahvNumber());
 		Patient restored = mapper.toPatient(cdto);
 
 		assertEquals(original.getNameFirstRep().getFamily(), restored.getNameFirstRep().getFamily());
@@ -285,11 +285,11 @@ class PatientMapperTest {
 				restored.getNameFirstRep().getGivenAsSingleString());
 		assertEquals(original.getGender(), restored.getGender());
 		assertEquals(original.getBirthDate(), restored.getBirthDate());
-//		assertEquals(
-//				original.getIdentifier().stream().filter(i -> AHV_SYSTEM.equals(i.getSystem())).findFirst()
-//						.map(Identifier::getValue).orElse(null),
-//				restored.getIdentifier().stream().filter(i -> AHV_SYSTEM.equals(i.getSystem())).findFirst()
-//						.map(Identifier::getValue).orElse(null));
+		assertEquals(
+				original.getIdentifier().stream().filter(i -> PatientMapper.AHV_SYSTEM.equals(i.getSystem())).findFirst()
+						.map(Identifier::getValue).orElse(null),
+				restored.getIdentifier().stream().filter(i -> PatientMapper.AHV_SYSTEM.equals(i.getSystem())).findFirst()
+						.map(Identifier::getValue).orElse(null));
 	}
 
 	// -------------------------------------------------------------------------
@@ -330,6 +330,7 @@ class PatientMapperTest {
 
 	private PatientCreateDto buildFullPatientCreateDto() {
 		return new PatientCreateDto("Muster", "Max", LocalDate.of(1980, 6, 15), Gender.MÄNNLICH,
-				new AddressDto("Bahnhofstrasse 1", "8001", "Zürich"), "max.muster@example.com", "+41791234567");
+				new AddressDto("Bahnhofstrasse 1", "8001", "Zürich"), "max.muster@example.com", "+41791234567",
+				"756.1234.5678.90");
 	}
 }

@@ -16,8 +16,8 @@ import ca.uhn.fhir.context.FhirContext;
 import java.util.List;
 
 @Service
-public class PatientServiceImpl extends AbstractReadService implements PatientService{
-	
+public class PatientServiceImpl extends AbstractReadService implements PatientService {
+
 	private Logger logger = LoggerFactory.getLogger(PatientServiceImpl.class);
 
 	private final PatientMapper patientMapper;
@@ -37,7 +37,12 @@ public class PatientServiceImpl extends AbstractReadService implements PatientSe
 
 	@Override
 	public PatientDto createPatient(PatientCreateDto patientDto) {
-		org.hl7.fhir.r4.model.Patient created = fhirClient.createPatient(patientMapper.toPatient(patientDto));
+		Patient patient = patientMapper.toPatient(patientDto);
+		patient.addIdentifier()//
+				.setSystem("urn:ietf:rfc:3986")//
+				.setValue("urn:uuid:" + java.util.UUID.randomUUID())//
+				.setUse(org.hl7.fhir.r4.model.Identifier.IdentifierUse.USUAL);
+		org.hl7.fhir.r4.model.Patient created = fhirClient.createPatient(patient);
 		return patientMapper.toPatientDto(created);
 	}
 }

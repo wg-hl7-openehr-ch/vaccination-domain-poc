@@ -25,7 +25,7 @@ import java.util.List;
 @Mapper(componentModel = "spring", imports = {LocalDate.class, Period.class, ZoneId.class})
 public interface PatientMapper {
 
-    String AHV_SYSTEM = "urn:oid:2.16.756.5.30.1.123.100.1.1.1";
+    String AHV_SYSTEM = "urn:oid:2.16.756.5.32";
 
     @Mapping(target = "id", source = "idElement.idPart")
     @Mapping(target = "lastName", source = "nameFirstRep.family")
@@ -44,6 +44,7 @@ public interface PatientMapper {
     @Mapping(target = "gender", source = "gender", qualifiedByName = "mapGenderToFhir")
     @Mapping(target = "address", expression = "java(buildAddressList(patientDto.address()))")
     @Mapping(target = "telecom", expression = "java(buildTelecom(patientDto.email(), patientDto.phoneNumber()))")
+    @Mapping(target = "identifier", expression = "java(buildAhvIdentifier(patientDto.ahv()))")
     @Mapping(target = "active", constant = "true")
     org.hl7.fhir.r4.model.Patient toPatient(PatientCreateDto patientDto);
 
@@ -137,6 +138,7 @@ public interface PatientMapper {
     default List<Identifier> buildAhvIdentifier(String ahvNumber) {
         if (ahvNumber == null) return Collections.emptyList();
         Identifier identifier = new Identifier();
+        identifier.setUse(Identifier.IdentifierUse.OFFICIAL);
         identifier.setSystem(AHV_SYSTEM);
         identifier.setValue(ahvNumber);
         return Collections.singletonList(identifier);

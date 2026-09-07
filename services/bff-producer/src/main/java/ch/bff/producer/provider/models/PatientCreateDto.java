@@ -8,7 +8,8 @@ public record PatientCreateDto(
         Gender gender,
         AddressDto address,
         String email,
-        String phoneNumber
+        String phoneNumber,
+        String ahv
 ) {
 //    public PatientCreateDto {
 //        if (lastName == null || lastName.isBlank()) {

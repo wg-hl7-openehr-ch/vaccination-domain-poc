@@ -180,7 +180,7 @@ function PatientList({ onOpenPatient }) {
 // ---- Add Patient sheet ----
 
 function AddPatientForm({ onCancel, onPatientAdded }) {
-  const [form, setForm] = useState({ lastName: "", firstName: "", gender: "MÄNNLICH", birthDate: "", street: "", streetNumber: "", zipCode: "", city: "", email: "", phone: "" });
+  const [form, setForm] = useState({ lastName: "", firstName: "", gender: "MÄNNLICH", birthDate: "", ahv: "", street: "", streetNumber: "", zipCode: "", city: "", email: "", phone: "" });
   const [touched, setTouched] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState(null);
@@ -212,6 +212,7 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
         },
         email: form.email.trim(),
         phoneNumber: form.phone.trim(),
+        ahv: form.ahv.trim(),
       };
       let created;
       try {
@@ -231,7 +232,7 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
           address: addrStr,
           email: payload.email,
           phone: payload.phoneNumber,
-          ahv: "",
+          ahv: payload.ahv,
         };
       }
       onPatientAdded(created);
@@ -320,6 +321,13 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
               <input className="input" placeholder="z. B. Zürich"
                 value={form.city}
                 onChange={(e) => set("city", e.target.value)} />
+            </div>
+
+            <div className="field" style={{ gridColumn: "1 / -1" }}>
+              <label className="field-label">AHV-Nummer</label>
+              <input className="input tnum" placeholder="z. B. 756.1234.5678.97"
+                value={form.ahv}
+                onChange={(e) => set("ahv", e.target.value)} />
             </div>
 
             <div className="field">
