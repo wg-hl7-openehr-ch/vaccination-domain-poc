@@ -1,10 +1,14 @@
 // Screen 2 — Patient vaccination history (Swiss Impfausweis style)
 
-function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVaccinationCreated }) {
+function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVaccinationCreated, onExportVaccination }) {
   const { patients } = window.AppData;
   const patient = (patients || []).find((p) => p.id === patientId);
   const [records, setRecords] = useState([]);
   const [vaxLoading, setVaxLoading] = useState(true);
+  const [importDone, setImportDone] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  const showError = (msg) => setErrorMsg(msg);
 
   const loadVaccinations = () => {
     setVaxLoading(true);
@@ -25,12 +29,71 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
     loadVaccinations();
   }, [patientId]);
 
+  // Sync browser back button with the in-app back navigation
+  useEffect(() => {
+    history.pushState({ patientDetail: patientId }, '');
+    const handlePop = () => onBack();
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, [patientId]);
+
   // Wenn eine neue Impfung via onVaccinationCreated hinzugefügt wurde, die Liste neu laden
   useEffect(() => {
     if (justAdded && justAdded.id) {
       loadVaccinations();
     }
   }, [justAdded]);
+
+  useEffect(() => {
+    if (!importDone) return;
+    const t = setTimeout(() => setImportDone(false), 4000);
+    return () => clearTimeout(t);
+  }, [importDone]);
+
+  useEffect(() => {
+    if (!errorMsg) return;
+    const t = setTimeout(() => setErrorMsg(null), 5000);
+    return () => clearTimeout(t);
+  }, [errorMsg]);
+
+  const handleExportVaccination = async () => {
+    try {
+      const res = await DataService.exportVaccinationRecord(patientId, 'json');
+      const jsonContent = await res.json();
+      const blob = new Blob([JSON.stringify(jsonContent, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `VaccinationRecord-${patient.lastName}-${patient.firstName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (onExportVaccination) onExportVaccination(jsonContent);
+    } catch (err) {
+      console.error('Export fehlgeschlagen:', err);
+      showError('Export fehlgeschlagen: ' + (err.message || err));
+    }
+  };
+
+  const handleImportVaccination = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.xml';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        await DataService.importVaccinations(patientId, file);
+        loadVaccinations();
+        setImportDone(true);
+      } catch (err) {
+        console.error('Import fehlgeschlagen:', err);
+        showError('Import fehlgeschlagen: ' + (err.message || err));
+      }
+    };
+    input.click();
+  };
 
   if (!patient) return <div className="page">Patient:in nicht gefunden.</div>;
 
@@ -63,6 +126,26 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
       <button className="back-link" onClick={onBack}>
         <Icon.Back /> Zurück zur Patient:innenliste
       </button>
+
+      {errorMsg &&
+      <div className="toast-error">
+          <div className="toast-icon"><Icon.Close /></div>
+          <div>
+            <div className="toast-title">Fehler</div>
+            <div className="toast-sub">{errorMsg}</div>
+          </div>
+        </div>
+      }
+
+      {importDone &&
+      <div className="toast-success">
+          <div className="toast-icon"><Icon.Check /></div>
+          <div>
+            <div className="toast-title">Impfausweis importiert</div>
+            <div className="toast-sub">Die Impfungen wurden erfolgreich importiert.</div>
+          </div>
+        </div>
+      }
 
       {justAdded && justAdded._addedId &&
       <div className="toast-success">
@@ -106,6 +189,8 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
           <h2 className="section-title">Impfausweis</h2>
         </div>
         <div className="detail-actions-right">
+          <button className="btn btn-primary" onClick={handleImportVaccination} disabled={records.length > 0}><Icon.Upload /> Impfausweis importieren</button>
+          <button className="btn btn-primary" onClick={handleExportVaccination} disabled={records.length === 0}><Icon.Download /> Impfausweis exportieren</button>
           <button className="btn btn-primary" onClick={onAddVaccination}><Icon.Plus /> Neue Impfung erfassen</button>
         </div>
       </div>

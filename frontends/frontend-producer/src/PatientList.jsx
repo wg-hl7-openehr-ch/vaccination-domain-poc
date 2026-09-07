@@ -1,7 +1,8 @@
 // Screen 1 — Patient list with search & filter
 
 function PatientList({ onOpenPatient }) {
-  const { patients } = window.AppData;
+  const [patients, setPatients] = useState(window.AppData.patients || []);
+  const [showAdd, setShowAdd] = useState(false);
   const [query, setQuery] = useState("");
   const [sex, setSex] = useState("all"); // all | M | F
   const [ageBand, setAgeBand] = useState("all"); // all | child | adult | senior
@@ -102,7 +103,23 @@ function PatientList({ onOpenPatient }) {
             Filter zurücksetzen
           </button>
         }
+        <div style={{ marginLeft: "auto" }}>
+          <button className="btn btn-primary btn-sm" onClick={() => setShowAdd(true)}>
+            <Icon.Plus /> Patient erfassen
+          </button>
+        </div>
       </div>
+
+      {showAdd &&
+      <AddPatientForm
+        onCancel={() => setShowAdd(false)}
+        onPatientAdded={(p) => {
+          const updated = [...patients, p];
+          window.AppData.patients = updated;
+          setPatients(updated);
+          setShowAdd(false);
+        }} />
+      }
 
       {/* Patient table */}
       <div className="card patient-table-card">
@@ -158,6 +175,191 @@ function PatientList({ onOpenPatient }) {
       </div>
     </main>);
 
+}
+
+// ---- Add Patient sheet ----
+
+function AddPatientForm({ onCancel, onPatientAdded }) {
+  const [form, setForm] = useState({ lastName: "", firstName: "", gender: "MÄNNLICH", birthDate: "", ahv: "", street: "", streetNumber: "", zipCode: "", city: "", email: "", phone: "" });
+  const [touched, setTouched] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState(null);
+
+  const set = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
+  const touch = (k) => setTouched((prev) => ({ ...prev, [k]: true }));
+
+  const errors = {};
+  if (!form.lastName.trim()) errors.lastName = "Pflichtfeld";
+  if (!form.firstName.trim()) errors.firstName = "Pflichtfeld";
+  if (!form.birthDate) errors.birthDate = "Pflichtfeld";
+  const isValid = Object.keys(errors).length === 0;
+
+  const submit = async () => {
+    setTouched({ lastName: true, firstName: true, birthDate: true });
+    if (!isValid) return;
+    setSubmitting(true);
+    setServerError(null);
+    try {
+      const payload = {
+        lastName: form.lastName.trim(),
+        firstName: form.firstName.trim(),
+        birthDate: form.birthDate,
+        gender: form.gender,
+        address: {
+          street: (form.street.trim() + (form.streetNumber.trim() ? " " + form.streetNumber.trim() : "")).trim(),
+          zipCode: form.zipCode.trim(),
+          city: form.city.trim(),
+        },
+        email: form.email.trim(),
+        phoneNumber: form.phone.trim(),
+        ahv: form.ahv.trim(),
+      };
+      let created;
+      try {
+        const raw = await DataService.createPatient(payload);
+        created = DataService.transformPatient(raw, 0);
+      } catch {
+        // backend not yet wired — add locally with a temporary id
+        const tempId = "TMP-" + Date.now();
+        const genderMap = { "MÄNNLICH": "M", "WEIBLICH": "F", "DIVERS": "D" };
+        const addrStr = [payload.address.street, payload.address.zipCode, payload.address.city].filter(Boolean).join(", ");
+        created = {
+          id: tempId,
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+          dob: payload.birthDate,
+          sex: genderMap[payload.gender] || "M",
+          address: addrStr,
+          email: payload.email,
+          phone: payload.phoneNumber,
+          ahv: payload.ahv,
+        };
+      }
+      onPatientAdded(created);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="sheet-backdrop" onClick={onCancel}>
+      <aside className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Patient erfassen">
+        <header className="sheet-head">
+          <div>
+            <div className="sheet-eyebrow">Neuer Patient</div>
+            <h2 className="sheet-title">Patient erfassen</h2>
+          </div>
+          <button className="btn-icon btn-ghost" onClick={onCancel} aria-label="Schliessen">
+            <Icon.Close />
+          </button>
+        </header>
+
+        <div className="sheet-body">
+          <div className="grid-2">
+            <div className="field">
+              <label className="field-label">Nachname<span className="req">*</span></label>
+              <input className={"input" + (touched.lastName && errors.lastName ? " is-error" : "")}
+                placeholder="z. B. Müller"
+                value={form.lastName}
+                onChange={(e) => set("lastName", e.target.value)}
+                onBlur={() => touch("lastName")} />
+              {touched.lastName && errors.lastName && <div className="field-error">{errors.lastName}</div>}
+            </div>
+
+            <div className="field">
+              <label className="field-label">Vorname<span className="req">*</span></label>
+              <input className={"input" + (touched.firstName && errors.firstName ? " is-error" : "")}
+                placeholder="z. B. Anna"
+                value={form.firstName}
+                onChange={(e) => set("firstName", e.target.value)}
+                onBlur={() => touch("firstName")} />
+              {touched.firstName && errors.firstName && <div className="field-error">{errors.firstName}</div>}
+            </div>
+
+            <div className="field">
+              <label className="field-label">Geschlecht<span className="req">*</span></label>
+              <select className="select" value={form.gender} onChange={(e) => set("gender", e.target.value)}>
+                <option value="MÄNNLICH">Männlich</option>
+                <option value="WEIBLICH">Weiblich</option>
+                <option value="DIVERS">Divers</option>
+              </select>
+            </div>
+
+            <div className="field">
+              <label className="field-label">Geburtsdatum<span className="req">*</span></label>
+              <input className={"input tnum" + (touched.birthDate && errors.birthDate ? " is-error" : "")}
+                type="date"
+                value={form.birthDate}
+                onChange={(e) => set("birthDate", e.target.value)}
+                onBlur={() => touch("birthDate")} />
+              {touched.birthDate && errors.birthDate && <div className="field-error">{errors.birthDate}</div>}
+            </div>
+
+            <div className="field" style={{ gridColumn: "1 / span 1" }}>
+              <label className="field-label">Strasse</label>
+              <input className="input" placeholder="z. B. Bahnhofstrasse"
+                value={form.street}
+                onChange={(e) => set("street", e.target.value)} />
+            </div>
+
+            <div className="field" style={{ gridColumn: "2 / span 1" }}>
+              <label className="field-label">Nummer</label>
+              <input className="input" placeholder="z. B. 12"
+                value={form.streetNumber}
+                onChange={(e) => set("streetNumber", e.target.value)} />
+            </div>
+
+            <div className="field">
+              <label className="field-label">PLZ</label>
+              <input className="input tnum" placeholder="z. B. 8001"
+                value={form.zipCode}
+                onChange={(e) => set("zipCode", e.target.value)} />
+            </div>
+
+            <div className="field">
+              <label className="field-label">Stadt</label>
+              <input className="input" placeholder="z. B. Zürich"
+                value={form.city}
+                onChange={(e) => set("city", e.target.value)} />
+            </div>
+
+            <div className="field" style={{ gridColumn: "1 / -1" }}>
+              <label className="field-label">AHV-Nummer</label>
+              <input className="input tnum" placeholder="z. B. 756.1234.5678.97"
+                value={form.ahv}
+                onChange={(e) => set("ahv", e.target.value)} />
+            </div>
+
+            <div className="field">
+              <label className="field-label">E-Mail</label>
+              <input className="input" type="email" placeholder="z. B. anna.mueller@example.ch"
+                value={form.email}
+                onChange={(e) => set("email", e.target.value)} />
+            </div>
+
+            <div className="field">
+              <label className="field-label">Telefon</label>
+              <input className="input tnum" type="tel" placeholder="z. B. +41 79 123 45 67"
+                value={form.phone}
+                onChange={(e) => set("phone", e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        <footer className="sheet-foot">
+          <div className="foot-left">
+            {serverError && <span className="foot-error"><Icon.Alert /> {serverError}</span>}
+          </div>
+          <div className="foot-right">
+            <button className="btn" onClick={onCancel} disabled={submitting}>Abbrechen</button>
+            <button className="btn btn-primary" onClick={submit} disabled={submitting}>
+              <Icon.Plus /> {submitting ? "Speichert …" : "Patient speichern"}
+            </button>
+          </div>
+        </footer>
+      </aside>
+    </div>
+  );
 }
 
 window.PatientList = PatientList;

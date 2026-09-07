@@ -9,6 +9,7 @@ import org.hl7.fhir.common.hapi.validation.support.PrePopulatedValidationSupport
 import org.hl7.fhir.common.hapi.validation.support.SnapshotGeneratingValidationSupport;
 import org.hl7.fhir.common.hapi.validation.support.ValidationSupportChain;
 import org.hl7.fhir.common.hapi.validation.validator.FhirInstanceValidator;
+import org.projecthusky.fhir.vacd.ch.common.narrative.ChVacdThymeleafNarrativeGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,7 +19,6 @@ import org.springframework.context.annotation.Configuration;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.context.support.DefaultProfileValidationSupport;
-import ca.uhn.fhir.context.support.IValidationSupport;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import ca.uhn.fhir.rest.server.interceptor.RequestValidatingInterceptor;
@@ -40,6 +40,8 @@ public class FhirServletConfig {
 	@Bean
 	FhirContext fhirContext() {
 		FhirContext ctx = FhirContext.forR4();
+		
+		ctx.setNarrativeGenerator(new ChVacdThymeleafNarrativeGenerator());
 		// addNpmPackageValidationSupport(ctx);
 
 		return ctx;

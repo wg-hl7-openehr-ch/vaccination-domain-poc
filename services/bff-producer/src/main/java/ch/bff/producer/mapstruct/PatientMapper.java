@@ -2,39 +2,54 @@ package ch.bff.producer.mapstruct;
 
 import ch.bff.producer.provider.models.AddressDto;
 import ch.bff.producer.provider.models.Gender;
+import ch.bff.producer.provider.models.PatientCreateDto;
 import ch.bff.producer.provider.models.PatientDto;
 import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.ContactPoint;
 import org.hl7.fhir.r4.model.Enumerations;
+import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.Identifier;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
-import org.slf4j.LoggerFactory;
+import org.projecthusky.fhir.core.ch.resource.r4.ChCorePatient;
 
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
 @Mapper(componentModel = "spring", imports = {LocalDate.class, Period.class, ZoneId.class})
 public interface PatientMapper {
 
-    String AHV_SYSTEM = "urn:oid:2.16.756.5.30.1.123.100.1.1.1";
+    String AHV_SYSTEM = "urn:oid:2.16.756.5.32";
 
     @Mapping(target = "id", source = "idElement.idPart")
     @Mapping(target = "lastName", source = "nameFirstRep.family")
     @Mapping(target = "firstName", source = "nameFirstRep.givenAsSingleString")
     @Mapping(target = "birthDate", source = "birthDate", qualifiedByName = "toLocalDate")
     @Mapping(target = "age", expression = "java(patient.getBirthDate() != null ? Period.between(patient.getBirthDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate(), LocalDate.now()).getYears() : 0)")
-    @Mapping(target = "gender", source = "gender", qualifiedByName = "mapGender")
+    @Mapping(target = "gender", expression = "java(mapGender(patient.getGender()))")
     @Mapping(target = "ahvNumber", source = "identifier", qualifiedByName = "extractAhv")
     @Mapping(target = "address", source = "addressFirstRep", qualifiedByName = "mapAddress")
     @Mapping(target = "email", source = "telecom", qualifiedByName = "extractEmail")
     @Mapping(target = "phoneNumber", source = "telecom", qualifiedByName = "extractPhone")
     PatientDto toPatientDto(org.hl7.fhir.r4.model.Patient patient);
 
+    @Mapping(target = "name", expression = "java(mapName(patientDto.firstName(), patientDto.lastName()))")
+    @Mapping(target = "birthDate", source = "birthDate", qualifiedByName = "toDate")
+    @Mapping(target = "gender", source = "gender", qualifiedByName = "mapGenderToFhir")
+    @Mapping(target = "address", expression = "java(buildAddressList(patientDto.address()))")
+    @Mapping(target = "telecom", expression = "java(buildTelecom(patientDto.email(), patientDto.phoneNumber()))")
+    @Mapping(target = "identifier", expression = "java(buildAhvIdentifier(patientDto.ahv()))")
+    @Mapping(target = "active", constant = "true")
+    org.hl7.fhir.r4.model.Patient toPatient(PatientCreateDto patientDto);
+
+    
+    
     @Named("toLocalDate")
     default LocalDate toLocalDate(Date date) {
         if (date == null) return null;
@@ -69,7 +84,7 @@ public interface PatientMapper {
 
     @Named("mapAddress")
     default AddressDto mapAddress(Address fhirAddress) {
-        if (fhirAddress == null) return null;
+        if (fhirAddress == null || fhirAddress.isEmpty()) return null;
         String street = fhirAddress.hasLine()
                 ? String.join(" ", fhirAddress.getLine().stream().map(ln -> ln.getValueNotNull()).toList())
                 : null;
@@ -94,4 +109,67 @@ public interface PatientMapper {
                 .map(ContactPoint::getValue)
                 .orElse(null);
     }
+
+    @Named("toDate")
+    default Date toDate(LocalDate localDate) {
+        if (localDate == null) return null;
+        return Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+    }
+
+    @Named("mapGenderToFhir")
+    default Enumerations.AdministrativeGender mapGenderToFhir(Gender gender) {
+        if (gender == null) return Enumerations.AdministrativeGender.UNKNOWN;
+        return switch (gender) {
+            case MÄNNLICH -> Enumerations.AdministrativeGender.MALE;
+            case WEIBLICH -> Enumerations.AdministrativeGender.FEMALE;
+            default -> Enumerations.AdministrativeGender.OTHER;
+        };
+    }
+
+    default List<HumanName> mapName(String firstName, String lastName) {
+        HumanName name = new HumanName();
+        name.setFamily(lastName);
+        if (firstName != null) {
+            name.addGiven(firstName);
+        }
+        return Collections.singletonList(name);
+    }
+
+    default List<Identifier> buildAhvIdentifier(String ahvNumber) {
+        if (ahvNumber == null) return Collections.emptyList();
+        Identifier identifier = new Identifier();
+        identifier.setUse(Identifier.IdentifierUse.OFFICIAL);
+        identifier.setSystem(AHV_SYSTEM);
+        identifier.setValue(ahvNumber);
+        return Collections.singletonList(identifier);
+    }
+
+    default List<Address> buildAddressList(AddressDto addressDto) {
+        if (addressDto == null) return Collections.emptyList();
+        Address address = new Address();
+        if (addressDto.street() != null) {
+            address.addLine(addressDto.street());
+        }
+        address.setPostalCode(addressDto.zipCode());
+        address.setCity(addressDto.city());
+        return Collections.singletonList(address);
+    }
+
+    default List<ContactPoint> buildTelecom(String email, String phoneNumber) {
+        List<ContactPoint> telecoms = new ArrayList<>();
+        if (email != null) {
+            ContactPoint emailCp = new ContactPoint();
+            emailCp.setSystem(ContactPoint.ContactPointSystem.EMAIL);
+            emailCp.setValue(email);
+            telecoms.add(emailCp);
+        }
+        if (phoneNumber != null) {
+            ContactPoint phoneCp = new ContactPoint();
+            phoneCp.setSystem(ContactPoint.ContactPointSystem.PHONE);
+            phoneCp.setValue(phoneNumber);
+            telecoms.add(phoneCp);
+        }
+        return telecoms;
+    }
+
 }

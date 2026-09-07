@@ -1,4 +1,4 @@
-package ch.bff.producer.services;
+package ch.bff.producer.services.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -31,8 +31,9 @@ import ch.bff.producer.provider.models.AdministeredDose;
 import ch.bff.producer.provider.models.ImmunizationCreateDto;
 import ch.bff.producer.provider.models.RouteOfAdministration;
 import ch.bff.producer.provider.models.VaccinationReason;
+import ch.bff.producer.services.ImmunizationAdministrationService;
 
-class ImmunizationAdministrationServiceTest {
+class ImmunizationAdministrationServiceImplTest {
 
 	private static final FhirContext FHIR_CTX = FhirContext.forR4();
 	private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -46,7 +47,7 @@ class ImmunizationAdministrationServiceTest {
 		fhirClient = new FhirClientStub();
 		fhirClient.patientToReturn = createMockPatient();
 		txClient = new TxClientStub();
-		service = new ImmunizationAdministrationService(fhirClient, txClient);
+		service = new ImmunizationAdministrationServiceImpl(fhirClient, txClient);
 	}
 
 	@Test
@@ -59,7 +60,7 @@ class ImmunizationAdministrationServiceTest {
 		assertNotNull(bundle);
 		var json = FHIR_CTX.newJsonParser().encodeResourceToString(bundle);
 		
-		LoggerFactory.getLogger(ImmunizationAdministrationServiceTest.class).info("Generated Bundle JSON:\n{}", json);
+		LoggerFactory.getLogger(ImmunizationAdministrationServiceImplTest.class).info("Generated Bundle JSON:\n{}", json);
 		
 		var root = MAPPER.readTree(json);
 
@@ -306,6 +307,12 @@ class ImmunizationAdministrationServiceTest {
 
 		@Override
 		public Bundle getVaccinationRecord(String id, Parameters parameters) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public Patient createPatient(Patient patient) {
 			// TODO Auto-generated method stub
 			return null;
 		}

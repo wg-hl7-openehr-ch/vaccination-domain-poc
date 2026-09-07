@@ -30,6 +30,28 @@ async function fetchVaccinations(personId) {
   return res.json();
 }
 
+async function importVaccinations(personId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const url = '/api/bff-producer/immunizations/import?personId=' + encodeURIComponent(personId);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: formData,
+  });
+  if (!res.ok) throw new Error('Fehler beim Importieren des Impfausweises');
+  return res.json();
+}
+
+async function exportVaccinationRecord(personId, format) {
+  const url = '/api/bff-producer/vaccinations/export?personId=' + encodeURIComponent(personId) + '&format=' + encodeURIComponent(format);
+  const res = await fetch(url, {
+    headers: { ...authHeaders() },
+  });
+  if (!res.ok) throw new Error('Fehler beim Exportieren des Impfausweises');
+  return res;
+}
+
 async function createImmunization(personId, data) {
   const res = await fetch('/api/bff-producer/immunizations?personId=' + encodeURIComponent(personId), {
     method: 'POST',
@@ -40,6 +62,19 @@ async function createImmunization(personId, data) {
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error('Fehler beim Erfassen der Impfung');
+  return res.json();
+}
+
+async function createPatient(data) {
+  const res = await fetch('/api/bff-producer/patients', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Fehler beim Anlegen des Patienten');
   return res.json();
 }
 
@@ -123,6 +158,7 @@ function inferDisease(vaccine) {
   return 'Sonstige';
 }
 
+
 function loadMockFallback() {
   window.AppData.patients = [
     { id: 'P-0001', firstName: 'Demo', lastName: 'Patient', dob: '1990-01-01', sex: 'M', address: 'Musterstrasse 1, 8000 Zürich', email: 'demo@example.ch', phone: '+41 00 000 00 00', ahv: '756.0000.0000.00' },
@@ -133,9 +169,12 @@ function loadMockFallback() {
 window.DataService = {
   getAuth,
   fetchPatients,
+  createPatient,
   fetchVaccinations,
   createImmunization,
   fetchVaccineCodes,
+  importVaccinations,
+  exportVaccinationRecord,
   transformPatient,
   transformVaccination,
   routeToApi,
