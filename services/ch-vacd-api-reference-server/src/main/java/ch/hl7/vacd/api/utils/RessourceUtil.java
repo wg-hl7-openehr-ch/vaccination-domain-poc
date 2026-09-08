@@ -36,6 +36,7 @@ import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
+import org.projecthusky.fhir.core.ch.util.IdUtil;
 import org.projecthusky.fhir.vacd.ch.common.enums.ChVacdDocumentType;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationComposition;
@@ -324,6 +325,7 @@ public class RessourceUtil {
 
 	public static ChVacdVaccinationRecordDocument createVaccinationRecordDocument() {
 		ChVacdVaccinationRecordDocument chVaccinationRecordDocument = new ChVacdVaccinationRecordDocument();
+		chVaccinationRecordDocument.resolveComposition().setDate(new Date());
 		{
 			Device device = createDevice();
 			chVaccinationRecordDocument.addAuthor(device, new Date());
@@ -333,7 +335,7 @@ public class RessourceUtil {
 
 	public static Device createDevice() {
 		Device device = new Device();
-		device.setId(UUID.randomUUID().toString());
+		device.setId(IdUtil.generateUrnUuid());
 		device.setStatus(FHIRDeviceStatus.ACTIVE);
 		device.setType(new CodeableConcept().setText("Immunization Registry System"));
 		device.setManufacturer("Workgroup Vaccination Showcase");

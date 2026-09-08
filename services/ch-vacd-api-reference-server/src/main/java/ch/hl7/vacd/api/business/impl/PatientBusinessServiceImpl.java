@@ -93,9 +93,11 @@ public class PatientBusinessServiceImpl extends AbstractBusinessService implemen
 			IBaseResource r = (IBaseResource) fhirContext.newJsonParser().parseResource(found.get(0).getJson());
 			if (r != null)
 				r.setId(theId.getIdPart());
+			r.getMeta().addProfile("http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-patient-epr");
 			return (Patient) r;
 		}
 		Patient p = new Patient();
+		p.getMeta().addProfile("http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-patient-epr");
 		p.setId(theId.getIdPart());
 		p.addName().setFamily("Test").addGiven("Patient");
 		return p;
