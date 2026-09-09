@@ -58,18 +58,16 @@ public class ImmunizationBusinessServiceImpl extends AbstractBusinessService imp
 		if (parResEnt != null) {
 			patient = fhirContext.newJsonParser().parseResource(patient.getClass(), parResEnt.getJson());
 		}
-//		String ehrId = parResEnt.getIdentifiers().stream().filter(id -> "urn:che:epr:ch-vacd:ehr-id".equals(id.getIdSystem())).findFirst()
-//				.orElseThrow(() -> new IllegalArgumentException("Patient does not have urn:che:epr:ch-vacd:ehr-id identifier"))
-//				.getIdValue();
 
 		String ehrId = ehrbaseClient.findEhrByPatient(patientId);
 		log.info("EHR ID for patient {}: {}", patientId, ehrId);
 
 		// Create the immunization resource in the Open FHIR server
 		immunization
-				.addIdentifier(new Identifier().setSystem("urn:che:epr:ch-vacd:ehr-id").setValue("urn:uuid:" + ehrId));
-
-//		String json = fhirContext.newJsonParser().encodeResourceToString(immunization);
+				.addIdentifier(new Identifier()//
+						.setSystem("urn:che:epr:ch-vacd:ehr-id")//
+						.setValue("urn:uuid:" + ehrId)//
+						.setUse(Identifier.IdentifierUse.SECONDARY));
 
 		// Convert FHIR resource to openEHR FLAT format via openFHIR.
 		ChVacdImmunizationAdministrationDocument immAdmin = RessourceUtil.createImmunizationAdministrationDocument();
@@ -79,61 +77,6 @@ public class ImmunizationBusinessServiceImpl extends AbstractBusinessService imp
 		/*Bundle retBundle = */processImmunizationAdmnistration(immAdmin, new HashMap<Resource, String>(),
 				new ArrayList<>(), Arrays.asList(immunization), ehrId, patientId);
 
-//		String immAdminJson = fhirContext.newJsonParser().encodeResourceToString(immAdmin);
-//		String flatJson = openFhirClient.toOpenEhr(immAdminJson);
-//		log.info(flatJson);
-//
-//		// Enrich with feeder_audit (Konkretisierung §13) and composition metadata.
-//		String enrichedFlat = FeederAuditEnricher.addOriginal(flatJson, immAdminJson);
-//
-//		// Split the enriched FLAT JSON by medication_management:X identifier.
-//		// Each immunization gets its own complete document with common fields.
-//		List<String> splitDocuments = RessourceUtil.splitByMedicationManagement(enrichedFlat);
-//
-//		log.info("Storing {} split Composition documents for immunization.id={} patientId={} ", splitDocuments.size(),
-//				immunization.getId(), patientId);
-//
-//		List<String> compositionUids = new ArrayList<>();
-//		if (splitDocuments.size() == 1) {
-//			String splitDoc = splitDocuments.get(0);
-//
-//			log.info("Split document for immunization index {}:\n{}", 0, splitDoc);
-//
-//			String compositionUid = ehrbaseClient.postCompositionFlat(ehrId, splitDoc,
-//					"ch-vacd-immunization-administration.v1-alpha");
-//			compositionUids.add(compositionUid);
-//
-//			log.info("Stored split Composition[{}] uid={} ehrId={}", 0, compositionUid, ehrId);
-//
-//			String fhirString = openFhirClient.toFhir(splitDoc);
-//
-//			Immunization fromEhr = fhirContext.newJsonParser().parseResource(Immunization.class, fhirString);
-//
-//			// Store the Immunization FHIR resource with compositionUid identifier for later
-//			// retrieval.
-//			immunization.addIdentifier(
-//					new Identifier().setSystem("urn:che:epr:ch-vacd:composition-uid").setValue(compositionUid));
-//
-//			Map fullUrlMap = new HashMap<>();
-//			ResourceEntity entity = createIfAbsent(immunization, fullUrlMap);
-//			try {
-//				ResourceReferenceEntity refEntity = new ResourceReferenceEntity()//
-//						.setTargetType("Patient")//
-//						.setTargetId(patientId)//
-//						.setSourceEntity(entity)//
-//						.setSourceField("Immunization.patient");
-//
-//				entity.addReference(refEntity);
-//
-//				store.save(entity);
-//			} catch (Exception e) {
-//				log.error("Error saving Immunization resource to local store: {}", e.getMessage(), e);
-//			}
-//
-//			String immId = RessourceUtil.extractId(immunization, fullUrlMap);
-//			log.info("Stored Immunization id={} with compositionUid={}", immId, compositionUid);
-//		}
-//
 		return immunization;
 
 	}

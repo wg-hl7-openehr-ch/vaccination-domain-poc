@@ -9,14 +9,13 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DomainResource;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.hl7.fhir.r4.model.Immunization;
-import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
-import org.projecthusky.fhir.core.ch.util.IdUtil;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdAbstractDocument;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationDocument;
@@ -25,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ch.hl7.vacd.api.ChVacdApplicationConstants;
 import ch.hl7.vacd.api.client.EhrbaseClient;
 import ch.hl7.vacd.api.client.FeederAuditEnricher;
 import ch.hl7.vacd.api.client.OpenFhirClient;
@@ -113,6 +113,16 @@ public class AbstractBusinessService {
 			entity.setJson(fhirContext.newJsonParser().encodeResourceToString(resource));
 
 			RessourceUtil.getIdentifiers(resource).forEach(identifier -> {
+
+				if (ChVacdApplicationConstants.GLN_OID.equals(identifier.getSystem())
+						&& !IdentifierUse.OFFICIAL.equals(identifier.getUse())) {
+					identifier.setUse(IdentifierUse.OFFICIAL);
+				}
+				if (ChVacdApplicationConstants.AHV_OID.equals(identifier.getSystem())
+						&& !IdentifierUse.OFFICIAL.equals(identifier.getUse())) {
+					identifier.setUse(IdentifierUse.OFFICIAL);
+				}
+
 				entity.addIdentifier(new ResourceIdentifierEntity()//
 						.setIdSystem(identifier.getSystem())//
 						.setIdValue(identifier.getValue())//
@@ -176,8 +186,10 @@ public class AbstractBusinessService {
 			// retrieval.
 			if (i < immunizations.size()) {
 				Immunization imm = immunizations.get(i);
-				imm.addIdentifier(
-						new Identifier().setSystem("urn:che:epr:ch-vacd:composition-uid").setValue(compositionUid));
+				imm.addIdentifier(new Identifier()//
+						.setSystem("urn:che:epr:ch-vacd:composition-uid")//
+						.setValue(compositionUid)//
+						.setUse(IdentifierUse.SECONDARY));
 
 				createIfAbsent(imm, fullUrlMap);
 
@@ -243,14 +255,6 @@ public class AbstractBusinessService {
 			if (perfomerDR != null && perfomerDR instanceof Practitioner) {
 				Practitioner perfomer = (Practitioner) perfomerDR;
 				document.addPractitioner(perfomer);
-//				IdUtil.checkId(perfomer);
-////				Practitioner practitioner = getResourceEntry("Practitioner",
-////						RessourceUtil.removeUrn(perfomer.getIdPart()));
-//				if (checkEntryAbsent(document, perfomer)) {
-//					document.addPractitioner(perfomer);
-////					document.addEntry().setResource(perfomer).setFullUrl("urn:uuid:" + perfomer.getIdPart());
-////					perfomer.setIdElement(null);
-//				}
 				immun.addPerformer().setActor(new Reference(perfomer));
 
 			}
@@ -258,30 +262,6 @@ public class AbstractBusinessService {
 			else if (perfomerDR != null && perfomerDR instanceof PractitionerRole) {
 				PractitionerRole perfomer = (PractitionerRole) perfomerDR;
 				document.addPractitionerRole(perfomer);
-//				IdUtil.checkId(perfomer);
-//				Practitioner practitioner = getResourceEntry("Practitioner",
-//						RessourceUtil.removeUrn(perfomer.getPractitioner().getReferenceElement().getIdPart()));
-//				IdUtil.checkId(practitioner);
-//				if (checkEntryAbsent(document, practitioner)) {
-//					document.addEntry().setResource(practitioner).setFullUrl("urn:uuid:" + practitioner.getIdPart());
-////					practitioner.setIdElement(null);
-//				}
-//				perfomer.setPractitioner(new Reference(practitioner));
-//
-//				Organization organization = getResourceEntry("Organization",
-//						RessourceUtil.removeUrn(perfomer.getOrganization().getReferenceElement().getIdPart()));
-//				IdUtil.checkId(organization);
-//				if (checkEntryAbsent(document, organization)) {
-//					document.addEntry().setResource(organization).setFullUrl("urn:uuid:" + organization.getIdPart());
-////					organization.setIdElement(null);
-//				}
-//				perfomer.setOrganization(new Reference(organization));
-//
-//				if (checkEntryAbsent(document, perfomer)) {
-//					document.addEntry().setResource(perfomer).setFullUrl("urn:uuid:" + perfomer.getIdPart());
-////					perfomer.setIdElement(null);
-//				}
-//				perfomer.setIdElement(null);
 				immun.addPerformer().setActor(new Reference(perfomer));
 
 			}
@@ -295,12 +275,12 @@ public class AbstractBusinessService {
 		return immun;
 	}
 
-	private boolean checkEntryAbsent(ChVacdAbstractDocument document, Resource resource) {
-		return !document.getEntry().stream()//
-				.filter(e -> e.getResource().fhirType().equals(resource.fhirType())
-						&& e.getFullUrl().equals("urn:uuid:" + resource.getIdElement().getIdPart()))//
-				.findFirst()//
-				.isPresent();
-	}
+//	private boolean checkEntryAbsent(ChVacdAbstractDocument document, Resource resource) {
+//		return !document.getEntry().stream()//
+//				.filter(e -> e.getResource().fhirType().equals(resource.fhirType())
+//						&& e.getFullUrl().equals("urn:uuid:" + resource.getIdElement().getIdPart()))//
+//				.findFirst()//
+//				.isPresent();
+//	}
 
 }

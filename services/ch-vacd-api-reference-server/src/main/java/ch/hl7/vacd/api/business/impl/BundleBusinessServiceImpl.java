@@ -90,7 +90,7 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 			createIfAbsent(organization, fullUrlMap);
 		}
 		for (PractitionerRole practitionerRole : peeled.practitionerRoles) {
-			/*ResourceEntity praRoleEntry =*/ createIfAbsent(practitionerRole, fullUrlMap);
+			/* ResourceEntity praRoleEntry = */ createIfAbsent(practitionerRole, fullUrlMap);
 		}
 
 //		patientId = RessourceUtil.removeUrn(patientId);
@@ -107,8 +107,10 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 		bundle.setId(type + "/" + id);
 
 		for (Immunization immunization : peeled.immunizations) {
-			immunization.addIdentifier(
-					new Identifier().setSystem("urn:che:epr:ch-vacd:ehr-id").setValue("urn:uuid:" + ehrId));
+			immunization.addIdentifier(new Identifier()//
+					.setSystem("urn:che:epr:ch-vacd:ehr-id")//
+					.setValue("urn:uuid:" + ehrId)//
+					.setUse(Identifier.IdentifierUse.SECONDARY));
 		}
 
 		List<String> compositionUids = new ArrayList<>();

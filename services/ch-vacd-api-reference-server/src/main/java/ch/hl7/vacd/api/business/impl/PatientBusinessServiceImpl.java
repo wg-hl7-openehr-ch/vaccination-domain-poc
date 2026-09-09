@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.IdType;
+import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.hl7.fhir.r4.model.Immunization;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Patient;
@@ -51,14 +52,15 @@ public class PatientBusinessServiceImpl extends AbstractBusinessService implemen
 	@Override
 	public Patient createPatient(Patient patient) {
 		String type = patient.fhirType();
-		//String json = fhirContext.newJsonParser().encodeResourceToString(patient);
+		// String json = fhirContext.newJsonParser().encodeResourceToString(patient);
 		String id = patient.getIdElement() != null && patient.getIdElement().hasIdPart()
 				? patient.getIdElement().getIdPart()
 				: UUID.randomUUID().toString();
 		patient.setId(type + "/" + id);
 		String ehrId = ehrbaseClient.findOrCreateEhr(id);
-		patient.addIdentifier().setSystem("urn:che:epr:ch-vacd:ehr-id").setValue("urn:uuid:" + ehrId);
-		//String json = fhirContext.newJsonParser().encodeResourceToString(patient);
+		patient.addIdentifier().setSystem("urn:che:epr:ch-vacd:ehr-id").setValue("urn:uuid:" + ehrId)
+				.setUse(IdentifierUse.SECONDARY);
+		// String json = fhirContext.newJsonParser().encodeResourceToString(patient);
 
 		createIfAbsent(patient, new HashMap<>());
 
@@ -70,7 +72,7 @@ public class PatientBusinessServiceImpl extends AbstractBusinessService implemen
 		String type = patient.fhirType();
 		String idPart = patient.getIdPart();
 		String ehrId = ehrbaseClient.findOrCreateEhr(idPart);
-		patient.addIdentifier().setSystem("urn:che:epr:ch-vacd:ehr-id").setValue("urn:uuid:" + ehrId);
+		patient.addIdentifier().setSystem("urn:che:epr:ch-vacd:ehr-id").setValue("urn:uuid:" + ehrId).setUse(IdentifierUse.SECONDARY);
 		String json = fhirContext.newJsonParser().encodeResourceToString(patient);
 		List<ResourceEntity> found = store.findByResourceTypeAndResourceId(type, idPart);
 		ResourceEntity entity;
