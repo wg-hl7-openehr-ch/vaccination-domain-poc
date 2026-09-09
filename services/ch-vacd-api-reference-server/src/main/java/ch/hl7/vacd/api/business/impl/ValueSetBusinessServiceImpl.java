@@ -7,10 +7,10 @@ import org.hl7.fhir.common.hapi.validation.support.InMemoryTerminologyServerVali
 import org.hl7.fhir.common.hapi.validation.support.ValidationSupportChain;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.BooleanType;
+import org.hl7.fhir.r4.model.Enumerations.PublicationStatus;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.ValueSet;
-import org.hl7.fhir.r4.model.Enumerations.PublicationStatus;
 import org.springframework.stereotype.Service;
 
 import ca.uhn.fhir.context.support.IValidationSupport.ValueSetExpansionOutcome;
@@ -18,7 +18,6 @@ import ca.uhn.fhir.context.support.ValidationSupportContext;
 import ca.uhn.fhir.context.support.ValueSetExpansionOptions;
 import ca.uhn.fhir.rest.param.UriParam;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
-import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ch.hl7.vacd.api.business.ValueSetBusinessService;
 import ch.hl7.vacd.api.config.ChVacdNpmPackageValidationSupport;
 
