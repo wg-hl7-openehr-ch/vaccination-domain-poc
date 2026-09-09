@@ -293,6 +293,14 @@
   align-items: baseline;
   gap: 12px;
   margin-bottom: 6px;
+  clear: both;
+}
+.patient-name-container {
+  float: left;
+  width: 100%;
+}
+.patient-export-container {
+  float: right;
 }
 .patient-name {
   font-size: 22px;
@@ -315,6 +323,12 @@
 }
 .patient-meta svg { color: var(--text-3); flex-shrink: 0; }
 .patient-meta .muted { color: var(--text-3); font-style: normal; }
+.copy-id-btn {
+  display: inline-flex; align-items: center;
+  background: none; border: none; padding: 2px 4px;
+  color: var(--text-3); cursor: pointer; border-radius: 4px;
+}
+.copy-id-btn:hover { color: var(--primary); background: var(--surface-2); }
 
 .patient-hero-right {
   display: flex;

@@ -76,6 +76,25 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
     }
   };
 
+  const handleExportPatient = async () => {
+    try {
+      const res = await DataService.exportPatient(patientId, 'json');
+      const jsonContent = await res.json();
+      const blob = new Blob([JSON.stringify(jsonContent, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Patient-${patient.lastName}-${patient.firstName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Patienten-Export fehlgeschlagen:', err);
+      showError('Patienten-Export fehlgeschlagen: ' + (err.message || err));
+    }
+  };
+
   const handleImportVaccination = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -123,7 +142,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
 
   return (
     <main className="page">
-      <button className="back-link" onClick={onBack}>
+      <button className="back-link" onClick={onBack} title="Zurück zur Patient:innenliste" aria-label="Zurück zur Patient:innenliste">
         <Icon.Back /> Zurück zur Patient:innenliste
       </button>
 
@@ -164,7 +183,12 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
           <PatientAvatar patient={patient} size={64} />
           <div>
             <div className="patient-name-line">
-              <h1 className="patient-name">{patient.lastName}, {patient.firstName}</h1>
+              <div className="patient-name-container">
+                <h1 className="patient-name">{patient.lastName}, {patient.firstName}</h1>
+              </div>
+              <div className="patient-export-container">
+                <button className="btn btn-primary" onClick={handleExportPatient} title="Patient export" aria-label="Patient export"><Icon.Download /></button>
+              </div>
             </div>
             <div className="patient-meta">
               <span><Icon.Cake /> {formatDate(patient.dob, { short: true })} <em className="muted">·</em> {patient.age ?? calcAge(patient.dob)} Jahre <em className="muted">·</em> {patient.sex === "F" ? "weiblich" : "männlich"}</span>
@@ -172,6 +196,15 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
               <span><Icon.Mail /> {patient.email}</span>
               <span><Icon.Phone /> <span className="tnum">{patient.phone}</span></span>
               <span><Icon.User /> AHV <span className="mono">{patient.ahv}</span></span>
+              <span>
+                <Icon.User /> ID <span className="mono">{patient.id}</span>
+                <button
+                  className="copy-id-btn"
+                  title="ID kopieren"
+                  aria-label="ID kopieren"
+                  onClick={() => navigator.clipboard.writeText(patient.id)}
+                ><Icon.Copy /></button>
+              </span>
             </div>
           </div>
         </div>
@@ -189,9 +222,9 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
           <h2 className="section-title">Impfausweis</h2>
         </div>
         <div className="detail-actions-right">
-          <button className="btn btn-primary" onClick={handleImportVaccination} disabled={records.length > 0}><Icon.Upload /> Impfausweis importieren</button>
-          <button className="btn btn-primary" onClick={handleExportVaccination} disabled={records.length === 0}><Icon.Download /> Impfausweis exportieren</button>
-          <button className="btn btn-primary" onClick={onAddVaccination}><Icon.Plus /> Neue Impfung erfassen</button>
+          <button className="btn btn-primary" onClick={handleImportVaccination} disabled={records.length > 0} title="Impfausweis importieren" aria-label="Impfausweis importieren"><Icon.Upload /></button>
+          <button className="btn btn-primary" onClick={handleExportVaccination} disabled={records.length === 0} title="Impfausweis exportieren" aria-label="Impfausweis exportieren"><Icon.Download /></button>
+          <button className="btn btn-primary" onClick={onAddVaccination} title="Neue Impfung erfassen" aria-label="Neue Impfung erfassen"><Icon.Plus /></button>
         </div>
       </div>
 
