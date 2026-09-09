@@ -11,4 +11,6 @@ public interface PatientService {
 
 	PatientDto createPatient(PatientCreateDto patientDto);
 
+	String exportPatient(String patientId, String format);
+
 }

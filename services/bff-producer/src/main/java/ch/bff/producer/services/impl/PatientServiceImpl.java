@@ -45,4 +45,17 @@ public class PatientServiceImpl extends AbstractReadService implements PatientSe
 		org.hl7.fhir.r4.model.Patient created = fhirClient.createPatient(patient);
 		return patientMapper.toPatientDto(created);
 	}
+
+	@Override
+	public String exportPatient(String patientId, String format) {
+		Patient patient = fhirClient.getPatientById(patientId);
+		FhirContext ctx = FhirContext.forR4();
+		if ("json".equalsIgnoreCase(format)) {
+			return ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(patient);
+		} else if ("xml".equalsIgnoreCase(format)) {
+			return ctx.newXmlParser().setPrettyPrint(true).encodeResourceToString(patient);
+		} else {
+			return "";
+		}
+	}
 }

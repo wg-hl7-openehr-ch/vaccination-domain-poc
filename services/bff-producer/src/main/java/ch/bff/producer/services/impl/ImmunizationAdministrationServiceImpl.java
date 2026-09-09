@@ -10,6 +10,7 @@ import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.hl7.fhir.r4.model.Immunization;
 import org.hl7.fhir.r4.model.Medication;
 import org.hl7.fhir.r4.model.Organization;
@@ -247,7 +248,7 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 	private Practitioner buildPractitioner(ChCorePractitioner p) {
 //		var p = new ChCorePractitionerEpr();
 //		p.setId("urn:uuid:" + practitionerUuid);
-		p.addIdentifier().setSystem("urn:oid:2.51.1.3").setValue("7601000123456");
+		p.addIdentifier().setSystem("urn:oid:2.51.1.3").setValue("7601000123456").setUse(IdentifierUse.OFFICIAL);
 		p.addName().setFamily("Müller").addGiven("Sarah");
 		return p;
 	}
@@ -255,7 +256,7 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 	private Organization buildOrganization(ChCoreOrganization org) {
 //		var org = new ChCoreOrganizationEpr();
 		// org.setId("urn:uuid:" + organizationUuid);
-		org.addIdentifier().setSystem("urn:oid:2.51.1.3").setValue("7601000999999");
+		org.addIdentifier().setSystem("urn:oid:2.51.1.3").setValue("7601000999999").setUse(IdentifierUse.OFFICIAL);
 		org.setName("Praxis am Bahnhof");
 		return org;
 	}

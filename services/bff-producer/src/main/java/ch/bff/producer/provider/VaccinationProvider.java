@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ch.bff.producer.provider.models.PractitionerDto;
@@ -28,7 +29,7 @@ public class VaccinationProvider {
 	}
 
 	@GetMapping
-	public List<VaccinationDto> getVaccinations(String personId) {
+	public List<VaccinationDto> getVaccinations(@RequestParam String personId) {
 		try {
 			return vacctinationsReadService.getVaccinationList(personId);
 		} catch (Exception e) {
@@ -38,7 +39,7 @@ public class VaccinationProvider {
 	}
 
 	@GetMapping("/export")
-	public String exportVaccinations(String personId, String format) {
+	public String exportVaccinations(@RequestParam String personId, @RequestParam String format) {
 		try {
 			return vacctinationsReadService.exportVaccinations(personId, format);
 		} catch (Exception e) {

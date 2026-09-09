@@ -4,6 +4,8 @@ import ch.bff.producer.provider.models.AddressDto;
 import ch.bff.producer.provider.models.Gender;
 import ch.bff.producer.provider.models.PatientCreateDto;
 import ch.bff.producer.provider.models.PatientDto;
+import io.micrometer.common.util.StringUtils;
+
 import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.ContactPoint;
 import org.hl7.fhir.r4.model.Enumerations;
@@ -157,13 +159,13 @@ public interface PatientMapper {
 
     default List<ContactPoint> buildTelecom(String email, String phoneNumber) {
         List<ContactPoint> telecoms = new ArrayList<>();
-        if (email != null) {
+        if (StringUtils.isNotEmpty(email)) {
             ContactPoint emailCp = new ContactPoint();
             emailCp.setSystem(ContactPoint.ContactPointSystem.EMAIL);
             emailCp.setValue(email);
             telecoms.add(emailCp);
         }
-        if (phoneNumber != null) {
+        if (StringUtils.isNotEmpty(phoneNumber)) {
             ContactPoint phoneCp = new ContactPoint();
             phoneCp.setSystem(ContactPoint.ContactPointSystem.PHONE);
             phoneCp.setValue(phoneNumber);

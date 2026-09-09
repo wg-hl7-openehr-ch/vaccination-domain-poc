@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ch.bff.producer.provider.models.AddressDto;
@@ -38,6 +39,18 @@ public class PatientProvider {
 			return getSamplePatients();
 		}
 	}
+
+	@GetMapping("/export")
+	public String exportPatient(@RequestParam String personId, @RequestParam String format) {
+		try {
+			return patientReadService.exportPatient(personId, format);
+		} catch (Exception e) {
+			log.warn("FHIR unavailable, patient export failed: {}", e.getMessage(), e);
+			return null;
+		}
+	}
+
+	
 	
 	@PostMapping
 	public PatientDto createPatient(@RequestBody PatientCreateDto patientDto) {
