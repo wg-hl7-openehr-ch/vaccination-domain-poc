@@ -49,35 +49,36 @@ public class VaccinationProvider {
 	}
 
 	private static List<VaccinationDto> getSampleVaccinations() {
-		return List.of(
-				// 1. Impfung aus dem Screenshot
-				new VaccinationDto(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"), "Priorix", "00000-09",
-						"1/2", LocalDate.of(2020, 1, 22), "GlaxoSmithKline", "PR2001", "s.c.", "Oberarm links",
-						new PractitionerDto("Dr. S. Müller", "7601000233456"),
-						new VaccinationReason("223366009", "Grundimmunisierung", null), List.of()),
-
-				// 2. Impfung (Folgeimpfung MMR)
-				new VaccinationDto(UUID.fromString("7b921e12-3456-7890-abcd-ef1234567890"), "Priorix", "00000-09",
-						"2/2", LocalDate.of(2020, 3, 24), "GlaxoSmithKline", "PR2005", "s.c.", "Oberarm rechts",
-						new PractitionerDto("Dr. S. Müller", "7601000233456"),
-						new VaccinationReason("171257003", "Auffrischimpfung", null), List.of()),
-
-				// 3. Impfung (Starrkrampf / DTP)
-				new VaccinationDto(UUID.fromString("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"), "Boostrix", "00000-01",
-						"1/1", LocalDate.of(2021, 6, 15), "GlaxoSmithKline", "BS9942", "i.m.", "Oberschenkel links",
-						new PractitionerDto("Dr. med. A. Pfister", "7601003445566"),
-						new VaccinationReason("171257003", "Auffrischimpfung", null), List.of()),
-
-				// 4. Impfung (FSME / Zecken)
-				new VaccinationDto(UUID.fromString("f8e7d6c5-b4a3-9281-7065-5443322110aa"), "FSME-Immun", "00000-04",
-						"1/3", LocalDate.of(2023, 4, 10), "Pfizer", "VNR402A", "i.m.", "Oberarm links",
-						new PractitionerDto("Dr. S. Müller", "7601000233456"),
-						new VaccinationReason("223366009", "Grundimmunisierung", null), List.of()),
-
-				// 5. Impfung (Grippe)
-				new VaccinationDto(UUID.fromString("00000000-1111-2222-3333-444455556666"), "Fluarix Tetra", "00000-06",
-						"1/1", LocalDate.of(2025, 10, 05), "GlaxoSmithKline", "FL2025X", "i.m.", "Oberarm rechts",
-						new PractitionerDto("Apotheke am Bahnhof", "7601009998877"),
-						new VaccinationReason("386472008", "saisonale Influenza", null), List.of()));
+		return List.of();
+//		return List.of(
+//				// 1. Impfung aus dem Screenshot
+//				new VaccinationDto(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"), "Priorix", "00000-09",
+//						"1/2", LocalDate.of(2020, 1, 22), "GlaxoSmithKline", "PR2001", "s.c.", "Oberarm links",
+//						new PractitionerDto("Dr. S. Müller", "7601000233456"),
+//						new VaccinationReason("223366009", "Grundimmunisierung", null), List.of()),
+//
+//				// 2. Impfung (Folgeimpfung MMR)
+//				new VaccinationDto(UUID.fromString("7b921e12-3456-7890-abcd-ef1234567890"), "Priorix", "00000-09",
+//						"2/2", LocalDate.of(2020, 3, 24), "GlaxoSmithKline", "PR2005", "s.c.", "Oberarm rechts",
+//						new PractitionerDto("Dr. S. Müller", "7601000233456"),
+//						new VaccinationReason("171257003", "Auffrischimpfung", null), List.of()),
+//
+//				// 3. Impfung (Starrkrampf / DTP)
+//				new VaccinationDto(UUID.fromString("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"), "Boostrix", "00000-01",
+//						"1/1", LocalDate.of(2021, 6, 15), "GlaxoSmithKline", "BS9942", "i.m.", "Oberschenkel links",
+//						new PractitionerDto("Dr. med. A. Pfister", "7601003445566"),
+//						new VaccinationReason("171257003", "Auffrischimpfung", null), List.of()),
+//
+//				// 4. Impfung (FSME / Zecken)
+//				new VaccinationDto(UUID.fromString("f8e7d6c5-b4a3-9281-7065-5443322110aa"), "FSME-Immun", "00000-04",
+//						"1/3", LocalDate.of(2023, 4, 10), "Pfizer", "VNR402A", "i.m.", "Oberarm links",
+//						new PractitionerDto("Dr. S. Müller", "7601000233456"),
+//						new VaccinationReason("223366009", "Grundimmunisierung", null), List.of()),
+//
+//				// 5. Impfung (Grippe)
+//				new VaccinationDto(UUID.fromString("00000000-1111-2222-3333-444455556666"), "Fluarix Tetra", "00000-06",
+//						"1/1", LocalDate.of(2025, 10, 05), "GlaxoSmithKline", "FL2025X", "i.m.", "Oberarm rechts",
+//						new PractitionerDto("Apotheke am Bahnhof", "7601009998877"),
+//						new VaccinationReason("386472008", "saisonale Influenza", null), List.of()));
 	}
 }

@@ -6,6 +6,7 @@ import ch.bff.producer.provider.models.PatientCreateDto;
 import ch.bff.producer.provider.models.PatientDto;
 import ch.bff.producer.services.PatientService;
 
+import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.hl7.fhir.r4.model.Patient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,7 @@ public class PatientServiceImpl extends AbstractReadService implements PatientSe
 		patient.addIdentifier()//
 				.setSystem("urn:ietf:rfc:3986")//
 				.setValue("urn:uuid:" + java.util.UUID.randomUUID())//
-				.setUse(org.hl7.fhir.r4.model.Identifier.IdentifierUse.USUAL);
+				.setUse(IdentifierUse.USUAL);
 		org.hl7.fhir.r4.model.Patient created = fhirClient.createPatient(patient);
 		return patientMapper.toPatientDto(created);
 	}

@@ -143,6 +143,12 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 //		imm.setId("urn:uuid:" + immunizationUuid);
 		imm.setStatus(Immunization.ImmunizationStatus.COMPLETED);
 //		imm.getMeta().addProfile("http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-immunization-administration");
+
+		imm.addIdentifier()//
+				.setSystem("urn:ietf:rfc:3986")//
+				.setValue("urn:uuid:" + java.util.UUID.randomUUID())//
+				.setUse(IdentifierUse.USUAL);
+
 		imm.setPatient(new Reference(fhirPatient));
 		var vaccineCode = toCoding(dto.vaccineName());
 		imm.setVaccineCode(new CodeableConcept().addCoding(vaccineCode));
@@ -156,6 +162,10 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 
 		if (StringUtils.hasText(dto.vaccineCode())) {
 			ChVacdMedicationForImmunization medication = bundle.addMedication();
+			medication.addIdentifier()//
+					.setSystem("urn:ietf:rfc:3986")//
+					.setValue("urn:uuid:" + java.util.UUID.randomUUID())//
+					.setUse(IdentifierUse.USUAL);
 			medication.setCode(new CodeableConcept()
 					.addCoding(new Coding().setSystem("urn:oid:2.51.1.1").setCode(dto.vaccineCode())));
 			medication.setStatus(Medication.MedicationStatus.ACTIVE);

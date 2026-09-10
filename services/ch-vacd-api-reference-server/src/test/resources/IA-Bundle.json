@@ -1,0 +1,311 @@
+{
+  "resourceType": "Bundle",
+  "id": "4fa53d82-da64-4d65-8fb7-9c588c912666",
+  "meta": {
+    "profile": [ "http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-document-immunization-administration" ]
+  },
+  "language": "en-US",
+  "identifier": {
+    "system": "urn:ietf:rfc:3986",
+    "value": "urn:uuid:4fa53d82-da64-4d65-8fb7-9c588c912666"
+  },
+  "type": "document",
+  "timestamp": "2026-09-09T11:55:49.445+00:00",
+  "entry": [ {
+    "fullUrl": "urn:uuid:65db9d1b-f943-4bb1-a4a4-5abc70e83d88",
+    "resource": {
+      "resourceType": "Composition",
+      "meta": {
+        "profile": [ "http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-composition-immunization-administration" ]
+      },
+      "language": "de-CH",
+      "text": {
+        "status": "generated",
+        "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Title</td><td>Immunization Administration</td></tr><tr><td>Category</td><td>CH VACD Immunization Administration(urn:oid:2.16.756.5.30.1.127.3.10.10|urn:che:epr:ch-vacd:immunization-administration:2022)</td></tr><tr><td>Identifier</td><td>urn:uuid:4be825ce-6f6d-455b-bf18-17ec9fc1be0f</td></tr><tr><td>Status</td><td>FINAL</td></tr><tr><td>List Immunization Administration</td><td><span/><br/></td></tr></tbody></table></div>"
+      },
+      "identifier": {
+        "system": "urn:ietf:rfc:3986",
+        "value": "urn:uuid:4be825ce-6f6d-455b-bf18-17ec9fc1be0f",
+		"use": "usual"
+      },
+      "status": "final",
+      "type": {
+        "coding": [ {
+          "system": "http://snomed.info/sct",
+          "code": "41000179103"
+        } ]
+      },
+      "category": [ {
+        "coding": [ {
+          "system": "urn:oid:2.16.756.5.30.1.127.3.10.10",
+          "code": "urn:che:epr:ch-vacd:immunization-administration:2022",
+          "display": "CH VACD Immunization Administration"
+        } ]
+      } ],
+      "subject": {
+        "reference": "urn:uuid:f96bc56b-6572-4362-a5f8-f807ab59cee0"
+      },
+      "date": "2026-09-09T11:55:49+00:00",
+      "author": [ {
+        "extension": [ {
+          "url": "http://fhir.ch/ig/ch-core/StructureDefinition/ch-ext-epr-time",
+          "valueDateTime": "2026-09-09T11:55:49+00:00"
+        } ],
+        "reference": "urn:uuid:6ed5041e-50f0-4589-9942-d80e4aa5d612"
+      } ],
+      "title": "Immunization Administration",
+      "confidentiality": "N",
+      "_confidentiality": {
+        "extension": [ {
+          "url": "http://fhir.ch/ig/ch-core/StructureDefinition/ch-ext-epr-confidentialitycode",
+          "valueCodeableConcept": {
+            "coding": [ {
+              "system": "http://snomed.info/sct",
+              "code": "17621005",
+              "display": "Normal (qualifier value)"
+            } ]
+          }
+        } ]
+      },
+      "section": [ {
+        "title": "List Immunization Administration",
+        "code": {
+          "coding": [ {
+            "system": "http://loinc.org",
+            "code": "11369-6"
+          } ]
+        },
+        "entry": [ {
+          "reference": "urn:uuid:741ee706-f31f-4454-a734-63bab41fefe3"
+        } ]
+      } ]
+    }
+  }, {
+    "fullUrl": "urn:uuid:f96bc56b-6572-4362-a5f8-f807ab59cee0",
+    "resource": {
+      "resourceType": "Patient",
+      "meta": {
+        "profile": [ "http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-patient-epr" ]
+      },
+      "text": {
+        "status": "generated",
+        "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><div class=\"hapiHeaderText\">Hugo <b>BEISPIEL </b></div><table class=\"hapiPropertyTable\"><tbody><tr><td>Identifier</td><td>756.1234.5678.90</td></tr><tr><td>Address</td><td><span>Hugo 1 </span><span>8009 </span><span>Hugolsingen </span></td></tr><tr><td>Date of birth</td><td><span>31 December 1999</span></td></tr></tbody></table></div>"
+      },
+      "identifier": [ {
+        "use": "official",
+        "system": "urn:oid:2.16.756.5.32",
+        "value": "756.1234.5678.90"
+      }, {
+        "use": "usual",
+        "system": "urn:ietf:rfc:3986",
+        "value": "urn:uuid:ed61fcdb-9bcb-4363-9c9f-726f64e9adaa"
+      }, {
+        "use": "secondary",
+        "system": "urn:che:epr:ch-vacd:ehr-id",
+        "value": "urn:uuid:61bd3809-6d2c-41b2-9f47-3f7b06b27f2c"
+      } ],
+      "active": true,
+      "name": [ {
+        "family": "Beispiel",
+        "given": [ "Hugo" ]
+      } ],
+      "telecom": [ {
+        "system": "email",
+        "value": "hugo.beispiel@tets.ch"
+      }, {
+        "system": "phone",
+        "value": "+41766667788"
+      } ],
+      "gender": "male",
+      "birthDate": "1999-12-31",
+      "address": [ {
+        "line": [ "Hugo 1" ],
+        "city": "Hugolsingen",
+        "postalCode": "8009"
+      } ]
+    }
+  }, {
+    "fullUrl": "urn:uuid:e0c040a2-2fef-45e9-a024-618b4423b53b",
+    "resource": {
+      "resourceType": "Practitioner",
+      "meta": {
+        "profile": [ "http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-practitioner-epr" ]
+      },
+      "text": {
+        "status": "generated",
+        "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><div class=\"hapiHeaderText\">Sarah <b>MÜLLER </b></div><table class=\"hapiPropertyTable\"><tbody><tr><td>Identifier</td><td>7601000123456</td></tr></tbody></table></div>"
+      },
+      "identifier": [ {
+        "use": "official",
+        "system": "urn:oid:2.51.1.3",
+        "value": "7601000123456"
+      } ],
+      "name": [ {
+        "family": "Müller",
+        "given": [ "Sarah" ]
+      } ]
+    }
+  }, {
+    "fullUrl": "urn:uuid:5b72d933-4aee-4c28-bc0f-7d36977679f8",
+    "resource": {
+      "resourceType": "Organization",
+      "meta": {
+        "profile": [ "http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-organization-epr" ]
+      },
+      "text": {
+        "status": "generated",
+        "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><div class=\"hapiHeaderText\">Praxis am Bahnhof</div><table class=\"hapiPropertyTable\"><tbody><tr><td>Identifier</td><td>7601000999999</td></tr></tbody></table></div>"
+      },
+      "identifier": [ {
+        "use": "official",
+        "system": "urn:oid:2.51.1.3",
+        "value": "7601000999999"
+      } ],
+      "name": "Praxis am Bahnhof"
+    }
+  }, {
+    "fullUrl": "urn:uuid:6ed5041e-50f0-4589-9942-d80e4aa5d612",
+    "resource": {
+      "resourceType": "PractitionerRole",
+      "meta": {
+        "profile": [ "http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-practitionerrole-epr" ]
+      },
+      "text": {
+        "status": "generated",
+        "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table><tr><td>Practitioner</td><td><div><span>Sarah <b>MÜLLER </b></span></div></td></tr><tr><td>Organization</td><td><div><span>Praxis am Bahnhof</span></div><div><span>urn:uuid:5b72d933-4aee-4c28-bc0f-7d36977679f8</span></div></td></tr></table></div>"
+      },
+      "practitioner": {
+        "reference": "urn:uuid:e0c040a2-2fef-45e9-a024-618b4423b53b"
+      },
+      "organization": {
+        "reference": "urn:uuid:5b72d933-4aee-4c28-bc0f-7d36977679f8"
+      }
+    }
+  }, {
+    "fullUrl": "urn:uuid:741ee706-f31f-4454-a734-63bab41fefe3",
+    "resource": {
+      "resourceType": "Immunization",
+      "meta": {
+        "profile": [ "http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-immunization" ]
+      },
+      "text": {
+        "status": "generated",
+        "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Status</td><td>COMPLETED</td></tr><tr><td>Vaccine Code</td><td> FSME-Immun CC </td></tr><tr><td>Vaccination Date</td><td>09 September 2005</td></tr><tr><td>Performer</td><td><div><table><tr><td>Practitioner</td><td><div><span>Sarah <b>MÜLLER </b></span></div></td></tr><tr><td>Organization</td><td><div><span>Praxis am Bahnhof</span></div><div><span>urn:uuid:5b72d933-4aee-4c28-bc0f-7d36977679f8</span></div></td></tr></table></div></td></tr><tr><td>Target Disease</td><td><span> Encephalitis caused by tick-borne encephalitis virus </span></td></tr></tbody></table></div>"
+      },
+      "extension": [ {
+        "url": "http://fhir.ch/ig/ch-core/StructureDefinition/ch-ext-author",
+        "valueReference": {
+          "reference": "urn:uuid:6ed5041e-50f0-4589-9942-d80e4aa5d612",
+          "display": "Dr. med. Sarah Müller"
+        }
+      }, {
+        "url": "http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-immunization-medication-reference",
+        "valueReference": {
+          "reference": "urn:uuid:b701d773-177d-4465-842d-aae6b5708a91"
+        }
+      } ],
+	  "identifier": [ {
+		"use": "usual",
+	    "system": "urn:ietf:rfc:3986",
+	    "value": "urn:uuid:dc282a15-6586-4104-859e-6e39f00d6493"
+	  } ],
+      "status": "completed",
+      "vaccineCode": {
+        "coding": [ {
+          "system": "http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs",
+          "code": "450",
+          "display": "FSME-Immun CC"
+        } ]
+      },
+      "patient": {
+        "reference": "urn:uuid:f96bc56b-6572-4362-a5f8-f807ab59cee0"
+      },
+      "occurrenceDateTime": "2005-09-09T00:00:00+00:00",
+      "manufacturer": {
+        "reference": "urn:uuid:96ac7098-bc03-4fe9-91db-65d402eef12d",
+        "display": "Pfizer"
+      },
+      "lotNumber": "A-123.45",
+      "site": {
+        "text": "Oberarm links (M. deltoideus)"
+      },
+      "route": {
+        "coding": [ {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration",
+          "code": "IM",
+          "display": "Intramuscular"
+        } ],
+        "text": "IM"
+      },
+      "doseQuantity": {
+        "value": 0.5,
+        "unit": "ml"
+      },
+      "performer": [ {
+        "actor": {
+          "reference": "urn:uuid:6ed5041e-50f0-4589-9942-d80e4aa5d612",
+          "display": "Dr. med. Sarah Müller"
+        }
+      } ],
+      "reasonCode": [ {
+        "coding": [ {
+          "system": "http://snomed.info/sct",
+          "code": "33879002"
+        } ],
+        "text": "Administration of vaccine to produce active immunity (procedure)"
+      } ],
+      "protocolApplied": [ {
+        "targetDisease": [ {
+          "coding": [ {
+            "system": "http://snomed.info/sct",
+            "code": "712986001",
+            "display": "Encephalitis caused by tick-borne encephalitis virus"
+          } ]
+        } ],
+        "doseNumberPositiveInt": 1,
+        "seriesDosesPositiveInt": 3
+      } ]
+    }
+  }, {
+    "fullUrl": "urn:uuid:96ac7098-bc03-4fe9-91db-65d402eef12d",
+    "resource": {
+      "resourceType": "Organization",
+      "meta": {
+        "profile": [ "http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-organization-epr" ]
+      },
+      "text": {
+        "status": "generated",
+        "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><div class=\"hapiHeaderText\">Pfizer</div><table class=\"hapiPropertyTable\"><tbody/></table></div>"
+      },
+      "name": "Pfizer"
+    }
+  }, {
+    "fullUrl": "urn:uuid:b701d773-177d-4465-842d-aae6b5708a91",
+    "resource": {
+      "resourceType": "Medication",
+      "meta": {
+        "profile": [ "http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-medication-for-immunization" ]
+      },
+      "text": {
+        "status": "generated",
+        "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><div class=\"hapiHeaderText\"> 7680004500039 </div></div>"
+      },
+      "identifier": [ {
+	    "use": "usual",
+        "system": "urn:ietf:rfc:3986",
+        "value": "urn:uuid:bf257de3-bdb2-488c-8801-eeaa82d10fe6"
+      } ],
+      "code": {
+        "coding": [ {
+          "system": "urn:oid:2.51.1.1",
+          "code": "7680004500039"
+        } ]
+      },
+      "status": "active",
+      "manufacturer": {
+        "reference": "urn:uuid:96ac7098-bc03-4fe9-91db-65d402eef12d"
+      }
+    }
+  } ]
+}
+

@@ -41,6 +41,7 @@ import org.projecthusky.fhir.vacd.ch.common.enums.ChVacdDocumentType;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationComposition;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationDocument;
+import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdMedicationForImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdVaccinationRecordDocument;
 import org.projecthusky.fhir.vacd.ch.common.service.ChVacdParser;
 
@@ -360,47 +361,86 @@ public class RessourceUtil {
 		// delete copied references to avoid duplicates
 		comEHR.resolveAdministrationSection().getEntry().clear();
 
-		String patientIdIn = RessourceUtil.removeUrn(compIn.getSubject().getResource().getIdElement().toString());
+		String patientIdIn = RessourceUtil.removeUrn(compIn.getSubject().getResource().getIdElement().getIdPart());
 		comEHR.setSubject(new Reference(compIn.getSubject().getResource().fhirType() + "/" + patientIdIn));
 
+		List<Reference> authorRefs = new ArrayList<>();
 		compIn.getAuthor().forEach(author -> {
 			String authorIdIn = RessourceUtil.removeUrn(author.getResource().getIdElement().toString());
-			comEHR.addAuthor(new Reference(author.getResource().fhirType() + "/" + authorIdIn));
+//			comEHR.addAuthor(new Reference(author.getResource().fhirType() + "/" + authorIdIn));
+			authorRefs.add(new Reference(author.getResource().fhirType() + "/" + authorIdIn));
 		});
+		comEHR.setAuthor(authorRefs);
 
 //		chvacdToEHR.addEntry().setResource(comEHR);
 
-		List<ChVacdImmunization> immEntriesIn = chvacdIn.getEntry().stream()
-				.filter(entry -> entry.getResource() instanceof ChVacdImmunization).map(entry -> {
-					ChVacdImmunization imm = (ChVacdImmunization) entry.getResource();
-					imm.setId(entry.getFullUrl());
-					return imm;
-				}).collect(Collectors.toList());
+		// manage Immunization resources
+		{
+			List<ChVacdImmunization> immEntriesIn = chvacdIn.getEntry().stream()
+					.filter(entry -> entry.getResource() instanceof ChVacdImmunization).map(entry -> {
+						ChVacdImmunization imm = (ChVacdImmunization) entry.getResource();
+						imm.setId(entry.getFullUrl());
+						return imm;
+					}).collect(Collectors.toList());
 
-		for (ChVacdImmunization immIn : immEntriesIn) {
-			String mmIndpattId = RessourceUtil.removeUrn(immIn.getPatient().getResource().getIdElement().getIdPart());
-			ChVacdImmunization immEHR = immIn.copy();
-//			ChVacdImmunization immEHR = chvacdToEHR.addImmunization();
-//			immIn.copyValues(immEHR);
+			for (ChVacdImmunization immIn : immEntriesIn) {
+				String mmIndpattId = RessourceUtil
+						.removeUrn(immIn.getPatient().getResource().getIdElement().getIdPart());
+				ChVacdImmunization immEHR = immIn.copy();
 
-			// replace recorder resource by reference
-			if (immIn.getRecorder() != null && immIn.getRecorder().getResource() != null) {
-				String immInRec = RessourceUtil.removeUrn(immIn.getRecorder().getResource().getIdElement().getIdPart());
-				immEHR.setRecorder(new Reference(immIn.getRecorder().getResource().fhirType() + "/" + immInRec));
+				// replace recorder resource by reference
+				if (immIn.getRecorder() != null && immIn.getRecorder().getResource() != null) {
+					String immInRec = RessourceUtil
+							.removeUrn(immIn.getRecorder().getResource().getIdElement().getIdPart());
+					immEHR.setRecorder(new Reference(immIn.getRecorder().getResource().fhirType() + "/" + immInRec));
+				}
+
+				if (immIn.getManufacturer() != null && immIn.getManufacturer().getResource() != null) {
+					String immManId = RessourceUtil
+							.removeUrn(immIn.getManufacturer().getResource().getIdElement().getIdPart());
+					immEHR.setManufacturer(
+							new Reference(immIn.getManufacturer().getResource().fhirType() + "/" + immManId));
+				}
+
+				// replace patient resource by reference
+				immEHR.setPatient(new Reference(immIn.getPatient().getResource().fhirType() + "/" + mmIndpattId));
+
+				// replace performer reference
+				immEHR.getPerformer().clear();
+				String immInPerfId = RessourceUtil
+						.removeUrn(immIn.getPerformerFirstRep().getActor().getResource().getIdElement().getIdPart());
+				immEHR.addPerformer().setActor(new Reference(
+						immIn.getPerformerFirstRep().getActor().getResource().fhirType() + "/" + immInPerfId));
+
+				chvacdToEHR.addImmunization(immEHR);
 			}
-
-			// replace patient resource by reference
-			immEHR.setPatient(new Reference(immIn.getPatient().getResource().fhirType() + "/" + mmIndpattId));
-
-			// replace performer reference
-			immEHR.getPerformer().clear();
-			String immInPerfId = RessourceUtil
-					.removeUrn(immIn.getPerformerFirstRep().getActor().getResource().getIdElement().getIdPart());
-			immEHR.addPerformer().setActor(new Reference(
-					immIn.getPerformerFirstRep().getActor().getResource().fhirType() + "/" + immInPerfId));
-
-			chvacdToEHR.addImmunization(immEHR);
 		}
+		
+		// TODO: manage other resources Observation, Condition of the chvacd profiles
+		
+		// manage MedicationForImmunization resources
+		{
+			List<ChVacdMedicationForImmunization> medEntriesIn = chvacdIn.getEntry().stream()
+					.filter(entry -> entry.getResource() instanceof ChVacdMedicationForImmunization).map(entry -> {
+						ChVacdMedicationForImmunization imm = (ChVacdMedicationForImmunization) entry.getResource();
+						imm.setId(entry.getFullUrl());
+						return imm;
+					}).collect(Collectors.toList());
+
+			for (ChVacdMedicationForImmunization medIn : medEntriesIn) {
+				ChVacdMedicationForImmunization medEHR = medIn.copy();
+
+				if (medIn.getManufacturer() != null && medIn.getManufacturer().getResource() != null) {
+					String medInManId = RessourceUtil
+							.removeUrn(medIn.getManufacturer().getResource().getIdElement().getIdPart());
+					medEHR.setManufacturer(
+							new Reference(medIn.getManufacturer().getResource().fhirType() + "/" + medInManId));
+				}
+
+				chvacdToEHR.addMedication(medEHR);
+			}
+		}
+
 		return chvacdToEHR;
 	}
 
