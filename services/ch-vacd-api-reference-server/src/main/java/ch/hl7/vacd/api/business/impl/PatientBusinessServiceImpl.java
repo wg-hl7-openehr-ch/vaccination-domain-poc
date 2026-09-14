@@ -169,7 +169,7 @@ public class PatientBusinessServiceImpl extends AbstractBusinessService implemen
 					immunization.getStatus(), immunization.getVaccineCode().getCodingFirstRep().getCode());
 
 			ChVacdImmunization immun = copyImmunization(immunization, patient, chVaccinationRecordDocument);
-			chVaccinationRecordDocument.addImmunization(immun);
+//			chVaccinationRecordDocument.addImmunization(immun);
 		}
 
 		log.info("VaccinationRecord:\n{}",

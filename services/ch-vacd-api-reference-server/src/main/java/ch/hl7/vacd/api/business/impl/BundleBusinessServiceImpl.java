@@ -161,7 +161,7 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 					immunization.getStatus(), immunization.getVaccineCode().getCodingFirstRep().getCode());
 
 			ChVacdImmunization immun = copyImmunization(immunization, patientOut, bundleOut);
-			bundleOut.addImmunization(immun);
+//			bundleOut.addImmunization(immun);
 		}
 
 		log.info("Out bundle:\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundleOut));

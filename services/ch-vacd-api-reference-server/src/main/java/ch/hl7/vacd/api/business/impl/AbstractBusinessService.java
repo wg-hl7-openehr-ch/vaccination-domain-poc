@@ -11,6 +11,7 @@ import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.hl7.fhir.r4.model.Immunization;
+import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
@@ -239,8 +240,10 @@ public class AbstractBusinessService {
 
 		log.info("Performer IDs for immunization {}: {}", immunization.getId(), perfomerIds);
 		ChVacdImmunization immun = document.addImmunization();
+		String id = immun.getIdElement().getIdPart();
 		immunization.copyValues(immun);
-
+		immun.setId(id);
+		
 		for (String performerId : perfomerIds) {
 			if (performerId == null) {
 				continue;
@@ -264,6 +267,14 @@ public class AbstractBusinessService {
 				document.addPractitionerRole(perfomer);
 				immun.addPerformer().setActor(new Reference(perfomer));
 
+				Practitioner pract = (Practitioner) getResourceEntry("Practitioner",
+						RessourceUtil.removeUrn(perfomer.getPractitioner().getReference()));
+				document.addPractitioner(pract);
+
+				log.info("\n\nPerformer organization: {}\n\n", perfomer.getOrganization().getReference());
+				Organization org = (Organization) getResourceEntry("Organization",
+						RessourceUtil.removeUrn(perfomer.getOrganization().getReference()));
+				document.addOrganization(org);
 			}
 		}
 
