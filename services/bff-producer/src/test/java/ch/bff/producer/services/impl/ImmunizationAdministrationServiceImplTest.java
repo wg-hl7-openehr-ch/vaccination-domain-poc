@@ -316,6 +316,12 @@ class ImmunizationAdministrationServiceImplTest {
 			// TODO Auto-generated method stub
 			return null;
 		}
+
+		@Override
+		public Bundle getPatientLogEntries(String personId) {
+			// TODO Auto-generated method stub
+			return null;
+		}
 	}
 
 	private static class TxClientStub implements TxClient {

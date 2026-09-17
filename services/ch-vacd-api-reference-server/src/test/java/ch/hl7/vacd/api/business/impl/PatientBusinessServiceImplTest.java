@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
@@ -16,6 +18,7 @@ import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Enumeration;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Immunization;
+import org.hl7.fhir.r4.model.Medication;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Reference;
@@ -24,6 +27,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.projecthusky.fhir.core.ch.util.IdUtil;
+import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdAbstractDocument;
+import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
+import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdMedicationForImmunization;
+import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdVaccinationRecordDocument;
 import org.slf4j.LoggerFactory;
 
 import ca.uhn.fhir.context.FhirContext;
@@ -34,6 +42,7 @@ import ch.hl7.vacd.api.client.OpenFhirClient;
 import ch.hl7.vacd.api.entity.ResourceEntity;
 import ch.hl7.vacd.api.exceptions.PatientNotFoundException;
 import ch.hl7.vacd.api.openehr.ChVacdOpenEhrConstants;
+import ch.hl7.vacd.api.repo.ArtefactRepository;
 import ch.hl7.vacd.api.repo.ResourceRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,6 +50,9 @@ class PatientBusinessServiceImplTest {
 
 	@Mock
 	private ResourceRepository store;
+	
+	@Mock
+	protected ArtefactRepository artefactRepository;
 
 	@Mock
 	private EhrbaseClient ehrbaseClient;
@@ -54,7 +66,7 @@ class PatientBusinessServiceImplTest {
 	@BeforeEach
 	void setUp() throws Exception {
 		fhirContext = FhirContext.forR4();
-		service = new PatientBusinessServiceImpl(fhirContext, store, openFhirClient, ehrbaseClient);
+		service = new PatientBusinessServiceImpl(fhirContext, store, artefactRepository, openFhirClient, ehrbaseClient);
 	}
 
 	// -------------------------------------------------------------------------
@@ -65,8 +77,7 @@ class PatientBusinessServiceImplTest {
 	void testCreatePatient_assignsEhrIdentifier() {
 		String ehrId = UUID.randomUUID().toString();
 		when(ehrbaseClient.findOrCreateEhr(anyString())).thenReturn(ehrId);
-		when(store.findByResourceTypeAndResourceId(eq("Patient"), anyString()))
-				.thenReturn(Collections.emptyList());
+		when(store.findByResourceTypeAndResourceId(eq("Patient"), anyString())).thenReturn(Collections.emptyList());
 		when(store.save(any(ResourceEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
 		Patient patient = new Patient();
@@ -75,9 +86,10 @@ class PatientBusinessServiceImplTest {
 		Patient result = service.createPatient(patient);
 
 		assertNotNull(result);
-		assertTrue(result.getIdentifier().stream()
-				.anyMatch(i -> "urn:che:epr:ch-vacd:ehr-id".equals(i.getSystem())
-						&& ("urn:uuid:" + ehrId).equals(i.getValue())),
+		assertTrue(
+				result.getIdentifier().stream()
+						.anyMatch(i -> "urn:che:epr:ch-vacd:ehr-id".equals(i.getSystem())
+								&& ("urn:uuid:" + ehrId).equals(i.getValue())),
 				"Patient should carry the ehr-id identifier");
 		verify(ehrbaseClient, times(1)).findOrCreateEhr(anyString());
 		verify(store, atLeastOnce()).save(any(ResourceEntity.class));
@@ -88,8 +100,7 @@ class PatientBusinessServiceImplTest {
 		String fixedId = UUID.randomUUID().toString();
 		String ehrId = UUID.randomUUID().toString();
 		when(ehrbaseClient.findOrCreateEhr(fixedId)).thenReturn(ehrId);
-		when(store.findByResourceTypeAndResourceId(eq("Patient"), eq(fixedId)))
-				.thenReturn(Collections.emptyList());
+		when(store.findByResourceTypeAndResourceId(eq("Patient"), eq(fixedId))).thenReturn(Collections.emptyList());
 		when(store.save(any(ResourceEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
 		Patient patient = new Patient();
@@ -98,7 +109,8 @@ class PatientBusinessServiceImplTest {
 
 		Patient result = service.createPatient(patient);
 
-		// createIfAbsent rewrites the ID to just the id-part (without the resource type prefix)
+		// createIfAbsent rewrites the ID to just the id-part (without the resource type
+		// prefix)
 		assertTrue(result.getId().contains(fixedId), "Patient id should contain the fixed id");
 		verify(ehrbaseClient).findOrCreateEhr(fixedId);
 	}
@@ -120,23 +132,20 @@ class PatientBusinessServiceImplTest {
 		entity.setResourceId(patientId);
 		entity.setJson(json);
 
-		when(store.findByResourceTypeAndResourceId("Patient", patientId))
-				.thenReturn(List.of(entity));
+		when(store.findByResourceTypeAndResourceId("Patient", patientId)).thenReturn(List.of(entity));
 
 		Patient result = service.readPatient(new IdType("Patient", patientId));
 
 		assertNotNull(result);
 		assertEquals("Huber", result.getNameFirstRep().getFamily());
-		assertTrue(result.getMeta().getProfile().stream()
-				.anyMatch(p -> p.getValue().contains("ch-core-patient-epr")),
+		assertTrue(result.getMeta().getProfile().stream().anyMatch(p -> p.getValue().contains("ch-core-patient-epr")),
 				"Profile should be set on the returned patient");
 	}
 
 	@Test
 	void testReadPatient_notInStore_returnsDefault() {
 		String patientId = UUID.randomUUID().toString();
-		when(store.findByResourceTypeAndResourceId("Patient", patientId))
-				.thenReturn(Collections.emptyList());
+		when(store.findByResourceTypeAndResourceId("Patient", patientId)).thenReturn(Collections.emptyList());
 
 		Patient result = service.readPatient(new IdType("Patient", patientId));
 
@@ -158,9 +167,9 @@ class PatientBusinessServiceImplTest {
 		Patient p1 = buildPatient(id1, "Müller", "Anna");
 		Patient p2 = buildPatient(id2, "Meier", "Beat");
 
-		when(store.findByResourceType("Patient")).thenReturn(List.of(
-				toEntity("Patient", id1, fhirContext.newJsonParser().encodeResourceToString(p1)),
-				toEntity("Patient", id2, fhirContext.newJsonParser().encodeResourceToString(p2))));
+		when(store.findByResourceType("Patient"))
+				.thenReturn(List.of(toEntity("Patient", id1, fhirContext.newJsonParser().encodeResourceToString(p1)),
+						toEntity("Patient", id2, fhirContext.newJsonParser().encodeResourceToString(p2))));
 
 		List<Patient> result = service.searchPatient(null);
 
@@ -175,9 +184,9 @@ class PatientBusinessServiceImplTest {
 		Patient p1 = buildPatient(id1, "Müller", "Anna");
 		Patient p2 = buildPatient(id2, "Meier", "Beat");
 
-		when(store.findByResourceType("Patient")).thenReturn(List.of(
-				toEntity("Patient", id1, fhirContext.newJsonParser().encodeResourceToString(p1)),
-				toEntity("Patient", id2, fhirContext.newJsonParser().encodeResourceToString(p2))));
+		when(store.findByResourceType("Patient"))
+				.thenReturn(List.of(toEntity("Patient", id1, fhirContext.newJsonParser().encodeResourceToString(p1)),
+						toEntity("Patient", id2, fhirContext.newJsonParser().encodeResourceToString(p2))));
 
 		List<Patient> result = service.searchPatient(new StringParam("Müller"));
 
@@ -190,8 +199,8 @@ class PatientBusinessServiceImplTest {
 		String id1 = UUID.randomUUID().toString();
 		Patient p1 = buildPatient(id1, "Müller", "Anna");
 
-		when(store.findByResourceType("Patient")).thenReturn(List.of(
-				toEntity("Patient", id1, fhirContext.newJsonParser().encodeResourceToString(p1))));
+		when(store.findByResourceType("Patient"))
+				.thenReturn(List.of(toEntity("Patient", id1, fhirContext.newJsonParser().encodeResourceToString(p1))));
 
 		List<Patient> result = service.searchPatient(new StringParam("Unknown"));
 
@@ -236,7 +245,8 @@ class PatientBusinessServiceImplTest {
 	}
 
 	@Test
-	void testExportDocument_withImmunizations_returnsDocumentWithEntries() throws PatientNotFoundException, DataFormatException, IOException {
+	void testExportDocument_withImmunizations_returnsDocumentWithEntries()
+			throws PatientNotFoundException, DataFormatException, IOException {
 		String patientId = UUID.randomUUID().toString();
 		String ehrId = UUID.randomUUID().toString();
 
@@ -248,8 +258,8 @@ class PatientBusinessServiceImplTest {
 		immunization.setId(UUID.randomUUID().toString());
 		immunization.setStatus(Immunization.ImmunizationStatus.COMPLETED);
 		immunization.setOccurrence(new org.hl7.fhir.r4.model.DateTimeType(new Date()));
-		immunization.setVaccineCode(new CodeableConcept()
-				.addCoding(new Coding("http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs", "637", "Boostrix")));
+		immunization.setVaccineCode(new CodeableConcept().addCoding(
+				new Coding("http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs", "637", "Boostrix")));
 		immunization.setPatient(new Reference("Patient/" + patientId));
 
 		Bundle fhirBundle = new Bundle();
@@ -263,13 +273,15 @@ class PatientBusinessServiceImplTest {
 		when(ehrbaseClient.getImmunizations(ehrId)).thenReturn("{\"someOpenEhrFlat\":true}");
 		when(openFhirClient.toFhir("{\"someOpenEhrFlat\":true}", ChVacdOpenEhrConstants.VACC_TEMPLATE))
 				.thenReturn(fhirBundleJson);
-		// performer lookup - no performer on this immunization, so no further store calls
+		// performer lookup - no performer on this immunization, so no further store
+		// calls
 
 		Bundle result = service.exportDocument(new IdType("Patient", patientId), new Parameters());
 
 		assertNotNull(result);
 		verify(openFhirClient, times(1)).toFhir(anyString(), eq(ChVacdOpenEhrConstants.VACC_TEMPLATE));
-		LoggerFactory.getLogger(PatientBusinessServiceImplTest.class).info("Exported FHIR Bundle:\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(result));
+		LoggerFactory.getLogger(PatientBusinessServiceImplTest.class).info("Exported FHIR Bundle:\n{}",
+				fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(result));
 	}
 
 	// -------------------------------------------------------------------------
@@ -289,5 +301,36 @@ class PatientBusinessServiceImplTest {
 		e.setResourceId(id);
 		e.setJson(json);
 		return e;
+	}
+
+	@Test
+	void testCopyImmunization() {
+
+		Bundle bundle = FhirContext.forR4().newJsonParser().parseResource(Bundle.class,
+				this.getClass().getResourceAsStream("/openfhir_bundle.json"));
+		List<Immunization> immEntries = bundle.getEntry().stream().filter(e -> e.getResource() instanceof Immunization)
+				.map(e -> (Immunization) e.getResource()).collect(Collectors.toList());
+
+		Map<String, Medication> medEntries = bundle.getEntry().stream().filter(e -> e.getResource() instanceof Medication)
+				.map(e -> (Medication) e.getResource()).collect(Collectors.toMap(Medication::getId, m -> m));
+		
+
+		ChVacdImmunization immunization = new ChVacdImmunization();
+		immunization.setId(IdUtil.generateUrnUuid());
+		Patient patient = new Patient();
+		patient.setId(IdUtil.generateUrnUuid());
+		ChVacdMedicationForImmunization medication = new ChVacdMedicationForImmunization();
+		medication.setId(IdUtil.generateUrnUuid());
+		immunization.setMedication(medication);
+
+		FhirContext.forR4().newJsonParser().encodeResourceToString(immunization);
+
+		Map<String, Medication> medications = new java.util.HashMap<>();
+		medications.put(medication.getId(), medication);
+
+		ChVacdAbstractDocument document = new ChVacdVaccinationRecordDocument();
+		ChVacdImmunization ref = service.copyImmunization(immunization, patient, medications, document);
+
+		assertNotNull(ref);
 	}
 }

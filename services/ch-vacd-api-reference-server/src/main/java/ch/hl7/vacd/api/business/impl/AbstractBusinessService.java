@@ -5,33 +5,41 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DomainResource;
+import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.hl7.fhir.r4.model.Immunization;
+import org.hl7.fhir.r4.model.Medication;
 import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
-import org.projecthusky.fhir.core.ch.util.IdUtil;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdAbstractDocument;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationDocument;
+import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdMedicationForImmunization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ch.hl7.vacd.api.ChVacdApplicationConstants;
 import ch.hl7.vacd.api.client.EhrbaseClient;
 import ch.hl7.vacd.api.client.FeederAuditEnricher;
 import ch.hl7.vacd.api.client.OpenFhirClient;
+import ch.hl7.vacd.api.entity.ArtefactEntity;
+import ch.hl7.vacd.api.entity.ArtefactEntityType;
 import ch.hl7.vacd.api.entity.ResourceEntity;
 import ch.hl7.vacd.api.entity.ResourceIdentifierEntity;
 import ch.hl7.vacd.api.entity.ResourceReferenceEntity;
 import ch.hl7.vacd.api.openehr.ChVacdOpenEhrConstants;
+import ch.hl7.vacd.api.repo.ArtefactRepository;
 import ch.hl7.vacd.api.repo.ResourceRepository;
 import ch.hl7.vacd.api.utils.RessourceUtil;
 
@@ -41,13 +49,15 @@ public class AbstractBusinessService {
 
 	protected final FhirContext fhirContext;
 	protected final ResourceRepository store;
+	protected final ArtefactRepository artefactRepository;
 	protected final EhrbaseClient ehrbaseClient;
 	protected final OpenFhirClient openFhirClient;
 
-	public AbstractBusinessService(FhirContext fhirContext, ResourceRepository store, OpenFhirClient openFhirClient,
-			EhrbaseClient ehrbaseClient) {
+	public AbstractBusinessService(FhirContext fhirContext, ResourceRepository store,
+			ArtefactRepository artefactRepository, OpenFhirClient openFhirClient, EhrbaseClient ehrbaseClient) {
 		this.fhirContext = fhirContext;
 		this.store = store;
+		this.artefactRepository = artefactRepository;
 		this.openFhirClient = openFhirClient;
 		this.ehrbaseClient = ehrbaseClient;
 
@@ -95,7 +105,73 @@ public class AbstractBusinessService {
 		} catch (Exception e) {
 			log.error("Error saving Immunization resource to local store: {}", e.getMessage(), e);
 		}
+		if (immunization.getManufacturer() != null && immunization.getManufacturer().getReference() != null) {
+			try {
+				ResourceReferenceEntity refEntity = new ResourceReferenceEntity()//
+						.setTargetType("Organization")//
+						.setTargetId(RessourceUtil.removeUrn(immunization.getManufacturer().getReference()))//
+						.setSourceEntity(entity)//
+						.setSourceField("Immunization.manufacturer");
+
+				entity.addReference(refEntity);
+
+				store.save(entity);
+			} catch (Exception e) {
+				log.error("Error saving Immunization resource to local store: {}", e.getMessage(), e);
+			}
+		}
+		try {
+			String medication = getMedicationId(immunization);
+			if (medication != null) {
+				ResourceReferenceEntity refEntity = new ResourceReferenceEntity()//
+						.setTargetType("Medication")//
+						.setTargetId(RessourceUtil.removeUrn(medication))//
+						.setSourceEntity(entity)//
+						.setSourceField("Immunization.medication");
+				entity.addReference(refEntity);
+
+			}
+			store.save(entity);
+		} catch (Exception e) {
+			log.error("Error saving Immunization resource to local store: {}", e.getMessage(), e);
+		}
 		return entity;
+	}
+
+	protected ResourceEntity createIfAbsent(Medication medication, Map<Resource, String> fullUrlMap) {
+		ResourceEntity entity = createIfAbsent((Resource) medication, fullUrlMap);
+		try {
+			ResourceReferenceEntity refEntity = new ResourceReferenceEntity()//
+					.setTargetType("Organization")//
+					.setTargetId(RessourceUtil.removeUrn(medication.getManufacturer().getReference()))//
+					.setSourceEntity(entity)//
+					.setSourceField("Medication.manufacturer");
+
+			entity.addReference(refEntity);
+			store.save(entity);
+		} catch (Exception e) {
+			log.error("Error saving Immunization resource to local store: {}", e.getMessage(), e);
+		}
+		return entity;
+	}
+
+	private String getMedicationId(Immunization immunization) {
+		Extension medExt = immunization.getExtensionByUrl(
+				"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-immunization-medication-reference");
+		if (medExt.getValue() instanceof Reference medRef) {
+			return medRef.getReference();
+		}
+		return null;
+	}
+
+	private Medication getMedication(Immunization immunization) {
+		Medication medication = null;
+		Extension medExt = immunization.getExtensionByUrl(
+				"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-immunization-medication-reference");
+		if (medExt.getValue() instanceof Reference medRef && medRef.getResource() instanceof Medication) {
+			return (Medication) medRef.getResource();
+		}
+		return null;
 	}
 
 	// --- CreateIfAbsent ---
@@ -113,6 +189,16 @@ public class AbstractBusinessService {
 			entity.setJson(fhirContext.newJsonParser().encodeResourceToString(resource));
 
 			RessourceUtil.getIdentifiers(resource).forEach(identifier -> {
+
+				if (ChVacdApplicationConstants.GLN_OID.equals(identifier.getSystem())
+						&& !IdentifierUse.OFFICIAL.equals(identifier.getUse())) {
+					identifier.setUse(IdentifierUse.OFFICIAL);
+				}
+				if (ChVacdApplicationConstants.AHV_OID.equals(identifier.getSystem())
+						&& !IdentifierUse.OFFICIAL.equals(identifier.getUse())) {
+					identifier.setUse(IdentifierUse.OFFICIAL);
+				}
+
 				entity.addIdentifier(new ResourceIdentifierEntity()//
 						.setIdSystem(identifier.getSystem())//
 						.setIdValue(identifier.getValue())//
@@ -138,7 +224,8 @@ public class AbstractBusinessService {
 	}
 
 	protected Bundle processImmunizationAdmnistration(Bundle bundle, Map<Resource, String> fullUrlMap,
-			List<String> compositionUids2, List<Immunization> immunizations, String ehrId, String patientId) {
+			List<String> compositionUids2, List<Immunization> immunizations, List<Medication> medications, String ehrId,
+			String patientId, String sessionId) {
 
 		ChVacdImmunizationAdministrationDocument chvacdToEHR = RessourceUtil
 				.createOpenFhirImmunizationAdministrationDocument(bundle, fhirContext);
@@ -146,14 +233,17 @@ public class AbstractBusinessService {
 //		String bundleJson = fhirContext.newJsonParser().encodeResourceToString(bundle);
 		String bundleJson = fhirContext.newJsonParser().encodeResourceToString(chvacdToEHR);
 		log.info("New Bundle\n{}", bundleJson);
+		logArtefact(sessionId, patientId, ArtefactEntityType.PROCBUNDLE, bundleJson);
 
 		// Convert FHIR Bundle to openEHR FLAT format via openFHIR.
 		String flatJson = openFhirClient.toOpenEhr(bundleJson);
 		log.info("Flat Json from openFHIR:\n{}", flatJson);
+		logArtefact(sessionId, patientId, ArtefactEntityType.FLAT, flatJson);
 
 		// Enrich with feeder_audit (Konkretisierung §13) and composition metadata.
 		String enrichedFlat = FeederAuditEnricher.addOriginal(flatJson, bundleJson);
 		log.info("Enriched Flat Json from openFHIR:\n{}", enrichedFlat);
+		logArtefact(sessionId, patientId, ArtefactEntityType.ENRICHED, enrichedFlat);
 
 		// Split the enriched FLAT JSON by medication_management:X identifier.
 		// Each immunization gets its own complete document with common fields.
@@ -166,7 +256,10 @@ public class AbstractBusinessService {
 			String splitDoc = splitDocuments.get(i);
 
 			log.info("Split document for immunization index {}:\n{}", i, splitDoc);
+			logArtefact(sessionId, patientId, ArtefactEntityType.SPLIT, splitDoc);
 
+			// Persist the split document to the EHR and get the resulting compositionUid
+			// back.
 			String compositionUid = ehrbaseClient.postCompositionFlat(ehrId, splitDoc,
 					ChVacdOpenEhrConstants.ADMIN_TEMPLATE);
 			compositionUids.add(compositionUid);
@@ -176,10 +269,20 @@ public class AbstractBusinessService {
 			// retrieval.
 			if (i < immunizations.size()) {
 				Immunization imm = immunizations.get(i);
-				imm.addIdentifier(
-						new Identifier().setSystem("urn:che:epr:ch-vacd:composition-uid").setValue(compositionUid));
+				imm.addIdentifier(new Identifier()//
+						.setSystem("urn:che:epr:ch-vacd:composition-uid")//
+						.setValue(compositionUid)//
+						.setUse(IdentifierUse.SECONDARY));
+
+				Medication medication = getMedication(imm);
+				medication.addIdentifier(new Identifier()//
+						.setSystem("urn:che:epr:ch-vacd:composition-uid")//
+						.setValue(compositionUid)//
+						.setUse(IdentifierUse.SECONDARY));
 
 				createIfAbsent(imm, fullUrlMap);
+				
+				createIfAbsent(medication, fullUrlMap);
 
 				String immId = RessourceUtil.extractId(imm, fullUrlMap);
 				log.info("Stored Immunization id={} with compositionUid={}", immId, compositionUid);
@@ -205,7 +308,7 @@ public class AbstractBusinessService {
 	}
 
 	protected ChVacdImmunization copyImmunization(Immunization immunization, Patient patient,
-			ChVacdAbstractDocument document) {
+			Map<String, Medication> medEntries, ChVacdAbstractDocument document) {
 
 		// fill up the recorder
 		// TODO: recorder
@@ -227,7 +330,9 @@ public class AbstractBusinessService {
 
 		log.info("Performer IDs for immunization {}: {}", immunization.getId(), perfomerIds);
 		ChVacdImmunization immun = document.addImmunization();
+		String id = immun.getIdElement().getIdPart();
 		immunization.copyValues(immun);
+		immun.setId(id);
 
 		for (String performerId : perfomerIds) {
 			if (performerId == null) {
@@ -243,14 +348,6 @@ public class AbstractBusinessService {
 			if (perfomerDR != null && perfomerDR instanceof Practitioner) {
 				Practitioner perfomer = (Practitioner) perfomerDR;
 				document.addPractitioner(perfomer);
-//				IdUtil.checkId(perfomer);
-////				Practitioner practitioner = getResourceEntry("Practitioner",
-////						RessourceUtil.removeUrn(perfomer.getIdPart()));
-//				if (checkEntryAbsent(document, perfomer)) {
-//					document.addPractitioner(perfomer);
-////					document.addEntry().setResource(perfomer).setFullUrl("urn:uuid:" + perfomer.getIdPart());
-////					perfomer.setIdElement(null);
-//				}
 				immun.addPerformer().setActor(new Reference(perfomer));
 
 			}
@@ -258,32 +355,26 @@ public class AbstractBusinessService {
 			else if (perfomerDR != null && perfomerDR instanceof PractitionerRole) {
 				PractitionerRole perfomer = (PractitionerRole) perfomerDR;
 				document.addPractitionerRole(perfomer);
-//				IdUtil.checkId(perfomer);
-//				Practitioner practitioner = getResourceEntry("Practitioner",
-//						RessourceUtil.removeUrn(perfomer.getPractitioner().getReferenceElement().getIdPart()));
-//				IdUtil.checkId(practitioner);
-//				if (checkEntryAbsent(document, practitioner)) {
-//					document.addEntry().setResource(practitioner).setFullUrl("urn:uuid:" + practitioner.getIdPart());
-////					practitioner.setIdElement(null);
-//				}
-//				perfomer.setPractitioner(new Reference(practitioner));
-//
-//				Organization organization = getResourceEntry("Organization",
-//						RessourceUtil.removeUrn(perfomer.getOrganization().getReferenceElement().getIdPart()));
-//				IdUtil.checkId(organization);
-//				if (checkEntryAbsent(document, organization)) {
-//					document.addEntry().setResource(organization).setFullUrl("urn:uuid:" + organization.getIdPart());
-////					organization.setIdElement(null);
-//				}
-//				perfomer.setOrganization(new Reference(organization));
-//
-//				if (checkEntryAbsent(document, perfomer)) {
-//					document.addEntry().setResource(perfomer).setFullUrl("urn:uuid:" + perfomer.getIdPart());
-////					perfomer.setIdElement(null);
-//				}
-//				perfomer.setIdElement(null);
 				immun.addPerformer().setActor(new Reference(perfomer));
 
+				Practitioner pract = (Practitioner) getResourceEntry("Practitioner",
+						RessourceUtil.removeUrn(perfomer.getPractitioner().getReference()));
+				document.addPractitioner(pract);
+
+				Organization org = (Organization) getResourceEntry("Organization",
+						RessourceUtil.removeUrn(perfomer.getOrganization().getReference()));
+				document.addOrganization(org);
+			}
+		}
+
+		String medicationId = getMedicationId(immunization);
+		if(medicationId != null) {
+			Medication medication = medEntries.get(medicationId);
+			if (medication != null) {
+				ChVacdMedicationForImmunization medForImm = new ChVacdMedicationForImmunization();
+				medication.copyValues(medForImm);
+				medForImm.setId(medicationId);
+				document.addMedication(medForImm);
 			}
 		}
 
@@ -295,12 +386,23 @@ public class AbstractBusinessService {
 		return immun;
 	}
 
-	private boolean checkEntryAbsent(ChVacdAbstractDocument document, Resource resource) {
-		return !document.getEntry().stream()//
-				.filter(e -> e.getResource().fhirType().equals(resource.fhirType())
-						&& e.getFullUrl().equals("urn:uuid:" + resource.getIdElement().getIdPart()))//
-				.findFirst()//
-				.isPresent();
+	protected void logArtefact(String sessionId, String patientId, ArtefactEntityType inbundle, String artefactString) {
+		if (StringUtils.isEmpty(artefactString)) {
+			return;
+		}
+		try {
+			artefactRepository.save(new ArtefactEntity(sessionId, patientId, inbundle, artefactString));
+		} catch (Exception e) {
+			log.debug("Error saving ArtefactEntity to local store: {}", e.getMessage(), e);
+		}
 	}
+
+//	private boolean checkEntryAbsent(ChVacdAbstractDocument document, Resource resource) {
+//		return !document.getEntry().stream()//
+//				.filter(e -> e.getResource().fhirType().equals(resource.fhirType())
+//						&& e.getFullUrl().equals("urn:uuid:" + resource.getIdElement().getIdPart()))//
+//				.findFirst()//
+//				.isPresent();
+//	}
 
 }

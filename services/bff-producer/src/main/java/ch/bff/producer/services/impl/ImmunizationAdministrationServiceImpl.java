@@ -10,6 +10,7 @@ import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.hl7.fhir.r4.model.Immunization;
 import org.hl7.fhir.r4.model.Medication;
 import org.hl7.fhir.r4.model.Organization;
@@ -142,6 +143,12 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 //		imm.setId("urn:uuid:" + immunizationUuid);
 		imm.setStatus(Immunization.ImmunizationStatus.COMPLETED);
 //		imm.getMeta().addProfile("http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-immunization-administration");
+
+		imm.addIdentifier()//
+				.setSystem("urn:ietf:rfc:3986")//
+				.setValue("urn:uuid:" + java.util.UUID.randomUUID())//
+				.setUse(IdentifierUse.USUAL);
+
 		imm.setPatient(new Reference(fhirPatient));
 		var vaccineCode = toCoding(dto.vaccineName());
 		imm.setVaccineCode(new CodeableConcept().addCoding(vaccineCode));
@@ -155,11 +162,17 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 
 		if (StringUtils.hasText(dto.vaccineCode())) {
 			ChVacdMedicationForImmunization medication = bundle.addMedication();
+			medication.addIdentifier()//
+					.setSystem("urn:ietf:rfc:3986")//
+					.setValue("urn:uuid:" + java.util.UUID.randomUUID())//
+					.setUse(IdentifierUse.USUAL);
 			medication.setCode(new CodeableConcept()
 					.addCoding(new Coding().setSystem("urn:oid:2.51.1.1").setCode(dto.vaccineCode())));
 			medication.setStatus(Medication.MedicationStatus.ACTIVE);
 			if (manufacturer != null) {
-				medication.setManufacturer(new Reference(manufacturer));
+				Reference ref = new Reference(manufacturer);
+				ref.setDisplay(manufacturer.getName());
+				medication.setManufacturer(ref);
 			}
 			imm.setMedication(medication);
 		}
@@ -247,7 +260,7 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 	private Practitioner buildPractitioner(ChCorePractitioner p) {
 //		var p = new ChCorePractitionerEpr();
 //		p.setId("urn:uuid:" + practitionerUuid);
-		p.addIdentifier().setSystem("urn:oid:2.51.1.3").setValue("7601000123456");
+		p.addIdentifier().setSystem("urn:oid:2.51.1.3").setValue("7601000123456").setUse(IdentifierUse.OFFICIAL);
 		p.addName().setFamily("Müller").addGiven("Sarah");
 		return p;
 	}
@@ -255,7 +268,7 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 	private Organization buildOrganization(ChCoreOrganization org) {
 //		var org = new ChCoreOrganizationEpr();
 		// org.setId("urn:uuid:" + organizationUuid);
-		org.addIdentifier().setSystem("urn:oid:2.51.1.3").setValue("7601000999999");
+		org.addIdentifier().setSystem("urn:oid:2.51.1.3").setValue("7601000999999").setUse(IdentifierUse.OFFICIAL);
 		org.setName("Praxis am Bahnhof");
 		return org;
 	}

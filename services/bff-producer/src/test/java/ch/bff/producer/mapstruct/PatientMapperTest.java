@@ -10,9 +10,13 @@ import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
+import org.slf4j.LoggerFactory;
+
+import ca.uhn.fhir.context.FhirContext;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -23,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PatientMapperTest {
 
-	private static final String AHV_SYSTEM = "urn:oid:2.16.756.5.30.1.123.100.1.1.1";
+	
 
 	private PatientMapper mapper;
 
@@ -105,7 +109,7 @@ class PatientMapperTest {
 	void toPatientDto_ahvBySystem_extractsCorrectly() {
 		Patient patient = new Patient();
 		patient.addName().setFamily("Muster").addGiven("Max");
-		patient.addIdentifier().setSystem(AHV_SYSTEM).setValue("756.1234.5678.90");
+		patient.addIdentifier().setSystem(PatientMapper.AHV_SYSTEM).setValue("756.1234.5678.90").setUse(IdentifierUse.OFFICIAL);
 		patient.addIdentifier().setSystem("other-system").setValue("other-value");
 
 		PatientDto dto = mapper.toPatientDto(patient);
@@ -256,6 +260,15 @@ class PatientMapperTest {
 
 		assertTrue(patient.getTelecom().isEmpty());
 	}
+	@Test
+	void toPatient_emptyEmailAndPhone_emptyEmailAndTelecom() {
+		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, "", "", null);
+
+		Patient patient = mapper.toPatient(dto);
+		LoggerFactory.getLogger(getClass()).info("Telecoms: {}", FhirContext.forR4().newJsonParser().setPrettyPrint(true).encodeResourceToString(patient));
+		assertTrue(patient.getTelecom().isEmpty());
+		
+	}
 
 	@Test
 	void toPatient_onlyEmail_onlyEmailTelecom() {
@@ -266,6 +279,17 @@ class PatientMapperTest {
 		assertEquals(1, patient.getTelecom().size());
 		assertEquals(ContactPoint.ContactPointSystem.EMAIL, patient.getTelecom().get(0).getSystem());
 		assertEquals("test@example.com", patient.getTelecom().get(0).getValue());
+	}
+	
+	@Test
+	void toPatient_onlyTelephone_onlyTelecom() {
+		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, "", "+41 79 999 88 77", null);
+
+		Patient patient = mapper.toPatient(dto);
+
+		assertEquals(1, patient.getTelecom().size());
+		assertEquals(ContactPoint.ContactPointSystem.PHONE, patient.getTelecom().get(0).getSystem());
+		assertEquals("+41 79 999 88 77", patient.getTelecom().get(0).getValue());
 	}
 
 	// -------------------------------------------------------------------------
@@ -279,6 +303,7 @@ class PatientMapperTest {
 		PatientDto dto = mapper.toPatientDto(original);
 		PatientCreateDto cdto = new PatientCreateDto(dto.lastName(), dto.firstName(), dto.birthDate(), dto.gender(), dto.address(), dto.email(), dto.phoneNumber(), dto.ahvNumber());
 		Patient restored = mapper.toPatient(cdto);
+		LoggerFactory.getLogger(getClass()).info("Original: {}", FhirContext.forR4().newJsonParser().setPrettyPrint(true).encodeResourceToString(original));
 
 		assertEquals(original.getNameFirstRep().getFamily(), restored.getNameFirstRep().getFamily());
 		assertEquals(original.getNameFirstRep().getGivenAsSingleString(),
@@ -308,7 +333,7 @@ class PatientMapperTest {
 		patient.setGender(Enumerations.AdministrativeGender.MALE);
 		patient.setBirthDate(Date.from(LocalDate.of(1980, 6, 15).atStartOfDay(ZoneId.systemDefault()).toInstant()));
 
-		patient.addIdentifier().setSystem(AHV_SYSTEM).setValue("756.1234.5678.90");
+		patient.addIdentifier().setSystem(PatientMapper.AHV_SYSTEM).setValue("756.1234.5678.90").setUse(IdentifierUse.OFFICIAL);
 
 		Address address = new Address();
 		address.addLine("Bahnhofstrasse 1");

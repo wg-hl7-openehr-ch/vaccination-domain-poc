@@ -4,6 +4,8 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
   const { patients } = window.AppData;
   const patient = (patients || []).find((p) => p.id === patientId);
   const [records, setRecords] = useState([]);
+  const [logEntries, setLogEntries] = useState([]);
+  const [logLoading, setLogLoading] = useState(true);
   const [vaxLoading, setVaxLoading] = useState(true);
   const [importDone, setImportDone] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -27,6 +29,21 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
 
   useEffect(() => {
     loadVaccinations();
+  }, [patientId]);
+
+  useEffect(() => {
+    setLogLoading(true);
+    DataService.patientLog(patientId)
+      .then((res) => res.json())
+      .then((entries) => {
+        setLogEntries(Array.isArray(entries) ? entries : []);
+        setLogLoading(false);
+      })
+      .catch((err) => {
+        console.warn('Patienten-Logs konnten nicht geladen werden:', err);
+        setLogEntries([]);
+        setLogLoading(false);
+      });
   }, [patientId]);
 
   // Sync browser back button with the in-app back navigation
@@ -73,6 +90,25 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
     } catch (err) {
       console.error('Export fehlgeschlagen:', err);
       showError('Export fehlgeschlagen: ' + (err.message || err));
+    }
+  };
+
+  const handleExportPatient = async () => {
+    try {
+      const res = await DataService.exportPatient(patientId, 'json');
+      const jsonContent = await res.json();
+      const blob = new Blob([JSON.stringify(jsonContent, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Patient-${patient.lastName}-${patient.firstName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Patienten-Export fehlgeschlagen:', err);
+      showError('Patienten-Export fehlgeschlagen: ' + (err.message || err));
     }
   };
 
@@ -123,7 +159,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
 
   return (
     <main className="page">
-      <button className="back-link" onClick={onBack}>
+      <button className="back-link" onClick={onBack} title="Zurück zur Patient:innenliste" aria-label="Zurück zur Patient:innenliste">
         <Icon.Back /> Zurück zur Patient:innenliste
       </button>
 
@@ -164,7 +200,12 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
           <PatientAvatar patient={patient} size={64} />
           <div>
             <div className="patient-name-line">
-              <h1 className="patient-name">{patient.lastName}, {patient.firstName}</h1>
+              <div className="patient-name-container">
+                <h1 className="patient-name">{patient.lastName}, {patient.firstName}</h1>
+              </div>
+              <div className="patient-export-container">
+                <button className="btn btn-primary" onClick={handleExportPatient} title="Patient export" aria-label="Patient export"><Icon.Download /></button>
+              </div>
             </div>
             <div className="patient-meta">
               <span><Icon.Cake /> {formatDate(patient.dob, { short: true })} <em className="muted">·</em> {patient.age ?? calcAge(patient.dob)} Jahre <em className="muted">·</em> {patient.sex === "F" ? "weiblich" : "männlich"}</span>
@@ -172,6 +213,15 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
               <span><Icon.Mail /> {patient.email}</span>
               <span><Icon.Phone /> <span className="tnum">{patient.phone}</span></span>
               <span><Icon.User /> AHV <span className="mono">{patient.ahv}</span></span>
+              <span>
+                <Icon.User /> ID <span className="mono">{patient.id}</span>
+                <button
+                  className="copy-id-btn"
+                  title="ID kopieren"
+                  aria-label="ID kopieren"
+                  onClick={() => navigator.clipboard.writeText(patient.id)}
+                ><Icon.Copy /></button>
+              </span>
             </div>
           </div>
         </div>
@@ -184,15 +234,40 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
         </div>
       </section>
 
+
+
       <div className="detail-actions">
-        <div className="detail-actions-title">
-          <h2 className="section-title">Impfausweis</h2>
+        <div className="detail-actions-head">
+          <div className="detail-actions-title">
+            <h2 className="section-title">Impfausweis</h2>
+          </div>
+          <div className="detail-actions-right">
+            <button className="btn btn-primary" onClick={handleImportVaccination} disabled={records.length > 0} title="Impfausweis importieren" aria-label="Impfausweis importieren"><Icon.Upload /></button>
+            <button className="btn btn-primary" onClick={handleExportVaccination} disabled={records.length === 0} title="Impfausweis exportieren" aria-label="Impfausweis exportieren"><Icon.Download /></button>
+            <button className="btn btn-primary" onClick={onAddVaccination} title="Neue Impfung erfassen" aria-label="Neue Impfung erfassen"><Icon.Plus /></button>
+          </div>
         </div>
-        <div className="detail-actions-right">
-          <button className="btn btn-primary" onClick={handleImportVaccination} disabled={records.length > 0}><Icon.Upload /> Impfausweis importieren</button>
-          <button className="btn btn-primary" onClick={handleExportVaccination} disabled={records.length === 0}><Icon.Download /> Impfausweis exportieren</button>
-          <button className="btn btn-primary" onClick={onAddVaccination}><Icon.Plus /> Neue Impfung erfassen</button>
-        </div>
+
+        <details className="patient-log-collapsible">
+          <summary>
+            Patienten-Logeintraege {logLoading ? '(laedt …)' : `(${logEntries.length})`}
+          </summary>
+          <div className="patient-log-content">
+            {logLoading && <div className="patient-log-empty">Logeintraege werden geladen …</div>}
+            {!logLoading && logEntries.length === 0 && <div className="patient-log-empty">Keine Logeintraege vorhanden.</div>}
+            {!logLoading && logEntries.length > 0 &&
+              <ul className="patient-log-list">
+                {logEntries.map((entry, idx) => (
+                  <li key={`${entry.artefactType || 'entry'}-${idx}`} className="patient-log-item">
+                    <div className="patient-log-type">{entry.artefactType || 'Unbekannt'}</div>
+                    <div className="patient-log-timestamp">{formatDate(entry.timestamp)}</div>
+                    <pre className="patient-log-artefact">{entry.artefact || '-'}</pre>
+                  </li>
+                ))}
+              </ul>
+            }
+          </div>
+        </details>
       </div>
 
       {vaxLoading &&

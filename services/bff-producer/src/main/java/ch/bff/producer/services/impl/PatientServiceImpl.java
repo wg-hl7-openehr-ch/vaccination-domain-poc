@@ -2,11 +2,16 @@ package ch.bff.producer.services.impl;
 
 import ch.bff.producer.client.FhirClient;
 import ch.bff.producer.mapstruct.PatientMapper;
+import ch.bff.producer.provider.models.LogEntryDto;
 import ch.bff.producer.provider.models.PatientCreateDto;
 import ch.bff.producer.provider.models.PatientDto;
 import ch.bff.producer.services.PatientService;
 
+import org.hl7.fhir.r4.model.Binary;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.ListResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -41,8 +46,38 @@ public class PatientServiceImpl extends AbstractReadService implements PatientSe
 		patient.addIdentifier()//
 				.setSystem("urn:ietf:rfc:3986")//
 				.setValue("urn:uuid:" + java.util.UUID.randomUUID())//
-				.setUse(org.hl7.fhir.r4.model.Identifier.IdentifierUse.USUAL);
+				.setUse(IdentifierUse.USUAL);
 		org.hl7.fhir.r4.model.Patient created = fhirClient.createPatient(patient);
 		return patientMapper.toPatientDto(created);
 	}
+
+	@Override
+	public String exportPatient(String patientId, String format) {
+		Patient patient = fhirClient.getPatientById(patientId);
+		FhirContext ctx = FhirContext.forR4();
+		if ("json".equalsIgnoreCase(format)) {
+			return ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(patient);
+		} else if ("xml".equalsIgnoreCase(format)) {
+			return ctx.newXmlParser().setPrettyPrint(true).encodeResourceToString(patient);
+		} else {
+			return "";
+		}
+	}
+
+	@Override
+	public List<LogEntryDto> getLogEntries(String personId) {
+		return fhirClient.getPatientLogEntries(personId).getEntry().stream()
+				.filter(entry -> entry.getResource() instanceof ListResource)
+				.map(entry -> (ListResource) entry.getResource())
+				.flatMap(listResource -> listResource.getEntry().stream()).map(listEntry -> {
+					LogEntryDto logEntryDto = new LogEntryDto(//
+							listEntry.getDate(),
+							listEntry.getFlag().getCodingFirstRep().getDisplay(), //
+							(listEntry.getItem().getResource() instanceof Binary
+									? new String( ((Binary) listEntry.getItem().getResource()).getData() )
+									: ""));
+					return logEntryDto;
+				}).toList();
+	}
+
 }

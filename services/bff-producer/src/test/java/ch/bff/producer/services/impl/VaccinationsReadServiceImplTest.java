@@ -162,5 +162,11 @@ class VaccinationsReadServiceImplTest {
 			// TODO Auto-generated method stub
 			return null;
 		}
+
+		@Override
+		public Bundle getPatientLogEntries(String personId) {
+			// TODO Auto-generated method stub
+			return null;
+		}
 	}
 }

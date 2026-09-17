@@ -9,10 +9,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ch.bff.producer.provider.models.AddressDto;
 import ch.bff.producer.provider.models.Gender;
+import ch.bff.producer.provider.models.LogEntryDto;
 import ch.bff.producer.provider.models.PatientCreateDto;
 import ch.bff.producer.provider.models.PatientDto;
 import ch.bff.producer.services.PatientService;
@@ -36,6 +38,26 @@ public class PatientProvider {
 		} catch (Exception e) {
 			log.warn("FHIR server unavailable, falling back to sample patients: {}", e.getMessage(), e);
 			return getSamplePatients();
+		}
+	}
+
+	@GetMapping("/export")
+	public String exportPatient(@RequestParam String personId, @RequestParam String format) {
+		try {
+			return patientReadService.exportPatient(personId, format);
+		} catch (Exception e) {
+			log.warn("FHIR unavailable, patient export failed: {}", e.getMessage(), e);
+			return null;
+		}
+	}
+
+	@GetMapping("/log-entries")
+	public List<LogEntryDto> getLogEntries(@RequestParam String personId) {
+		try {
+			return patientReadService.getLogEntries(personId);
+		} catch (Exception e) {
+			log.warn("FHIR unavailable, log entries retrieval failed: {}", e.getMessage(), e);
+			return List.of();
 		}
 	}
 	

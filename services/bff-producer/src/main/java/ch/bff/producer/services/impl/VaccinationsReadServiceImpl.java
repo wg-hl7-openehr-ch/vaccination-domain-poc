@@ -1,9 +1,9 @@
 package ch.bff.producer.services.impl;
 
-import ch.bff.producer.client.FhirClient;
-import ch.bff.producer.mapstruct.VaccinationsMapper;
-import ch.bff.producer.provider.models.VaccinationDto;
-import ch.bff.producer.services.VaccinationsReadService;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Coding;
@@ -15,11 +15,10 @@ import org.hl7.fhir.r4.model.Reference;
 import org.springframework.stereotype.Service;
 
 import ca.uhn.fhir.context.FhirContext;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import ch.bff.producer.client.FhirClient;
+import ch.bff.producer.mapstruct.VaccinationsMapper;
+import ch.bff.producer.provider.models.VaccinationDto;
+import ch.bff.producer.services.VaccinationsReadService;
 
 @Service
 public class VaccinationsReadServiceImpl extends AbstractReadService implements VaccinationsReadService {
@@ -48,6 +47,9 @@ public class VaccinationsReadServiceImpl extends AbstractReadService implements 
 					immunizationMap.put(entry.getFullUrl(), imm);
 				}
 				String idPart = imm.getIdElement().getIdPart();
+				if (idPart != null && !idPart.isEmpty() && idPart.startsWith("urn:uuid:")) {
+					idPart = idPart.substring("urn:uuid:".length());
+				}
 				immunizationMap.put(imm.fhirType() + "/" + idPart, imm);
 			}
 		}

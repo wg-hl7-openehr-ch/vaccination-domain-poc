@@ -2,7 +2,34 @@
 
 function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
   const { manufacturers, routes, sites, reasons } = window.AppData;
-  const today = new Date().toISOString().slice(0, 10);
+
+  const formatIsoDateToEuropean = (iso) => {
+    const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "";
+    return `${m[3]}.${m[2]}.${m[1]}`;
+  };
+
+  const parseEuropeanDateToIso = (value) => {
+    const m = value.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (!m) return null;
+
+    const day = Number(m[1]);
+    const month = Number(m[2]);
+    const year = Number(m[3]);
+    const dt = new Date(year, month - 1, day);
+
+    if (dt.getFullYear() !== year || dt.getMonth() !== month - 1 || dt.getDate() !== day) return null;
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  };
+
+  const formatEuropeanDateInput = (value) => {
+    const digits = value.replace(/\D/g, "").slice(0, 8);
+    if (digits.length > 4) return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
+    if (digits.length > 2) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+    return digits;
+  };
+
+  const today = formatIsoDateToEuropean(new Date().toISOString().slice(0, 10));
 
   const [vaccineCatalog, setVaccineCatalog] = useState(window.AppData.vaccineCatalog);
 
@@ -36,10 +63,13 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
   const SUPPRESS_ERROR_ON_SUBMIT = true;
   const set = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
   const touch = (k) => setTouched((prev) => ({ ...prev, [k]: true }));
+  const setDateField = (k, value) => set(k, formatEuropeanDateInput(value));
 
   const errors = {};
   if (!form.vaccine) errors.vaccine = "Pflichtfeld";
-  if (!form.date) errors.date = "Pflichtfeld";
+  if (!form.date.trim()) errors.date = "Pflichtfeld";
+  else if (!parseEuropeanDateToIso(form.date)) errors.date = "Format: TT.MM.JJJJ";
+  if (form.expiry.trim() && !parseEuropeanDateToIso(form.expiry)) errors.expiry = "Format: TT.MM.JJJJ";
   if (!form.batch) errors.batch = "Pflichtfeld";
   if (!form.amount) errors.amount = "Pflichtfeld";
 
@@ -47,9 +77,13 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
 
   const submit = async () => {
     if (!isValid) {
-      setTouched({ vaccine: 1, date: 1, batch: 1, amount: 1 });
+      setTouched({ vaccine: 1, date: 1, expiry: 1, batch: 1, amount: 1 });
       return;
     }
+
+    const normalizedVaccinationDate = parseEuropeanDateToIso(form.date);
+    const normalizedExpiryDate = form.expiry.trim() ? parseEuropeanDateToIso(form.expiry) : null;
+    if (!normalizedVaccinationDate || (form.expiry.trim() && !normalizedExpiryDate)) return;
 
     setSubmitting(true);
     try {
@@ -63,8 +97,8 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
         vaccineCode: form.vaccineCode,
         marketingAuthorizationHolder: form.manufacturer,
         lotNumber: form.batch,
-        expiryDate: form.expiry || null,
-        vaccinationDate: form.date,
+        expiryDate: normalizedExpiryDate,
+        vaccinationDate: normalizedVaccinationDate,
         routeOfAdministration: DataService.routeToApi(form.route),
         administeredDose: { value: amountVal, unit: form.unit },
         siteOfAdministration: form.site,
@@ -137,8 +171,9 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
                 error={touched.manufacturer && errors.manufacturer}
               />
              
-              <Field label="Verfallsdatum" hint="laut Packung">
-                <input className="input tnum" type="date" value={form.expiry} onChange={(e) => set("expiry", e.target.value)} />
+              <Field label="Verfallsdatum" hint="laut Packung" error={touched.expiry && errors.expiry}>
+                <input className="input tnum" type="text" inputMode="numeric" placeholder="TT.MM.JJJJ" maxLength={10} pattern="\d{2}\.\d{2}\.\d{4}"
+                value={form.expiry} onChange={(e) => setDateField("expiry", e.target.value)} onBlur={() => touch("expiry")} />
               </Field>
             </div>
           </FormGroup>
@@ -146,8 +181,8 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
           <FormGroup title="Verabreichung" eyebrow="2">
             <div className="grid-2">
               <Field label="Impfdatum" required error={touched.date && errors.date}>
-                <input className="input tnum" type="date" value={form.date}
-                onChange={(e) => set("date", e.target.value)} onBlur={() => touch("date")} />
+                <input className="input tnum" type="text" inputMode="numeric" placeholder="TT.MM.JJJJ" maxLength={10} pattern="\d{2}\.\d{2}\.\d{4}"
+                value={form.date} onChange={(e) => setDateField("date", e.target.value)} onBlur={() => touch("date")} />
               </Field>
 
               <Field label="Applikationsweg" required>

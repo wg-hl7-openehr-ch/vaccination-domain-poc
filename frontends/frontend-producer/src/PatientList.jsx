@@ -188,22 +188,49 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
   const set = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
   const touch = (k) => setTouched((prev) => ({ ...prev, [k]: true }));
 
+  const parseEuropeanDateToIso = (value) => {
+    const m = value.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (!m) return null;
+
+    const day = Number(m[1]);
+    const month = Number(m[2]);
+    const year = Number(m[3]);
+    const dt = new Date(year, month - 1, day);
+
+    // Reject impossible dates like 31.02.2024.
+    if (dt.getFullYear() !== year || dt.getMonth() !== month - 1 || dt.getDate() !== day) return null;
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  };
+
+  const handleBirthDateChange = (value) => {
+    const digits = value.replace(/\D/g, "").slice(0, 8);
+    let formatted = digits;
+    if (digits.length > 4) formatted = `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
+    else if (digits.length > 2) formatted = `${digits.slice(0, 2)}.${digits.slice(2)}`;
+    set("birthDate", formatted);
+  };
+
   const errors = {};
   if (!form.lastName.trim()) errors.lastName = "Pflichtfeld";
   if (!form.firstName.trim()) errors.firstName = "Pflichtfeld";
-  if (!form.birthDate) errors.birthDate = "Pflichtfeld";
+  if (!form.birthDate.trim()) errors.birthDate = "Pflichtfeld";
+  else if (!parseEuropeanDateToIso(form.birthDate)) errors.birthDate = "Format: TT.MM.JJJJ";
   const isValid = Object.keys(errors).length === 0;
 
   const submit = async () => {
     setTouched({ lastName: true, firstName: true, birthDate: true });
     if (!isValid) return;
+
+    const normalizedBirthDate = parseEuropeanDateToIso(form.birthDate);
+    if (!normalizedBirthDate) return;
+
     setSubmitting(true);
     setServerError(null);
     try {
       const payload = {
         lastName: form.lastName.trim(),
         firstName: form.firstName.trim(),
-        birthDate: form.birthDate,
+        birthDate: normalizedBirthDate,
         gender: form.gender,
         address: {
           street: (form.street.trim() + (form.streetNumber.trim() ? " " + form.streetNumber.trim() : "")).trim(),
@@ -288,9 +315,13 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
             <div className="field">
               <label className="field-label">Geburtsdatum<span className="req">*</span></label>
               <input className={"input tnum" + (touched.birthDate && errors.birthDate ? " is-error" : "")}
-                type="date"
+                type="text"
+                inputMode="numeric"
+                placeholder="TT.MM.JJJJ"
+                maxLength={10}
+                pattern="\\d{2}\\.\\d{2}\\.\\d{4}"
                 value={form.birthDate}
-                onChange={(e) => set("birthDate", e.target.value)}
+                onChange={(e) => handleBirthDateChange(e.target.value)}
                 onBlur={() => touch("birthDate")} />
               {touched.birthDate && errors.birthDate && <div className="field-error">{errors.birthDate}</div>}
             </div>

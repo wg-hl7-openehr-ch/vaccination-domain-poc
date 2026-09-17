@@ -13,3 +13,7 @@ ehrbase:
 #openFHIR mapping engine
 openfhir:
   url: http://localhost:8083
+
+app:
+  bootstrap:
+    enabled: false

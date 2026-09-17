@@ -5,9 +5,13 @@ import ch.bff.producer.provider.models.VaccinationDto;
 import ch.bff.producer.provider.models.VaccinationReason;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.Immunization;
+import org.hl7.fhir.r4.model.Medication;
+import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
+import org.hl7.fhir.r4.model.Reference;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -15,6 +19,7 @@ import org.mapstruct.Named;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.Optional;
 import java.util.UUID;
 
 @Mapper(componentModel = "spring", imports = { LocalDate.class, ZoneId.class, UUID.class })
@@ -83,6 +88,23 @@ public interface VaccinationsMapper {
 		if (immunization.hasManufacturer()) {
 			return immunization.getManufacturer().getDisplay();
 		}
+		Optional<Extension> medExt = immunization.getExtension().stream().filter(
+				e -> "http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-immunization-medication-reference"
+						.equals(e.getUrl()))//
+				.findFirst();
+		if (medExt.isPresent()) {
+			if (medExt.get().getValue() instanceof Reference) {
+				Reference medRef = (Reference) medExt.get().getValue();
+				if (medRef.getResource() instanceof Medication) {
+					Medication med = (Medication) medRef.getResource();
+					if (med.getManufacturer().getResource() instanceof Organization) {
+						Organization manufacturer = (Organization) med.getManufacturer().getResource();
+						return manufacturer.getName();
+					}
+				}
+			}
+		}
+
 		return null;
 	}
 
@@ -116,6 +138,7 @@ public interface VaccinationsMapper {
 			return null;
 
 		String name = actor.getDisplay();
+		String gln = null;
 		if (actor.getResource() != null) {
 			if (actor.getResource() instanceof Practitioner) {
 				Practitioner practitioner = (Practitioner) actor.getResource();
@@ -125,15 +148,19 @@ public interface VaccinationsMapper {
 				if (practitionerRole.getPractitioner().getResource() != null) {
 					Practitioner practitioner = (Practitioner) practitionerRole.getPractitioner().getResource();
 					name = practitioner.getNameFirstRep().getNameAsSingleString();
+					if (practitioner.hasIdentifier()) {
+						gln = practitioner.getIdentifier().stream()
+								.filter(i -> "urn:oid:2.51.1.3".equals(i.getSystem())).findFirst()
+								.map(i -> i.getValue()).orElse(null);
+					}
 				} else {
 					name = actor.getResource().getIdElement().getIdPart();
 				}
 			}
-		}else {
+		} else {
 			name = actor.getReference();
 		}
 
-		String gln = null;
 		if (actor.hasIdentifier()) {
 			gln = actor.getIdentifier().getValue();
 		}
