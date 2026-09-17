@@ -11,6 +11,19 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
   const [errorMsg, setErrorMsg] = useState(null);
 
   const showError = (msg) => setErrorMsg(msg);
+  const formatLogDateTime = (value) => {
+    if (!value) return '-';
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return formatDate(value);
+    return dt.toLocaleString('de-CH', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
 
   const loadVaccinations = () => {
     setVaxLoading(true);
@@ -255,7 +268,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
 
         <details className="patient-log-collapsible">
           <summary>
-            Patienten-Logeintraege {logLoading ? '(laedt …)' : `(${logEntries.length})`}
+            Patienten Artefact Log {logLoading ? '(laedt …)' : `(${logEntries.length})`}
           </summary>
           <div className="patient-log-content">
             {logLoading && <div className="patient-log-empty">Logeintraege werden geladen …</div>}
@@ -265,8 +278,11 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
                 {logEntries.map((entry, idx) => (
                   <li key={`${entry.artefactType || 'entry'}-${idx}`} className="patient-log-item">
                     <div className="patient-log-type">{entry.artefactType || 'Unbekannt'}</div>
-                    <div className="patient-log-timestamp">{formatDate(entry.dateTime)}</div>
-                    <pre className="patient-log-artefact">{entry.artefact || '-'}</pre>
+                    <div className="patient-log-timestamp">{formatLogDateTime(entry.dateTime)}</div>
+                    <details className="patient-log-artefact-collapsible">
+                      <summary>Artefakt anzeigen</summary>
+                      <pre className="patient-log-artefact">{entry.artefact || '-'}</pre>
+                    </details>
                   </li>
                 ))}
               </ul>
