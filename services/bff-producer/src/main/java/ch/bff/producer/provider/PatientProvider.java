@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ch.bff.producer.provider.models.AddressDto;
 import ch.bff.producer.provider.models.Gender;
+import ch.bff.producer.provider.models.LogEntryDto;
 import ch.bff.producer.provider.models.PatientCreateDto;
 import ch.bff.producer.provider.models.PatientDto;
 import ch.bff.producer.services.PatientService;
@@ -50,7 +51,15 @@ public class PatientProvider {
 		}
 	}
 
-	
+	@GetMapping("/log-entries")
+	public List<LogEntryDto> getLogEntries(@RequestParam String personId) {
+		try {
+			return patientReadService.getLogEntries(personId);
+		} catch (Exception e) {
+			log.warn("FHIR unavailable, log entries retrieval failed: {}", e.getMessage(), e);
+			return List.of();
+		}
+	}
 	
 	@PostMapping
 	public PatientDto createPatient(@RequestBody PatientCreateDto patientDto) {

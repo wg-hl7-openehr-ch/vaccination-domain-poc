@@ -4,6 +4,8 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
   const { patients } = window.AppData;
   const patient = (patients || []).find((p) => p.id === patientId);
   const [records, setRecords] = useState([]);
+  const [logEntries, setLogEntries] = useState([]);
+  const [logLoading, setLogLoading] = useState(true);
   const [vaxLoading, setVaxLoading] = useState(true);
   const [importDone, setImportDone] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -27,6 +29,21 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
 
   useEffect(() => {
     loadVaccinations();
+  }, [patientId]);
+
+  useEffect(() => {
+    setLogLoading(true);
+    DataService.patientLog(patientId)
+      .then((res) => res.json())
+      .then((entries) => {
+        setLogEntries(Array.isArray(entries) ? entries : []);
+        setLogLoading(false);
+      })
+      .catch((err) => {
+        console.warn('Patienten-Logs konnten nicht geladen werden:', err);
+        setLogEntries([]);
+        setLogLoading(false);
+      });
   }, [patientId]);
 
   // Sync browser back button with the in-app back navigation
@@ -217,15 +234,40 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
         </div>
       </section>
 
+
+
       <div className="detail-actions">
-        <div className="detail-actions-title">
-          <h2 className="section-title">Impfausweis</h2>
+        <div className="detail-actions-head">
+          <div className="detail-actions-title">
+            <h2 className="section-title">Impfausweis</h2>
+          </div>
+          <div className="detail-actions-right">
+            <button className="btn btn-primary" onClick={handleImportVaccination} disabled={records.length > 0} title="Impfausweis importieren" aria-label="Impfausweis importieren"><Icon.Upload /></button>
+            <button className="btn btn-primary" onClick={handleExportVaccination} disabled={records.length === 0} title="Impfausweis exportieren" aria-label="Impfausweis exportieren"><Icon.Download /></button>
+            <button className="btn btn-primary" onClick={onAddVaccination} title="Neue Impfung erfassen" aria-label="Neue Impfung erfassen"><Icon.Plus /></button>
+          </div>
         </div>
-        <div className="detail-actions-right">
-          <button className="btn btn-primary" onClick={handleImportVaccination} disabled={records.length > 0} title="Impfausweis importieren" aria-label="Impfausweis importieren"><Icon.Upload /></button>
-          <button className="btn btn-primary" onClick={handleExportVaccination} disabled={records.length === 0} title="Impfausweis exportieren" aria-label="Impfausweis exportieren"><Icon.Download /></button>
-          <button className="btn btn-primary" onClick={onAddVaccination} title="Neue Impfung erfassen" aria-label="Neue Impfung erfassen"><Icon.Plus /></button>
-        </div>
+
+        <details className="patient-log-collapsible">
+          <summary>
+            Patienten-Logeintraege {logLoading ? '(laedt …)' : `(${logEntries.length})`}
+          </summary>
+          <div className="patient-log-content">
+            {logLoading && <div className="patient-log-empty">Logeintraege werden geladen …</div>}
+            {!logLoading && logEntries.length === 0 && <div className="patient-log-empty">Keine Logeintraege vorhanden.</div>}
+            {!logLoading && logEntries.length > 0 &&
+              <ul className="patient-log-list">
+                {logEntries.map((entry, idx) => (
+                  <li key={`${entry.artefactType || 'entry'}-${idx}`} className="patient-log-item">
+                    <div className="patient-log-type">{entry.artefactType || 'Unbekannt'}</div>
+                    <div className="patient-log-timestamp">{formatDate(entry.timestamp)}</div>
+                    <pre className="patient-log-artefact">{entry.artefact || '-'}</pre>
+                  </li>
+                ))}
+              </ul>
+            }
+          </div>
+        </details>
       </div>
 
       {vaxLoading &&

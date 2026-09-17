@@ -170,7 +170,9 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 					.addCoding(new Coding().setSystem("urn:oid:2.51.1.1").setCode(dto.vaccineCode())));
 			medication.setStatus(Medication.MedicationStatus.ACTIVE);
 			if (manufacturer != null) {
-				medication.setManufacturer(new Reference(manufacturer));
+				Reference ref = new Reference(manufacturer);
+				ref.setDisplay(manufacturer.getName());
+				medication.setManufacturer(ref);
 			}
 			imm.setMedication(medication);
 		}

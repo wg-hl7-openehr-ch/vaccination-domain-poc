@@ -34,7 +34,7 @@ hapi:
 
 # define which resource providers to load (comma-separated list). empty list means "load all"
 fhir:
-  providers: BundleProvider, ImmunizationProvider, OrganizationProvider, PatientProvider, PractitionerProvider, PractitionerRoleProvider, RelatedPersonProvider, ValueSetProvider
+  providers: ListProvider, BundleProvider, ImmunizationProvider, OrganizationProvider, PatientProvider, PractitionerProvider, PractitionerRoleProvider, RelatedPersonProvider, ValueSetProvider
   ig:
     files: >
       classpath:/packages/ch.fhir.ig.ch-core#7.0.0-ballot.tgz,

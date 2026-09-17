@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.IdType;
+import org.hl7.fhir.r4.model.ListResource;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Patient;
 
@@ -22,5 +23,7 @@ public interface PatientBusinessService {
 	List<Patient> searchPatient(StringParam name);
 
 	Bundle exportDocument(IdType theId, Parameters parameters) throws PatientNotFoundException;
+
+	List<ListResource> getPatientLatestArtefact(String idPart);
 
 }

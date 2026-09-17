@@ -1,12 +1,14 @@
 package ch.bff.producer.client;
 
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.ListResource;
 import org.hl7.fhir.r4.model.Parameters;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @FeignClient(name = "fhir-server", url = "${FHIR_BASE_URL:http://localhost:9111/ch-vacd-api-reference-server/fhir}")
 public interface FhirClient {
@@ -57,4 +59,7 @@ public interface FhirClient {
      */
     @PostMapping("/Bundle")
     Bundle postImmunizationAdministrationBundle(@RequestBody Bundle immunizationAdministrationBundle);
+
+    @GetMapping("/List")
+	Bundle getPatientLogEntries(@RequestParam("patient") String patient);
 }

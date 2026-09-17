@@ -29,6 +29,7 @@ import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Immunization;
 import org.hl7.fhir.r4.model.Immunization.ImmunizationProtocolAppliedComponent;
 import org.hl7.fhir.r4.model.Location;
+import org.hl7.fhir.r4.model.Medication;
 import org.hl7.fhir.r4.model.Meta;
 import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Patient;
@@ -180,6 +181,7 @@ public class RessourceUtil {
 		List<Organization> organizations = new ArrayList<>();
 		List<Location> locations = new ArrayList<>();
 		List<PractitionerRole> practitionerRoles = new ArrayList<>();
+		List<Medication> medications = new ArrayList<>();
 		for (Bundle.BundleEntryComponent entry : entries) {
 			Resource resource = entry.getResource();
 			if (resource instanceof Practitioner) {
@@ -190,11 +192,13 @@ public class RessourceUtil {
 				locations.add((Location) resource);
 			} else if (resource instanceof PractitionerRole) {
 				practitionerRoles.add((PractitionerRole) resource);
+			} else if (resource instanceof Medication) {
+				medications.add((Medication) resource);
 			}
 		}
 
 		return new Peeled(composition, immunizations, patient, practitioners, organizations, locations,
-				practitionerRoles);
+				practitionerRoles, medications);
 	}
 
 	// --- Immunization status validation ---
@@ -399,7 +403,8 @@ public class RessourceUtil {
 					String immManId = RessourceUtil
 							.removeUrn(immIn.getManufacturer().getResource().getIdElement().getIdPart());
 					immEHR.setManufacturer(
-							new Reference(immIn.getManufacturer().getResource().fhirType() + "/" + immManId));
+							new Reference(immIn.getManufacturer().getResource().fhirType() + "/" + immManId)//
+									.setDisplay(immIn.getManufacturer().getDisplay()));
 				}
 
 				// replace patient resource by reference
@@ -415,9 +420,9 @@ public class RessourceUtil {
 				chvacdToEHR.addImmunization(immEHR);
 			}
 		}
-		
+
 		// TODO: manage other resources Observation, Condition of the chvacd profiles
-		
+
 		// manage MedicationForImmunization resources
 		{
 			List<ChVacdMedicationForImmunization> medEntriesIn = chvacdIn.getEntry().stream()
@@ -434,7 +439,8 @@ public class RessourceUtil {
 					String medInManId = RessourceUtil
 							.removeUrn(medIn.getManufacturer().getResource().getIdElement().getIdPart());
 					medEHR.setManufacturer(
-							new Reference(medIn.getManufacturer().getResource().fhirType() + "/" + medInManId));
+							new Reference(medIn.getManufacturer().getResource().fhirType() + "/" + medInManId)//
+									.setDisplay(medIn.getManufacturer().getDisplay()));
 				}
 
 				chvacdToEHR.addMedication(medEHR);

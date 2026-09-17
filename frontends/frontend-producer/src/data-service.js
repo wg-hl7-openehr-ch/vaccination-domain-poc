@@ -61,6 +61,15 @@ async function exportPatient(personId, format) {
   return res;
 }
 
+async function patientLog(personId) {
+  const url = '/api/bff-producer/patients/log-entries?personId=' + encodeURIComponent(personId);
+  const res = await fetch(url, {
+    headers: { ...authHeaders() },
+  });
+  if (!res.ok) throw new Error('Fehler beim Holen der Log-Einträge des Patienten');
+  return res;
+}
+
 async function createImmunization(personId, data) {
   const res = await fetch('/api/bff-producer/immunizations?personId=' + encodeURIComponent(personId), {
     method: 'POST',
@@ -185,6 +194,7 @@ window.DataService = {
   importVaccinations,
   exportVaccinationRecord,
   exportPatient,
+  patientLog,
   transformPatient,
   transformVaccination,
   routeToApi,

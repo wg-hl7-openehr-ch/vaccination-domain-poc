@@ -17,6 +17,7 @@ import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationDocument;
+import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdMedicationForImmunization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -26,8 +27,11 @@ import ca.uhn.fhir.rest.param.ReferenceParam;
 import ch.hl7.vacd.api.business.ImmunizationBusinessService;
 import ch.hl7.vacd.api.client.EhrbaseClient;
 import ch.hl7.vacd.api.client.OpenFhirClient;
+import ch.hl7.vacd.api.entity.ArtefactEntity;
+import ch.hl7.vacd.api.entity.ArtefactEntityType;
 import ch.hl7.vacd.api.entity.ResourceEntity;
 import ch.hl7.vacd.api.entity.ResourceReferenceEntity;
+import ch.hl7.vacd.api.repo.ArtefactRepository;
 import ch.hl7.vacd.api.repo.ResourceRepository;
 import ch.hl7.vacd.api.utils.RessourceUtil;
 import jakarta.transaction.Transactional;
@@ -38,8 +42,8 @@ public class ImmunizationBusinessServiceImpl extends AbstractBusinessService imp
 	private static final Logger log = LoggerFactory.getLogger(ImmunizationBusinessServiceImpl.class);
 
 	public ImmunizationBusinessServiceImpl(FhirContext fhirContext, ResourceRepository store,
-			OpenFhirClient openFhirClient, EhrbaseClient ehrbaseClient) {
-		super(fhirContext, store, openFhirClient, ehrbaseClient);
+			ArtefactRepository artefactRepository, OpenFhirClient openFhirClient, EhrbaseClient ehrbaseClient) {
+		super(fhirContext, store, artefactRepository, openFhirClient, ehrbaseClient);
 	}
 
 	@Override
@@ -63,19 +67,30 @@ public class ImmunizationBusinessServiceImpl extends AbstractBusinessService imp
 		log.info("EHR ID for patient {}: {}", patientId, ehrId);
 
 		// Create the immunization resource in the Open FHIR server
-		immunization
-				.addIdentifier(new Identifier()//
-						.setSystem("urn:che:epr:ch-vacd:ehr-id")//
-						.setValue("urn:uuid:" + ehrId)//
-						.setUse(Identifier.IdentifierUse.SECONDARY));
+		immunization.addIdentifier(new Identifier()//
+				.setSystem("urn:che:epr:ch-vacd:ehr-id")//
+				.setValue("urn:uuid:" + ehrId)//
+				.setUse(Identifier.IdentifierUse.SECONDARY));
+
+		ChVacdMedicationForImmunization medication = immunization.getMedication();
+		if(medication != null) {
+			medication.addIdentifier(new Identifier()//
+					.setSystem("urn:che:epr:ch-vacd:ehr-id")//
+					.setValue("urn:uuid:" + ehrId)//
+					.setUse(Identifier.IdentifierUse.SECONDARY));
+		}
 
 		// Convert FHIR resource to openEHR FLAT format via openFHIR.
 		ChVacdImmunizationAdministrationDocument immAdmin = RessourceUtil.createImmunizationAdministrationDocument();
 		immAdmin.addImmunization(immunization);
 		immAdmin.setPatient(patient);
 
-		/*Bundle retBundle = */processImmunizationAdmnistration(immAdmin, new HashMap<Resource, String>(),
-				new ArrayList<>(), Arrays.asList(immunization), ehrId, patientId);
+		String sessionId = UUID.randomUUID().toString();
+		logArtefact(sessionId, patientId, ArtefactEntityType.INBUNDLE,
+				fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(immAdmin));
+
+		/* Bundle retBundle = */processImmunizationAdmnistration(immAdmin, new HashMap<Resource, String>(),
+				new ArrayList<>(), Arrays.asList(immunization), Arrays.asList(medication), ehrId, patientId, sessionId);
 
 		return immunization;
 

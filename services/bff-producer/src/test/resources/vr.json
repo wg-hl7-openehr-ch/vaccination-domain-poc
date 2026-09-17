@@ -1,0 +1,548 @@
+{
+	"resourceType": "Bundle",
+	"id": "853b1b20-9144-4864-85cf-3be1c5b4c701",
+	"meta": {
+		"profile": [
+			"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-document-vaccination-record"
+		]
+	},
+	"language": "en-US",
+	"identifier": {
+		"system": "urn:ietf:rfc:3986",
+		"value": "urn:uuid:853b1b20-9144-4864-85cf-3be1c5b4c701"
+	},
+	"type": "document",
+	"timestamp": "2026-09-15T05:22:05.920+00:00",
+	"entry": [
+		{
+			"fullUrl": "urn:uuid:cc415616-fc9f-41a2-b403-ae666ab4eb17",
+			"resource": {
+				"resourceType": "Composition",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-composition-vaccination-record"
+					]
+				},
+				"language": "de-CH",
+				"text": {
+					"status": "generated",
+					"div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Title</td><td>Vaccination Record</td></tr><tr><td>Category</td><td>CH VACD Vaccination Record(urn:oid:2.16.756.5.30.1.127.3.10.10|urn:che:epr:ch-vacd:vaccination-record:2022)</td></tr><tr><td>Identifier</td><td>urn:uuid:f844024b-6be3-4a24-a243-dc0ee179e41f</td></tr><tr><td>Status</td><td>FINAL</td></tr><tr><td>List Immunization Administration</td><td><span/><span/><br/></td></tr></tbody></table></div>"
+				},
+				"identifier": {
+					"system": "urn:ietf:rfc:3986",
+					"value": "urn:uuid:f844024b-6be3-4a24-a243-dc0ee179e41f"
+				},
+				"status": "final",
+				"type": {
+					"coding": [
+						{
+							"system": "http://snomed.info/sct",
+							"code": "41000179103"
+						}
+					]
+				},
+				"category": [
+					{
+						"coding": [
+							{
+								"system": "urn:oid:2.16.756.5.30.1.127.3.10.10",
+								"code": "urn:che:epr:ch-vacd:vaccination-record:2022",
+								"display": "CH VACD Vaccination Record"
+							}
+						]
+					}
+				],
+				"subject": {
+					"reference": "urn:uuid:193b0de6-498b-4cb8-a64e-593cacde1c14"
+				},
+				"date": "2026-09-15T05:22:05+00:00",
+				"author": [
+					{
+						"extension": [
+							{
+								"url": "http://fhir.ch/ig/ch-core/StructureDefinition/ch-ext-epr-time",
+								"valueDateTime": "2026-09-15T05:22:05+00:00"
+							}
+						],
+						"reference": "urn:uuid:9763637d-522f-4049-9ebe-388dbdfd2e8d"
+					}
+				],
+				"title": "Vaccination Record",
+				"confidentiality": "N",
+				"_confidentiality": {
+					"extension": [
+						{
+							"url": "http://fhir.ch/ig/ch-core/StructureDefinition/ch-ext-epr-confidentialitycode",
+							"valueCodeableConcept": {
+								"coding": [
+									{
+										"system": "http://snomed.info/sct",
+										"code": "17621005",
+										"display": "Normal (qualifier value)"
+									}
+								]
+							}
+						}
+					]
+				},
+				"section": [
+					{
+						"title": "List Immunization Administration",
+						"code": {
+							"coding": [
+								{
+									"system": "http://loinc.org",
+									"code": "11369-6"
+								}
+							]
+						},
+						"entry": [
+							{
+								"reference": "urn:uuid:aa4b8fbe-494f-4528-a61f-17060550e380"
+							},
+							{
+								"reference": "urn:uuid:a549030f-bebe-45da-86ae-9e256c4d252e"
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"fullUrl": "urn:uuid:9763637d-522f-4049-9ebe-388dbdfd2e8d",
+			"resource": {
+				"resourceType": "Device",
+				"status": "active",
+				"manufacturer": "Workgroup Vaccination Showcase",
+				"deviceName": [
+					{
+						"name": "Immunization Registry System",
+						"type": "model-name"
+					}
+				],
+				"type": {
+					"text": "Immunization Registry System"
+				}
+			}
+		},
+		{
+			"fullUrl": "urn:uuid:193b0de6-498b-4cb8-a64e-593cacde1c14",
+			"resource": {
+				"resourceType": "Patient",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-patient-epr"
+					]
+				},
+				"text": {
+					"status": "generated",
+					"div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><div class=\"hapiHeaderText\">Hugo <b>BEISPIEL </b></div><table class=\"hapiPropertyTable\"><tbody><tr><td>Identifier</td><td>756.1234.5678.90</td></tr><tr><td>Address</td><td><span>Hugo 1 </span><span>8009 </span><span>Hugenswil </span></td></tr><tr><td>Date of birth</td><td><span>31 December 1999</span></td></tr></tbody></table></div>"
+				},
+				"identifier": [
+					{
+						"use": "official",
+						"system": "urn:oid:2.16.756.5.32",
+						"value": "756.1234.5678.90"
+					},
+					{
+						"use": "usual",
+						"system": "urn:ietf:rfc:3986",
+						"value": "urn:uuid:78c48e76-db7e-4245-b0ad-161db64641d0"
+					},
+					{
+						"use": "secondary",
+						"system": "urn:che:epr:ch-vacd:ehr-id",
+						"value": "urn:uuid:f51e0343-369e-4c6e-9471-bb5e0ada8c51"
+					}
+				],
+				"active": true,
+				"name": [
+					{
+						"family": "Beispiel",
+						"given": [
+							"Hugo"
+						]
+					}
+				],
+				"telecom": [
+					{
+						"system": "email",
+						"value": "hugo.beispiel@test.ch"
+					},
+					{
+						"system": "phone",
+						"value": "+41 75 666 88 99"
+					}
+				],
+				"gender": "male",
+				"birthDate": "1999-12-31",
+				"address": [
+					{
+						"line": [
+							"Hugo 1"
+						],
+						"city": "Hugenswil",
+						"postalCode": "8009"
+					}
+				]
+			}
+		},
+		{
+			"fullUrl": "urn:uuid:aa4b8fbe-494f-4528-a61f-17060550e380",
+			"resource": {
+				"resourceType": "Immunization",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-immunization"
+					]
+				},
+				"extension": [
+					{
+						"url": "http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-immunization-medication-reference",
+						"valueReference": {
+							"reference": "urn:uuid:4e1ee219-473c-4d78-b867-2322a3f0d05a"
+						}
+					}
+				],
+				"identifier": [
+					{
+						"system": "urn:ietf:rfc:3986",
+						"value": "urn:uuid:e8c5394e-8282-4e2c-9746-614be426a343"
+					},
+					{
+						"system": "urn:che:epr:ch-vacd:ehr-id",
+						"value": "urn:uuid:f51e0343-369e-4c6e-9471-bb5e0ada8c51"
+					}
+				],
+				"status": "completed",
+				"vaccineCode": {
+					"coding": [
+						{
+							"system": "http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs",
+							"code": "681",
+							"display": "Boostrix Polio"
+						}
+					],
+					"text": "Boostrix Polio"
+				},
+				"patient": {
+					"reference": "urn:uuid:193b0de6-498b-4cb8-a64e-593cacde1c14"
+				},
+				"occurrenceDateTime": "2001-03-20T00:00:00+00:00",
+				"lotNumber": "A214534735",
+				"route": {
+					"coding": [
+						{
+							"system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration",
+							"code": "IM",
+							"display": "IM"
+						}
+					],
+					"text": "IM"
+				},
+				"doseQuantity": {
+					"value": 0.5,
+					"unit": "ml",
+					"system": "http://unitsofmeasure.org",
+					"code": "ml"
+				},
+				"performer": [
+					{
+						"actor": {
+							"reference": "urn:uuid:ff8b17a2-6e65-42a6-9d96-b055728c692e"
+						}
+					}
+				],
+				"reasonCode": [
+					{
+						"coding": [
+							{
+								"system": "http://snomed.info/sct",
+								"code": "33879002",
+								"display": "Administration of vaccine to produce active immunity (procedure)"
+							}
+						],
+						"text": "Administration of vaccine to produce active immunity (procedure)"
+					}
+				],
+				"protocolApplied": [
+					{
+						"targetDisease": [
+							{
+								"coding": [
+									{
+										"system": "http://snomed.info/sct",
+										"code": "398102009",
+										"display": "Acute poliomyelitis"
+									},
+									{
+										"system": "http://snomed.info/sct",
+										"code": "76902006",
+										"display": "Tetanus"
+									},
+									{
+										"system": "http://snomed.info/sct",
+										"code": "27836007",
+										"display": "Pertussis"
+									},
+									{
+										"system": "http://snomed.info/sct",
+										"code": "397430003",
+										"display": "Diphtheria caused by Corynebacterium diphtheriae"
+									}
+								],
+								"text": "Acute poliomyelitis"
+							}
+						],
+						"doseNumberPositiveInt": 2
+					}
+				]
+			}
+		},
+		{
+			"fullUrl": "urn:uuid:ff8b17a2-6e65-42a6-9d96-b055728c692e",
+			"resource": {
+				"resourceType": "PractitionerRole",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-practitionerrole-epr"
+					]
+				},
+				"text": {
+					"status": "generated",
+					"div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table><tr><td>Practitioner</td><td><div><span>Sarah <b>MÜLLER </b></span></div></td></tr><tr><td>Organization</td><td><div><span>Praxis am Bahnhof</span></div><div><span>urn:uuid:83eb27f3-eadb-4f4b-bf23-6b221f273072</span></div></td></tr></table></div>"
+				},
+				"practitioner": {
+					"reference": "urn:uuid:4f346261-c01f-49ab-aba6-b5017f6ea69e"
+				},
+				"organization": {
+					"reference": "urn:uuid:83eb27f3-eadb-4f4b-bf23-6b221f273072"
+				}
+			}
+		},
+		{
+			"fullUrl": "urn:uuid:4f346261-c01f-49ab-aba6-b5017f6ea69e",
+			"resource": {
+				"resourceType": "Practitioner",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-practitioner-epr"
+					]
+				},
+				"text": {
+					"status": "generated",
+					"div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><div class=\"hapiHeaderText\">Sarah <b>MÜLLER </b></div><table class=\"hapiPropertyTable\"><tbody><tr><td>Identifier</td><td>7601000123456</td></tr></tbody></table></div>"
+				},
+				"identifier": [
+					{
+						"use": "official",
+						"system": "urn:oid:2.51.1.3",
+						"value": "7601000123456"
+					}
+				],
+				"name": [
+					{
+						"family": "Müller",
+						"given": [
+							"Sarah"
+						]
+					}
+				]
+			}
+		},
+		{
+			"fullUrl": "urn:uuid:83eb27f3-eadb-4f4b-bf23-6b221f273072",
+			"resource": {
+				"resourceType": "Organization",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-organization-epr"
+					]
+				},
+				"text": {
+					"status": "generated",
+					"div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><div class=\"hapiHeaderText\">Praxis am Bahnhof</div><table class=\"hapiPropertyTable\"><tbody><tr><td>Identifier</td><td>7601000999999</td></tr></tbody></table></div>"
+				},
+				"identifier": [
+					{
+						"use": "official",
+						"system": "urn:oid:2.51.1.3",
+						"value": "7601000999999"
+					}
+				],
+				"name": "Praxis am Bahnhof"
+			}
+		},
+		{
+			"fullUrl": "urn:uuid:a549030f-bebe-45da-86ae-9e256c4d252e",
+			"resource": {
+				"resourceType": "Immunization",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-immunization"
+					]
+				},
+				"extension": [
+					{
+						"url": "http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-immunization-medication-reference",
+						"valueReference": {
+							"reference": "urn:uuid:b5a5139d-35c0-440b-a5da-dfac4e83aac0"
+						}
+					}
+				],
+				"identifier": [
+					{
+						"system": "urn:ietf:rfc:3986",
+						"value": "urn:uuid:8d5229b6-d53d-4403-aed1-10b984853d1d"
+					},
+					{
+						"system": "urn:che:epr:ch-vacd:ehr-id",
+						"value": "urn:uuid:f51e0343-369e-4c6e-9471-bb5e0ada8c51"
+					}
+				],
+				"status": "completed",
+				"vaccineCode": {
+					"coding": [
+						{
+							"system": "http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs",
+							"code": "450",
+							"display": "FSME-Immun CC"
+						}
+					],
+					"text": "FSME-Immun CC"
+				},
+				"patient": {
+					"reference": "urn:uuid:193b0de6-498b-4cb8-a64e-593cacde1c14"
+				},
+				"occurrenceDateTime": "2005-02-09T00:00:00+00:00",
+				"lotNumber": "A.124151",
+				"route": {
+					"coding": [
+						{
+							"system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration",
+							"code": "IM",
+							"display": "IM"
+						}
+					],
+					"text": "IM"
+				},
+				"doseQuantity": {
+					"value": 0.5,
+					"unit": "ml",
+					"system": "http://unitsofmeasure.org",
+					"code": "ml"
+				},
+				"performer": [
+					{
+						"actor": {
+							"reference": "urn:uuid:ce818a3a-3347-4f1d-8949-823f64e8a1c5"
+						}
+					}
+				],
+				"reasonCode": [
+					{
+						"coding": [
+							{
+								"system": "http://snomed.info/sct",
+								"code": "33879002",
+								"display": "Administration of vaccine to produce active immunity (procedure)"
+							}
+						],
+						"text": "Administration of vaccine to produce active immunity (procedure)"
+					}
+				],
+				"protocolApplied": [
+					{
+						"targetDisease": [
+							{
+								"coding": [
+									{
+										"system": "http://snomed.info/sct",
+										"code": "712986001",
+										"display": "Encephalitis caused by tick-borne encephalitis virus"
+									}
+								],
+								"text": "Encephalitis caused by tick-borne encephalitis virus"
+							}
+						],
+						"doseNumberPositiveInt": 1
+					}
+				]
+			}
+		},
+		{
+			"fullUrl": "urn:uuid:ce818a3a-3347-4f1d-8949-823f64e8a1c5",
+			"resource": {
+				"resourceType": "PractitionerRole",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-practitionerrole-epr"
+					]
+				},
+				"text": {
+					"status": "generated",
+					"div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table><tr><td>Practitioner</td><td><div><span>Sarah <b>MÜLLER </b></span></div></td></tr><tr><td>Organization</td><td><div><span>Praxis am Bahnhof</span></div><div><span>urn:uuid:e92a7482-49bb-4c68-b7d2-8737ec16d474</span></div></td></tr></table></div>"
+				},
+				"practitioner": {
+					"reference": "urn:uuid:19e90826-cddf-42f7-b72e-f446e506a7ac"
+				},
+				"organization": {
+					"reference": "urn:uuid:e92a7482-49bb-4c68-b7d2-8737ec16d474"
+				}
+			}
+		},
+		{
+			"fullUrl": "urn:uuid:19e90826-cddf-42f7-b72e-f446e506a7ac",
+			"resource": {
+				"resourceType": "Practitioner",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-practitioner-epr"
+					]
+				},
+				"text": {
+					"status": "generated",
+					"div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><div class=\"hapiHeaderText\">Sarah <b>MÜLLER </b></div><table class=\"hapiPropertyTable\"><tbody><tr><td>Identifier</td><td>7601000123456</td></tr></tbody></table></div>"
+				},
+				"identifier": [
+					{
+						"use": "official",
+						"system": "urn:oid:2.51.1.3",
+						"value": "7601000123456"
+					}
+				],
+				"name": [
+					{
+						"family": "Müller",
+						"given": [
+							"Sarah"
+						]
+					}
+				]
+			}
+		},
+		{
+			"fullUrl": "urn:uuid:e92a7482-49bb-4c68-b7d2-8737ec16d474",
+			"resource": {
+				"resourceType": "Organization",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-core/StructureDefinition/ch-core-organization-epr"
+					]
+				},
+				"text": {
+					"status": "generated",
+					"div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><div class=\"hapiHeaderText\">Praxis am Bahnhof</div><table class=\"hapiPropertyTable\"><tbody><tr><td>Identifier</td><td>7601000999999</td></tr></tbody></table></div>"
+				},
+				"identifier": [
+					{
+						"use": "official",
+						"system": "urn:oid:2.51.1.3",
+						"value": "7601000999999"
+					}
+				],
+				"name": "Praxis am Bahnhof"
+			}
+		}
+	]
+}
