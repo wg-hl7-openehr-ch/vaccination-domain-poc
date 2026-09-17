@@ -27,11 +27,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
       });
   };
 
-  useEffect(() => {
-    loadVaccinations();
-  }, [patientId]);
-
-  useEffect(() => {
+  const loadPatientLog = () => {
     setLogLoading(true);
     DataService.patientLog(patientId)
       .then((res) => res.json())
@@ -44,6 +40,14 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
         setLogEntries([]);
         setLogLoading(false);
       });
+  };
+
+  useEffect(() => {
+    loadVaccinations();
+  }, [patientId]);
+
+  useEffect(() => {
+    loadPatientLog();
   }, [patientId]);
 
   // Sync browser back button with the in-app back navigation
@@ -58,6 +62,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
   useEffect(() => {
     if (justAdded && justAdded.id) {
       loadVaccinations();
+      loadPatientLog();
     }
   }, [justAdded]);
 
@@ -260,7 +265,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
                 {logEntries.map((entry, idx) => (
                   <li key={`${entry.artefactType || 'entry'}-${idx}`} className="patient-log-item">
                     <div className="patient-log-type">{entry.artefactType || 'Unbekannt'}</div>
-                    <div className="patient-log-timestamp">{formatDate(entry.timestamp)}</div>
+                    <div className="patient-log-timestamp">{formatDate(entry.dateTime)}</div>
                     <pre className="patient-log-artefact">{entry.artefact || '-'}</pre>
                   </li>
                 ))}
