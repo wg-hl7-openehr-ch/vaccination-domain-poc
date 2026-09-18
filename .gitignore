@@ -7,3 +7,5 @@ bin/
 **/__pycache__/
 services/ch-vacd-api-reference-server/doc/*
 .vscode/
+services/audit-trace-logger_exp/*
+
