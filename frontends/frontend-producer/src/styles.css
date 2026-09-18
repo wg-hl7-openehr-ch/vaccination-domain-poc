@@ -301,6 +301,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 .btn-sm { padding: 6px 10px; font-size: 12px; }
 .btn-icon { padding: 8px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; box-shadow: none; transform: none; }
 
 /* ====================== INPUTS ====================== */
 
