@@ -158,7 +158,7 @@ public class AbstractBusinessService {
 	private String getMedicationId(Immunization immunization) {
 		Extension medExt = immunization.getExtensionByUrl(
 				"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-immunization-medication-reference");
-		if (medExt.getValue() instanceof Reference medRef) {
+		if (medExt !=null && medExt.getValue() instanceof Reference medRef) {
 			return medRef.getReference();
 		}
 		return null;
@@ -168,7 +168,7 @@ public class AbstractBusinessService {
 		Medication medication = null;
 		Extension medExt = immunization.getExtensionByUrl(
 				"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-immunization-medication-reference");
-		if (medExt.getValue() instanceof Reference medRef && medRef.getResource() instanceof Medication) {
+		if (medExt !=null && medExt.getValue() instanceof Reference medRef && medRef.getResource() instanceof Medication) {
 			return (Medication) medRef.getResource();
 		}
 		return null;
