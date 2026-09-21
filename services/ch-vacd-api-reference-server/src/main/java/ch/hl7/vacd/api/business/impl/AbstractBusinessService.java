@@ -361,8 +361,11 @@ public class AbstractBusinessService {
 				Practitioner perfomer = (Practitioner) perfomerDR;
 				if(notAddedYet(document.getEntry(), perfomer)) {
 					document.addPractitioner(perfomer);
+					immun.addPerformer().setActor(new Reference(perfomer));
+				}else {
+					immun.addPerformer().setActor(new Reference(perfomer.getIdPart()));
 				}
-				immun.addPerformer().setActor(new Reference(perfomer));
+				
 
 			}
 			// complete practitionerrole with reference to practitioner and organization
@@ -370,10 +373,11 @@ public class AbstractBusinessService {
 				PractitionerRole perfomer = (PractitionerRole) perfomerDR;
 				if(notAddedYet(document.getEntry(), perfomer)) {
 					document.addPractitionerRole(perfomer);
+					immun.addPerformer().setActor(new Reference(perfomer));
+				}else {
+					immun.addPerformer().setActor(new Reference(perfomer.getIdPart()));
 				}
 				
-				immun.addPerformer().setActor(new Reference(perfomer));
-
 				Practitioner pract = (Practitioner) getResourceEntry("Practitioner",
 						RessourceUtil.removeUrn(perfomer.getPractitioner().getReference()));
 				if(notAddedYet(document.getEntry(), pract)) {
@@ -411,7 +415,7 @@ public class AbstractBusinessService {
 	private boolean notAddedYet(List<BundleEntryComponent> entries, DomainResource perfomer) {
 		return entries.stream().filter(e -> e.getResource() instanceof DomainResource)
 				.map(e -> (DomainResource) e.getResource())
-				.filter(r -> r.fhirType().equals(perfomer.fhirType()) && r.getIdElement().getIdPart().equals(perfomer.getIdElement().getIdPart()))
+				.filter(r -> r.fhirType().equals(perfomer.fhirType()) && RessourceUtil.removeUrn(r.getIdElement().getIdPart()).equals(RessourceUtil.removeUrn(perfomer.getIdElement().getIdPart())))
 				.findFirst().isEmpty();
 	}
 
