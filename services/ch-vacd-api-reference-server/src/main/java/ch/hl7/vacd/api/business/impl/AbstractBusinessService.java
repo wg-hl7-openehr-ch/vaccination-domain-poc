@@ -342,9 +342,13 @@ public class AbstractBusinessService {
 
 		log.info("Performer IDs for immunization {}: {}", immunization.getId(), perfomerIds);
 		ChVacdImmunization immun = document.addImmunization();
-		immun.setVerificationStatus(new Coding().setSystem("http://snomed.info/sct").setCode("59156000").setDisplay("Confirmed by"));
+		
 		String id = immun.getIdElement().getIdPart();
 		immunization.copyValues(immun);
+		if(!immunization.hasExtension("http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-verification-status")  && !immun.hasVerificationStatus()) {
+			immun.setVerificationStatus(new Coding().setSystem("http://snomed.info/sct").setCode("59156000").setDisplay("Confirmed by"));
+		}
+		
 		immun.setId(id);
 
 		for (String performerId : perfomerIds) {
