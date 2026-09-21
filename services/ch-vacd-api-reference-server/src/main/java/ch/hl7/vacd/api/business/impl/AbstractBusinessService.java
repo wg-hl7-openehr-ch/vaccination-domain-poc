@@ -275,14 +275,23 @@ public class AbstractBusinessService {
 						.setUse(IdentifierUse.SECONDARY));
 
 				Medication medication = getMedication(imm);
-				medication.addIdentifier(new Identifier()//
-						.setSystem("urn:che:epr:ch-vacd:composition-uid")//
-						.setValue(compositionUid)//
-						.setUse(IdentifierUse.SECONDARY));
+				if(medication != null) {
+					medication.addIdentifier(new Identifier()//
+							.setSystem("urn:che:epr:ch-vacd:composition-uid")//
+							.setValue(compositionUid)//
+							.setUse(IdentifierUse.SECONDARY));
+					medication.addIdentifier(new Identifier()//
+							.setSystem("urn:che:epr:ch-vacd:composition-uid")//
+							.setValue(compositionUid)//
+							.setUse(IdentifierUse.SECONDARY));
+				}
+				
 
 				createIfAbsent(imm, fullUrlMap);
 				
-				createIfAbsent(medication, fullUrlMap);
+				if(medication != null) {
+					createIfAbsent(medication, fullUrlMap);
+				}
 
 				String immId = RessourceUtil.extractId(imm, fullUrlMap);
 				log.info("Stored Immunization id={} with compositionUid={}", immId, compositionUid);
