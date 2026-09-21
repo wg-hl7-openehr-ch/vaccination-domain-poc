@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DomainResource;
 import org.hl7.fhir.r4.model.Extension;
@@ -358,23 +359,33 @@ public class AbstractBusinessService {
 					idType.getIdPart());
 			if (perfomerDR != null && perfomerDR instanceof Practitioner) {
 				Practitioner perfomer = (Practitioner) perfomerDR;
-				document.addPractitioner(perfomer);
+				if(notAddedYet(document.getEntry(), perfomer)) {
+					document.addPractitioner(perfomer);
+				}
 				immun.addPerformer().setActor(new Reference(perfomer));
 
 			}
 			// complete practitionerrole with reference to practitioner and organization
 			else if (perfomerDR != null && perfomerDR instanceof PractitionerRole) {
 				PractitionerRole perfomer = (PractitionerRole) perfomerDR;
-				document.addPractitionerRole(perfomer);
+				if(notAddedYet(document.getEntry(), perfomer)) {
+					document.addPractitionerRole(perfomer);
+				}
+				
 				immun.addPerformer().setActor(new Reference(perfomer));
 
 				Practitioner pract = (Practitioner) getResourceEntry("Practitioner",
 						RessourceUtil.removeUrn(perfomer.getPractitioner().getReference()));
-				document.addPractitioner(pract);
+				if(notAddedYet(document.getEntry(), pract)) {
+					document.addPractitioner(pract);
+				}
+				
 
 				Organization org = (Organization) getResourceEntry("Organization",
 						RessourceUtil.removeUrn(perfomer.getOrganization().getReference()));
-				document.addOrganization(org);
+				if(notAddedYet(document.getEntry(), org)) {
+					document.addOrganization(org);
+				}
 			}
 		}
 
@@ -395,6 +406,13 @@ public class AbstractBusinessService {
 		// set the patient reference to the immunization
 		immun.setPatient(new Reference(patient));
 		return immun;
+	}
+
+	private boolean notAddedYet(List<BundleEntryComponent> entries, DomainResource perfomer) {
+		return entries.stream().filter(e -> e.getResource() instanceof DomainResource)
+				.map(e -> (DomainResource) e.getResource())
+				.filter(r -> r.fhirType().equals(perfomer.fhirType()) && r.getIdElement().getIdPart().equals(perfomer.getIdElement().getIdPart()))
+				.findFirst().isEmpty();
 	}
 
 	protected void logArtefact(String sessionId, String patientId, ArtefactEntityType inbundle, String artefactString) {
