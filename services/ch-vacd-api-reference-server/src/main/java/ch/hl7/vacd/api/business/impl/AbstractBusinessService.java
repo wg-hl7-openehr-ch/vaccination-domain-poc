@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DomainResource;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.IdType;
@@ -339,6 +340,7 @@ public class AbstractBusinessService {
 
 		log.info("Performer IDs for immunization {}: {}", immunization.getId(), perfomerIds);
 		ChVacdImmunization immun = document.addImmunization();
+		immun.setVerificationStatus(new Coding().setSystem("http://snomed.info/sct").setCode("59156000").setDisplay("Confirmed by"));
 		String id = immun.getIdElement().getIdPart();
 		immunization.copyValues(immun);
 		immun.setId(id);

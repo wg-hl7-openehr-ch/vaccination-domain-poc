@@ -144,6 +144,8 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 		imm.setStatus(Immunization.ImmunizationStatus.COMPLETED);
 //		imm.getMeta().addProfile("http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-immunization-administration");
 
+		imm.setVerificationStatus(new Coding().setSystem("http://snomed.info/sct").setCode("59156000").setDisplay("Confirmed by"));
+		
 		imm.addIdentifier()//
 				.setSystem("urn:ietf:rfc:3986")//
 				.setValue("urn:uuid:" + java.util.UUID.randomUUID())//
