@@ -22,6 +22,7 @@ import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
+import org.projecthusky.fhir.core.ch.util.IdUtil;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdAbstractDocument;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationDocument;
@@ -363,7 +364,7 @@ public class AbstractBusinessService {
 					document.addPractitioner(perfomer);
 					immun.addPerformer().setActor(new Reference(perfomer));
 				}else {
-					immun.addPerformer().setActor(new Reference(perfomer.getIdPart()));
+					immun.addPerformer().setActor(new Reference(RessourceUtil.addUuidUrn(perfomer.getIdPart())));
 				}
 				
 
@@ -375,7 +376,7 @@ public class AbstractBusinessService {
 					document.addPractitionerRole(perfomer);
 					immun.addPerformer().setActor(new Reference(perfomer));
 				}else {
-					immun.addPerformer().setActor(new Reference(perfomer.getIdPart()));
+					immun.addPerformer().setActor(new Reference(RessourceUtil.addUuidUrn(perfomer.getIdPart())));
 				}
 				
 				Practitioner pract = (Practitioner) getResourceEntry("Practitioner",
