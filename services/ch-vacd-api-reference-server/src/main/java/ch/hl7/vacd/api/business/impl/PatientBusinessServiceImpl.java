@@ -190,7 +190,9 @@ public class PatientBusinessServiceImpl extends AbstractBusinessService implemen
 				.filter(e -> e.getResource() instanceof Medication).map(e -> (Medication) e.getResource())
 				.collect(Collectors.toMap(Medication::getId, m -> m));
 		log.info("Bundle contains {} Medication entries", medEntries.size());
-
+		log.info("Medications: {}", medEntries.keySet());
+		
+		
 		for (Immunization immunization : immEntries) {
 			log.info("Immunization resource: id={}, status={}, vaccineCode={}", immunization.getId(),
 					immunization.getStatus(), immunization.getVaccineCode().getCodingFirstRep().getCode());
