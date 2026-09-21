@@ -401,7 +401,7 @@ public class AbstractBusinessService {
 		String medicationId = getMedicationId(immunization);
 		if(medicationId != null) {
 			Medication medication = medEntries.get(medicationId);
-			if (medication != null && !medication.getIdentifier().isEmpty()) {
+			if (medication != null) {// && !medication.getIdentifier().isEmpty()) {
 				ChVacdMedicationForImmunization medForImm = new ChVacdMedicationForImmunization();
 				medication.copyValues(medForImm);
 				medForImm.setId(medicationId);
