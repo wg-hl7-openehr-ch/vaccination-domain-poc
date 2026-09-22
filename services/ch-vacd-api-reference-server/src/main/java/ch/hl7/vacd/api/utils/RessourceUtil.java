@@ -412,11 +412,13 @@ public class RessourceUtil {
 
 				// replace performer reference
 				immEHR.getPerformer().clear();
-				String immInPerfId = RessourceUtil
-						.removeUrn(immIn.getPerformerFirstRep().getActor().getResource().getIdElement().getIdPart());
-				immEHR.addPerformer().setActor(new Reference(
-						immIn.getPerformerFirstRep().getActor().getResource().fhirType() + "/" + immInPerfId));
-
+				if (immIn.getPerformerFirstRep() != null && immIn.getPerformerFirstRep().getActor() != null
+						&& immIn.getPerformerFirstRep().getActor().getResource() != null) {
+					String immInPerfId = RessourceUtil.removeUrn(
+							immIn.getPerformerFirstRep().getActor().getResource().getIdElement().getIdPart());
+					immEHR.addPerformer().setActor(new Reference(
+							immIn.getPerformerFirstRep().getActor().getResource().fhirType() + "/" + immInPerfId));
+				}
 				chvacdToEHR.addImmunization(immEHR);
 			}
 		}
