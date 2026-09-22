@@ -36,7 +36,7 @@ vaccinations_service = VaccinationsReadService(VaccinationsFhirClient(fhir, FHIR
 @app.get("/healthz")
 async def healthz() -> dict[str, Any]:
     try:
-        r = await fhir.get(f"{FHIR_BASE}/../")
+        r = await fhir.get(f"{FHIR_BASE}/metadata")
         return {"ok": r.status_code == 200, "fhirStatus": r.status_code}
     except Exception as e:
         return {"ok": False, "error": str(e)}
