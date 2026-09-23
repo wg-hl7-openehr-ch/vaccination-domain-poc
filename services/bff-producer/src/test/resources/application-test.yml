@@ -1,0 +1,3 @@
+logging.level.ch.bff.producer.client.TxClient: DEBUG
+
+feign.client.config.default.loggerLevel: full

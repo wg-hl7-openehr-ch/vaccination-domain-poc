@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.util.Calendar;
 
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Patient;
@@ -25,6 +26,8 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.param.StringParam;
+import ca.uhn.fhir.rest.param.TokenParam;
 import ch.bff.producer.client.FhirClient;
 import ch.bff.producer.client.TxClient;
 import ch.bff.producer.provider.models.AdministeredDose;
@@ -343,6 +346,18 @@ class ImmunizationAdministrationServiceImplTest {
 			Parameters retVal = new Parameters();
 			retVal.addParameter().setName("display").setValue(new StringType("Acute poliomyelitis"));
 			return retVal;
+		}
+
+		@Override
+		public Parameters lookupCode(String coding, String displayLanguage, String version) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public Parameters validateCode(Parameters parameters) {
+			// TODO Auto-generated method stub
+			return null;
 		}
 
 	}
