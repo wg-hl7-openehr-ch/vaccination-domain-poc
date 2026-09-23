@@ -1,9 +1,6 @@
 package ch.bff.producer.client;
 
-import org.hl7.fhir.r4.model.CodeableConcept;
-import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Parameters;
-import org.hl7.fhir.r4.model.Parameters.ParametersParameterComponent;
 import org.hl7.fhir.r4.model.ValueSet;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,9 +33,8 @@ public interface TxClient {
 	 * @return the translated target diseases for the given vaccine code
 	 */
 	@PostMapping("/ConceptMap/$translate")
-	Parameters getTargetDiseasesForVaccine(@RequestBody Parameters parameters);
+	Parameters translate(@RequestBody Parameters parameters);
 
-	
 	@PostMapping("/CodeSystem/$lookup")
 	Parameters lookupCode(@RequestBody Parameters parameters);
 }

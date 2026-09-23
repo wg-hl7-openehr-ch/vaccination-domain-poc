@@ -27,10 +27,12 @@ import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunizationAdministrationDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import ca.uhn.fhir.context.FhirContext;
 import ch.hl7.vacd.api.business.BundleBusinessService;
+import ch.hl7.vacd.api.business.PatientBusinessService;
 import ch.hl7.vacd.api.client.EhrbaseClient;
 import ch.hl7.vacd.api.client.OpenFhirClient;
 import ch.hl7.vacd.api.domain.Peeled;
@@ -49,11 +51,17 @@ import jakarta.transaction.Transactional;
 @Service
 public class BundleBusinessServiceImpl extends AbstractBusinessService implements BundleBusinessService {
 
+	@Value("${app.bundle.create.patient.ifabsent:true}")
+	private boolean createPatientIfAbsent;
+	
+	private final PatientBusinessService patientBusinessService;
+
 	private static final Logger log = LoggerFactory.getLogger(BundleBusinessServiceImpl.class);
 
 	public BundleBusinessServiceImpl(FhirContext fhirContext, ResourceRepository store,
-			ArtefactRepository artefactRepository, OpenFhirClient openFhirClient, EhrbaseClient ehrbaseClient) {
+			ArtefactRepository artefactRepository, OpenFhirClient openFhirClient, EhrbaseClient ehrbaseClient, PatientBusinessService patientBusinessService) {
 		super(fhirContext, store, artefactRepository, openFhirClient, ehrbaseClient);
+		this.patientBusinessService = patientBusinessService;
 //		this.ehrbaseClient = ehrbaseClient;
 //		this.openFhirClient = openFhirClient;
 	}
@@ -67,7 +75,7 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 
 		ChVacdImmunizationAdministrationDocument bundleOut = RessourceUtil.createImmunizationAdministrationDocument();
 		String sessionId = bundleOut.getId();
-		
+
 		// Validate and extract bundle structure.
 		Peeled peeled = RessourceUtil.peel(bundle);
 
@@ -84,8 +92,16 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 		String ehrId = ehrbaseClient.findEhrByPatient(patientId);
 
 		if (ehrId == null) {
-			log.error("No EHR found for patientId: {}", patientId);
-			throw new PatientNotFoundException("No EHR found for patientId: " + patientId);
+
+			if (createPatientIfAbsent) {
+				Patient createdPatient = patientBusinessService.createPatient(peeled.patient);
+				log.info("Created patient: {} for patientId: {}", createdPatient.getId(), patientId);
+				patientId = RessourceUtil.removeUrn(createdPatient.getId());
+				ehrId = ehrbaseClient.findEhrByPatient(patientId);
+			} else {
+				log.error("No EHR found for patientId: {}", patientId);
+				throw new PatientNotFoundException("No EHR found for patientId: " + patientId);
+			}
 		}
 
 		log.debug("Found ehrId: {} for patientId: {}", ehrId, patientId);
@@ -101,7 +117,6 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 		for (PractitionerRole practitionerRole : peeled.practitionerRoles) {
 			/* ResourceEntity praRoleEntry = */ createIfAbsent(practitionerRole, fullUrlMap);
 		}
-		
 
 //		patientId = RessourceUtil.removeUrn(patientId);
 		List<String> practitionerIds = peeled.practitioners.stream().map(p -> RessourceUtil.extractId(p, fullUrlMap))
@@ -122,7 +137,7 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 					.setValue("urn:uuid:" + ehrId)//
 					.setUse(Identifier.IdentifierUse.SECONDARY));
 		}
-		
+
 		for (Medication medication : peeled.medications) {
 			medication.addIdentifier(new Identifier()//
 					.setSystem("urn:che:epr:ch-vacd:ehr-id")//
@@ -133,7 +148,8 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 		List<String> compositionUids = new ArrayList<>();
 
 		log.debug("FHIR server accepted Bundle, id={}", id);
-		// Persist the immunizations and medications to the EHR, and get the resulting Bundle back.
+		// Persist the immunizations and medications to the EHR, and get the resulting
+		// Bundle back.
 		Bundle bundleFromEhr = processImmunizationAdmnistration(bundle, fullUrlMap, compositionUids,
 				peeled.immunizations, peeled.medications, ehrId, patientId, sessionId);
 
@@ -146,7 +162,7 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 
 		// create a new bundle to return, containing only the
 		// ImmunizationAdministrationDocument resources
-		
+
 		Patient patientOut = peeled.patient.copy();
 		patientOut.setId(RessourceUtil.removeUrn(patientOut.getId()));
 		bundleOut.setPatient(patientOut);
@@ -186,13 +202,11 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 			ChVacdImmunization immun = copyImmunization(immunization, patientOut, medEntries, bundleOut);
 //			bundleOut.addImmunization(immun);
 		}
-		
+
 		log.info("Out bundle:\n{}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundleOut));
 		return bundleOut;
 
 	}
-
-	
 
 	@Override
 	public Bundle readBundle(IdType id) {

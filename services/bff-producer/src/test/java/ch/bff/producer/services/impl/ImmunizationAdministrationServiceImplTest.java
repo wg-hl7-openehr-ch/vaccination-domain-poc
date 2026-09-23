@@ -332,7 +332,7 @@ class ImmunizationAdministrationServiceImplTest {
 		}
 
 		@Override
-		public Parameters getTargetDiseasesForVaccine(Parameters parameters) {
+		public Parameters translate(Parameters parameters) {
 			InputStream is = this.getClass().getResourceAsStream("/parameters_translate_targetdisease.json");
 			Parameters retVal = FhirContext.forR4().newJsonParser().parseResource(Parameters.class, is);
 			return retVal;

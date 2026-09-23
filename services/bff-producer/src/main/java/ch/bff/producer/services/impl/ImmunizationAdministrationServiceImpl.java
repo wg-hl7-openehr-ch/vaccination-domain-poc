@@ -231,7 +231,7 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 		diseaseParameters.addParameter().setName("system").setValue(new UriType(vaccineCode.getSystem()));
 		
 		log.info("Sending parameters to TX server: {}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(diseaseParameters));
-		Parameters targetDiseaseParameters = txClient.getTargetDiseasesForVaccine(diseaseParameters);
+		Parameters targetDiseaseParameters = txClient.translate(diseaseParameters);
 		
 		log.info("Received target disease parameters: {}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(targetDiseaseParameters));
 		List<CodeableConcept> targetDieseases = List.of(toCodeableConcept(targetDiseaseParameters));
