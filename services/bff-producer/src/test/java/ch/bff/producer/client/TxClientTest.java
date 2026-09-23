@@ -29,7 +29,8 @@ import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.rest.param.StringParam;
 import ca.uhn.fhir.rest.param.TokenParam;
 
-@SpringBootTest(properties = { "TX_BASE_URL=https://swisshds.u.c.bag.admin.ch/terminology/fhir" })
+//@SpringBootTest(properties = { "TX_BASE_URL=https://swisshds.u.c.bag.admin.ch/terminology/fhir" })
+@SpringBootTest(properties = { "TX_BASE_URL=https://tx.fhir.ch/r4" })
 @ActiveProfiles(value = "test")
 class TxClientTest {
 
