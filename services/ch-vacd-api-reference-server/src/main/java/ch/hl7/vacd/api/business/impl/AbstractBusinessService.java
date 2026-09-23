@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
+import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DomainResource;
 import org.hl7.fhir.r4.model.Extension;
@@ -161,7 +162,7 @@ public class AbstractBusinessService {
 	private String getMedicationId(Immunization immunization) {
 		Extension medExt = immunization.getExtensionByUrl(
 				"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-immunization-medication-reference");
-		if (medExt !=null && medExt.getValue() instanceof Reference medRef) {
+		if (medExt != null && medExt.getValue() instanceof Reference medRef) {
 			return medRef.getReference();
 		}
 		return null;
@@ -171,7 +172,8 @@ public class AbstractBusinessService {
 		Medication medication = null;
 		Extension medExt = immunization.getExtensionByUrl(
 				"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-immunization-medication-reference");
-		if (medExt !=null && medExt.getValue() instanceof Reference medRef && medRef.getResource() instanceof Medication) {
+		if (medExt != null && medExt.getValue() instanceof Reference medRef
+				&& medRef.getResource() instanceof Medication) {
 			return (Medication) medRef.getResource();
 		}
 		return null;
@@ -278,7 +280,7 @@ public class AbstractBusinessService {
 						.setUse(IdentifierUse.SECONDARY));
 
 				Medication medication = getMedication(imm);
-				if(medication != null) {
+				if (medication != null) {
 					medication.addIdentifier(new Identifier()//
 							.setSystem("urn:che:epr:ch-vacd:composition-uid")//
 							.setValue(compositionUid)//
@@ -288,11 +290,10 @@ public class AbstractBusinessService {
 							.setValue(compositionUid)//
 							.setUse(IdentifierUse.SECONDARY));
 				}
-				
 
 				createIfAbsent(imm, fullUrlMap);
-				
-				if(medication != null) {
+
+				if (medication != null) {
 					createIfAbsent(medication, fullUrlMap);
 				}
 
@@ -342,13 +343,39 @@ public class AbstractBusinessService {
 
 		log.info("Performer IDs for immunization {}: {}", immunization.getId(), perfomerIds);
 		ChVacdImmunization immun = document.addImmunization();
-		
+
 		String id = immun.getIdElement().getIdPart();
 		immunization.copyValues(immun);
-		if(!immunization.hasExtension("http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-verification-status")  && !immun.hasVerificationStatus()) {
-			immun.setVerificationStatus(new Coding().setSystem("http://snomed.info/sct").setCode("59156000").setDisplay("Confirmed by"));
+		if (immunization
+				.hasExtension("http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-verification-status")) {
+			Extension ext = immunization
+					.getExtensionByUrl("http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-verification-status");
+			if (ext != null && ext.getValue() instanceof Coding coding) {
+				immun.setVerificationStatus(coding);
+				Extension immunExt = immun.getExtensionByUrl(
+						"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-verification-status");
+				if (immunExt != null) {
+					immun.getExtension().remove(immunExt);
+				}
+			} else if (ext != null && ext.getValue() instanceof CodeableConcept cc) {
+				immun.setVerificationStatus(cc.getCodingFirstRep());
+				Extension immunExt = immun.getExtensionByUrl(
+						"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-verification-status");
+				if (immunExt != null) {
+					immun.getExtension().remove(immunExt);
+				}
+
+			}
+		} else {
+			immun.setVerificationStatus(
+					new Coding().setSystem("http://snomed.info/sct").setCode("59156000").setDisplay("Confirmed by"));
 		}
-		
+//		if (!immunization.hasExtension("http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-verification-status")
+//				&& !immun.hasVerificationStatus()) {
+//			immun.setVerificationStatus(
+//					new Coding().setSystem("http://snomed.info/sct").setCode("59156000").setDisplay("Confirmed by"));
+//		}
+
 		immun.setId(id);
 
 		for (String performerId : perfomerIds) {
@@ -364,45 +391,46 @@ public class AbstractBusinessService {
 					idType.getIdPart());
 			if (perfomerDR != null && perfomerDR instanceof Practitioner) {
 				Practitioner perfomer = (Practitioner) perfomerDR;
-				if(notAddedYet(document.getEntry(), perfomer)) {
+				if (notAddedYet(document.getEntry(), perfomer)) {
 					document.addPractitioner(perfomer);
 					immun.addPerformer().setActor(new Reference(perfomer));
-				}else {
+				} else {
 					immun.addPerformer().setActor(new Reference(RessourceUtil.addUuidUrn(perfomer.getIdPart())));
 				}
-				
-
 			}
 			// complete practitionerrole with reference to practitioner and organization
 			else if (perfomerDR != null && perfomerDR instanceof PractitionerRole) {
 				PractitionerRole perfomer = (PractitionerRole) perfomerDR;
-				if(notAddedYet(document.getEntry(), perfomer)) {
+				if (notAddedYet(document.getEntry(), perfomer)) {
 					document.addPractitionerRole(perfomer);
 					immun.addPerformer().setActor(new Reference(perfomer));
-				}else {
+				} else {
 					immun.addPerformer().setActor(new Reference(RessourceUtil.addUuidUrn(perfomer.getIdPart())));
 				}
-				
+
 				Practitioner pract = (Practitioner) getResourceEntry("Practitioner",
 						RessourceUtil.removeUrn(perfomer.getPractitioner().getReference()));
-				if(notAddedYet(document.getEntry(), pract)) {
+				if (notAddedYet(document.getEntry(), pract)) {
 					document.addPractitioner(pract);
 				}
-				
 
 				Organization org = (Organization) getResourceEntry("Organization",
 						RessourceUtil.removeUrn(perfomer.getOrganization().getReference()));
-				if(notAddedYet(document.getEntry(), org)) {
+				if (notAddedYet(document.getEntry(), org)) {
 					document.addOrganization(org);
 				}
 			}
 		}
 
 		String medicationId = getMedicationId(immunization);
-		if(medicationId != null) {
+		if (medicationId != null) {
 			Medication medication = medEntries.get(medicationId);
-			if (medication != null && medication.getCode() !=null && !medication.getCode().isEmpty()) {
+			if (medication != null && medication.getCode() != null && !medication.getCode().isEmpty()) {
 				ChVacdMedicationForImmunization medForImm = new ChVacdMedicationForImmunization();
+				medForImm.addIdentifier()//
+						.setSystem("urn:ietf:rfc:3986")//
+						.setValue("urn:uuid:" + java.util.UUID.randomUUID())//
+						.setUse(IdentifierUse.USUAL);
 				medication.copyValues(medForImm);
 				medForImm.setId(medicationId);
 				document.addMedication(medForImm);
@@ -420,7 +448,9 @@ public class AbstractBusinessService {
 	private boolean notAddedYet(List<BundleEntryComponent> entries, DomainResource perfomer) {
 		return entries.stream().filter(e -> e.getResource() instanceof DomainResource)
 				.map(e -> (DomainResource) e.getResource())
-				.filter(r -> r.fhirType().equals(perfomer.fhirType()) && RessourceUtil.removeUrn(r.getIdElement().getIdPart()).equals(RessourceUtil.removeUrn(perfomer.getIdElement().getIdPart())))
+				.filter(r -> r.fhirType().equals(perfomer.fhirType())
+						&& RessourceUtil.removeUrn(r.getIdElement().getIdPart())
+								.equals(RessourceUtil.removeUrn(perfomer.getIdElement().getIdPart())))
 				.findFirst().isEmpty();
 	}
 
