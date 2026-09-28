@@ -28,18 +28,18 @@ public record VaccinationDto(
         if (vaccineCode == null/* || vaccineCode.isBlank(*/) {
             throw new IllegalArgumentException("Impfstoffcode darf nicht leer sein");
         }
-        if (doseSequence == null || doseSequence.isBlank()) {
-            throw new IllegalArgumentException("Dosis-Reihenfolge (z.B. 1/2) darf nicht leer sein");
-        }
+//        if (doseSequence == null || doseSequence.isBlank()) {
+//            throw new IllegalArgumentException("Dosis-Reihenfolge (z.B. 1/2) darf nicht leer sein");
+//        }
         if (vaccinationDate == null) {
             throw new IllegalArgumentException("Impfdatum darf nicht null sein");
         }
-        if (lotNumber == null || lotNumber.isBlank()) {
-            throw new IllegalArgumentException("Chargennummer (Lot) darf nicht leer sein");
-        }
-        if (practitioner == null) {
-            throw new IllegalArgumentException("Angaben zur medizinischen Fachperson dürfen nicht null sein");
-        }
+//        if (lotNumber == null || lotNumber.isBlank()) {
+//            throw new IllegalArgumentException("Chargennummer (Lot) darf nicht leer sein");
+//        }
+//        if (practitioner == null) {
+//            throw new IllegalArgumentException("Angaben zur medizinischen Fachperson dürfen nicht null sein");
+//        }
     }
 }
 

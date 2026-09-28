@@ -144,6 +144,8 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 		imm.setStatus(Immunization.ImmunizationStatus.COMPLETED);
 //		imm.getMeta().addProfile("http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-immunization-administration");
 
+		imm.setVerificationStatus(new Coding().setSystem("http://snomed.info/sct").setCode("59156000").setDisplay("Confirmed by"));
+		
 		imm.addIdentifier()//
 				.setSystem("urn:ietf:rfc:3986")//
 				.setValue("urn:uuid:" + java.util.UUID.randomUUID())//
@@ -167,7 +169,8 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 					.setValue("urn:uuid:" + java.util.UUID.randomUUID())//
 					.setUse(IdentifierUse.USUAL);
 			medication.setCode(new CodeableConcept()
-					.addCoding(new Coding().setSystem("urn:oid:2.51.1.1").setCode(dto.vaccineCode())));
+					.addCoding(new Coding().setSystem("urn:oid:2.51.1.1").setCode(dto.vaccineCode()))
+					.setText(dto.vaccineName()));
 			medication.setStatus(Medication.MedicationStatus.ACTIVE);
 			if (manufacturer != null) {
 				Reference ref = new Reference(manufacturer);
@@ -226,7 +229,11 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 				.setValue(new UriType("http://fhir.ch/ig/ch-vacd/ConceptMap/ch-vacd-vaccines-targetdiseases-cm"));
 		diseaseParameters.addParameter().setName("sourceCode").setValue(new CodeType(vaccineCode.getCode()));
 		diseaseParameters.addParameter().setName("system").setValue(new UriType(vaccineCode.getSystem()));
-		Parameters targetDiseaseParameters = txClient.getTargetDiseasesForVaccine(diseaseParameters);
+		
+		log.info("Sending parameters to TX server: {}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(diseaseParameters));
+		Parameters targetDiseaseParameters = txClient.translate(diseaseParameters);
+		
+		log.info("Received target disease parameters: {}", fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(targetDiseaseParameters));
 		List<CodeableConcept> targetDieseases = List.of(toCodeableConcept(targetDiseaseParameters));
 		return targetDieseases;
 	}

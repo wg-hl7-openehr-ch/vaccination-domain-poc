@@ -41,6 +41,8 @@ fhir:
       classpath:/packages/ch.fhir.ig.ch-term#3.4.0.tgz,
       classpath:/packages/ch.fhir.ig.ch-vacd#7.0.0-ballot.tgz
 
+app.bundle.create.patient.ifabsent: true
+
 # EHRbase CDR connection
 ehrbase:
   url: ${CDR_URL:http://ehrbase:8080/ehrbase/rest/openehr/v1}
