@@ -36,9 +36,9 @@ components:
           description: "Geschlecht des Patienten"
         ahvNumber:
           type: string
-          pattern: "^756\\.\\d{4}\\.\\d{4}\\.\\d{2}$"
-          example: "756.6789.0123.45"
-          description: "Schweizer AHV-Nummer im Format 756.XXXX.XXXX.XX"
+          pattern: "^756\\d{10}$"
+          example: "7566789012345"
+          description: "Schweizer AHV-Nummer im Format 756XXXXXXXXXX"
         address:
           type: object
           description: "Adresse des Patienten"
