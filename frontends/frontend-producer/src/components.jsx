@@ -148,6 +148,16 @@ function calcAge(dob) {
   return a;
 }
 
+function normalizeAhv(value) {
+  return (value || "").replace(/\D/g, "");
+}
+
+function formatAhv(value) {
+  const digits = normalizeAhv(value);
+  if (digits.length !== 13) return value || "";
+  return `${digits.slice(0, 3)}.${digits.slice(3, 7)}.${digits.slice(7, 11)}.${digits.slice(11)}`;
+}
+
 function initials(first, last) {
   return (first?.[0] || "") + (last?.[0] || "");
 }
@@ -220,4 +230,4 @@ function PatientAvatar({ patient, size = 32 }) {
 
 }
 
-Object.assign(window, { Icon, formatDate, calcAge, initials, TopBar, PatientAvatar });
+Object.assign(window, { Icon, formatDate, calcAge, normalizeAhv, formatAhv, initials, TopBar, PatientAvatar });

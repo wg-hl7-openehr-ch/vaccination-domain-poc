@@ -210,15 +210,55 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
     set("birthDate", formatted);
   };
 
+  const formatAhvInput = (value) => {
+    const digits = value.replace(/\D/g, "").slice(0, 13);
+    let formatted = [digits.slice(0, 3), digits.slice(3, 7), digits.slice(7, 11), digits.slice(11)]
+      .filter(Boolean)
+      .join(".");
+    if (/\.\s*$/.test(value) && [3, 7, 11].includes(digits.length)) formatted += ".";
+    return formatted;
+  };
+
+  const handleAhvChange = (e) => {
+    const input = e.target;
+    const raw = input.value;
+    const caret = input.selectionStart ?? raw.length;
+    const formatted = formatAhvInput(raw);
+    set("ahv", formatted);
+
+    if (caret < raw.length) {
+      const digitsBeforeCaret = raw.slice(0, caret).replace(/\D/g, "").length;
+      let pos = 0;
+      for (let seen = 0; pos < formatted.length && seen < digitsBeforeCaret; pos++) {
+        if (/\d/.test(formatted[pos])) seen++;
+      }
+      requestAnimationFrame(() => input.setSelectionRange(pos, pos));
+    }
+  };
+
+  const hasValidAhvCheckDigit = (digits) => {
+    const sum = [...digits.slice(0, 12)].reduce((acc, d, i) => acc + Number(d) * (i % 2 ? 3 : 1), 0);
+    return (10 - (sum % 10)) % 10 === Number(digits[12]);
+  };
+
   const errors = {};
   if (!form.lastName.trim()) errors.lastName = "Pflichtfeld";
   if (!form.firstName.trim()) errors.firstName = "Pflichtfeld";
   if (!form.birthDate.trim()) errors.birthDate = "Pflichtfeld";
   else if (!parseEuropeanDateToIso(form.birthDate)) errors.birthDate = "Format: TT.MM.JJJJ";
+
+  const ahvDigits = normalizeAhv(form.ahv);
+  if (ahvDigits) {
+    if (!ahvDigits.startsWith("756")) errors.ahv = "AHV-Nummern beginnen mit 756";
+    else if (ahvDigits.length < 13) errors.ahv = "Unvollständig – die AHV-Nummer hat 13 Ziffern";
+    else if (!hasValidAhvCheckDigit(ahvDigits)) errors.ahv = "Prüfziffer stimmt nicht – bitte Nummer kontrollieren";
+  }
+  const showAhvError = touched.ahv && errors.ahv;
+
   const isValid = Object.keys(errors).length === 0;
 
   const submit = async () => {
-    setTouched({ lastName: true, firstName: true, birthDate: true });
+    setTouched({ lastName: true, firstName: true, birthDate: true, ahv: true });
     if (!isValid) return;
 
     const normalizedBirthDate = parseEuropeanDateToIso(form.birthDate);
@@ -239,7 +279,7 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
         },
         email: form.email.trim(),
         phoneNumber: form.phone.trim(),
-        ahv: form.ahv.trim(),
+        ahv: normalizeAhv(form.ahv),
       };
       let created;
       try {
@@ -356,9 +396,15 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
 
             <div className="field" style={{ gridColumn: "1 / -1" }}>
               <label className="field-label">AHV-Nummer</label>
-              <input className="input tnum" placeholder="z. B. 756.1234.5678.97"
+              <input className={"input tnum" + (showAhvError ? " is-error" : "")}
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="756.1234.5678.97"
+                maxLength={16}
                 value={form.ahv}
-                onChange={(e) => set("ahv", e.target.value)} />
+                onChange={handleAhvChange} />
+              {showAhvError && <div className="field-error">{errors.ahv}</div>}
             </div>
 
             <div className="field">
