@@ -76,26 +76,26 @@ public class PatientProvider {
 	private PatientDto getSamplePatient() {
 		// TODO Auto-generated method stub
 		return new PatientDto("00000000-0000-0000-0000-000000000010", "Brunner", "Noah", LocalDate.of(2018, 12, 3), 7,
-				Gender.MÄNNLICH, "756.6789.0123.45", new AddressDto("Hauptstrasse 45", "8400", "Winterthur"),
+				Gender.MÄNNLICH, "7566789012345", new AddressDto("Hauptstrasse 45", "8400", "Winterthur"),
 				"eltern.brunner@hotmail.com", "+41 79 456 78 90");
 	}
 
 	public static List<PatientDto> getSamplePatients() {
 		return List.of(
 				new PatientDto("00000000-0000-0000-0000-000000000010", "Brunner", "Noah", LocalDate.of(2018, 12, 3), 7,
-						Gender.MÄNNLICH, "756.6789.0123.45", new AddressDto("Hauptstrasse 45", "8400", "Winterthur"),
+						Gender.MÄNNLICH, "7566789012345", new AddressDto("Hauptstrasse 45", "8400", "Winterthur"),
 						"eltern.brunner@hotmail.com", "+41 79 456 78 90"),
 				new PatientDto("00000000-0000-0000-0000-000000000011", "Meier", "Elena", LocalDate.of(1992, 5, 14), 34,
-						Gender.WEIBLICH, "756.3124.5589.12", new AddressDto("Bahnhofstrasse 12", "8001", "Zürich"),
+						Gender.WEIBLICH, "7563124558912", new AddressDto("Bahnhofstrasse 12", "8001", "Zürich"),
 						"elena.meier@gmx.ch", "+41 44 211 33 44"),
 				new PatientDto("00000000-0000-0000-0000-000000000012", "Favre", "Jean-Luc", LocalDate.of(1965, 11, 22),
-						60, Gender.MÄNNLICH, "756.8941.2233.76", new AddressDto("Rue du Simplon 5", "1006", "Lausanne"),
+						60, Gender.MÄNNLICH, "7568941223376", new AddressDto("Rue du Simplon 5", "1006", "Lausanne"),
 						"jl.favre@bluewin.ch", "+41 21 614 11 22"),
 				new PatientDto("00000000-0000-0000-0000-000000000013", "Keller", "Sarah", LocalDate.of(2010, 8, 19), 15,
-						Gender.WEIBLICH, "756.4452.9811.03", new AddressDto("Grenzacherstrasse 8", "4058", "Basel"),
+						Gender.WEIBLICH, "7564452981103", new AddressDto("Grenzacherstrasse 8", "4058", "Basel"),
 						"sarah.keller@fhnw.ch", "+41 61 324 88 99"),
 				new PatientDto("00000000-0000-0000-0000-000000000014", "Bernasconi", "Matteo",
-						LocalDate.of(1987, 3, 30), 39, Gender.MÄNNLICH, "756.1298.7744.51",
+						LocalDate.of(1987, 3, 30), 39, Gender.MÄNNLICH, "7561298774451",
 						new AddressDto("Via Nassa 24", "6900", "Lugano"), "matteo.bernasconi@ticino.com",
 						"+41 91 923 55 66"));
 	}
