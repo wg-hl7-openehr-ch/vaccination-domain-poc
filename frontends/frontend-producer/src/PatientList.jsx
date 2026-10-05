@@ -248,12 +248,19 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
   else if (!parseEuropeanDateToIso(form.birthDate)) errors.birthDate = "Format: TT.MM.JJJJ";
 
   const ahvDigits = normalizeAhv(form.ahv);
+  let ahvErrorIsLive = false;
   if (ahvDigits) {
-    if (!ahvDigits.startsWith("756")) errors.ahv = "AHV-Nummern beginnen mit 756";
-    else if (ahvDigits.length < 13) errors.ahv = "Unvollständig – die AHV-Nummer hat 13 Ziffern";
-    else if (!hasValidAhvCheckDigit(ahvDigits)) errors.ahv = "Prüfziffer stimmt nicht – bitte Nummer kontrollieren";
+    if (!"756".startsWith(ahvDigits.slice(0, 3))) {
+      errors.ahv = "AHV-Nummern beginnen mit 756";
+      ahvErrorIsLive = true;
+    } else if (ahvDigits.length < 13) {
+      errors.ahv = "Unvollständig – die AHV-Nummer hat 13 Ziffern";
+    } else if (!hasValidAhvCheckDigit(ahvDigits)) {
+      errors.ahv = "Prüfziffer stimmt nicht – bitte Nummer kontrollieren";
+      ahvErrorIsLive = true;
+    }
   }
-  const showAhvError = touched.ahv && errors.ahv;
+  const showAhvError = errors.ahv && (ahvErrorIsLive || touched.ahv);
 
   const isValid = Object.keys(errors).length === 0;
 
@@ -403,7 +410,8 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
                 placeholder="756.1234.5678.97"
                 maxLength={16}
                 value={form.ahv}
-                onChange={handleAhvChange} />
+                onChange={handleAhvChange}
+                onBlur={() => touch("ahv")} />
               {showAhvError && <div className="field-error">{errors.ahv}</div>}
             </div>
 
