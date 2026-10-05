@@ -230,7 +230,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
               <span><Icon.Pin /> {patient.address}</span>
               <span><Icon.Mail /> {patient.email}</span>
               <span><Icon.Phone /> <span className="tnum">{patient.phone}</span></span>
-              <span><Icon.User /> AHV <span className="mono">{patient.ahv}</span></span>
+              <span><Icon.User /> AHV <span className="mono">{formatAhv(patient.ahv)}</span></span>
               <span>
                 <Icon.User /> ID <span className="mono">{patient.id}</span>
                 <button

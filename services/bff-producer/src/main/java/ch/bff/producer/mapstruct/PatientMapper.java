@@ -76,9 +76,19 @@ public interface PatientMapper {
 
 		return identifiers.stream().filter(id -> AHV_SYSTEM.equals(id.getSystem())).findFirst()
 				.map(Identifier::getValue)
-				.orElseGet(() -> identifiers.stream().map(Identifier::getValue)
-						.filter(v -> v != null && v.matches("756[.-]?\\d{4}[.-]?\\d{4}[.-]?\\d{2}")).findFirst()
-						.orElse(null));
+				.or(() -> identifiers.stream().map(Identifier::getValue)
+						.filter(v -> v != null && v.matches("756[.-]?\\d{4}[.-]?\\d{4}[.-]?\\d{2}")).findFirst())
+				.map(PatientMapper::normalizeAhv)
+				.orElse(null);
+	}
+
+	/**
+	 * AHV numbers are exchanged as 13 plain digits (e.g. 7561234567897). Separators
+	 * such as dots are a display concern of the frontend and are stripped here.
+	 */
+	@Named("normalizeAhv")
+	static String normalizeAhv(String ahvNumber) {
+		return ahvNumber == null ? null : ahvNumber.replaceAll("[\\s.-]", "");
 	}
 
 	@Named("mapAddress")
@@ -142,7 +152,7 @@ public interface PatientMapper {
 		Identifier identifier = new Identifier();
 		identifier.setUse(Identifier.IdentifierUse.OFFICIAL);
 		identifier.setSystem(AHV_SYSTEM);
-		identifier.setValue(ahvNumber);
+		identifier.setValue(normalizeAhv(ahvNumber));
 		retVal.add(identifier);
 		return retVal;
 	}

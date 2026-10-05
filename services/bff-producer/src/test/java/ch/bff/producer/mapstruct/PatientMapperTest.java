@@ -53,7 +53,7 @@ class PatientMapperTest {
 		assertEquals(LocalDate.of(1980, 6, 15), dto.birthDate());
 		assertTrue(dto.age() > 0);
 		assertEquals(Gender.MÄNNLICH, dto.gender());
-		assertEquals("756.1234.5678.90", dto.ahvNumber());
+		assertEquals("7561234567890", dto.ahvNumber());
 		assertNotNull(dto.address());
 		assertEquals("Bahnhofstrasse 1", dto.address().street());
 		assertEquals("8001", dto.address().zipCode());
@@ -109,23 +109,23 @@ class PatientMapperTest {
 	void toPatientDto_ahvBySystem_extractsCorrectly() {
 		Patient patient = new Patient();
 		patient.addName().setFamily("Muster").addGiven("Max");
-		patient.addIdentifier().setSystem(PatientMapper.AHV_SYSTEM).setValue("756.1234.5678.90").setUse(IdentifierUse.OFFICIAL);
+		patient.addIdentifier().setSystem(PatientMapper.AHV_SYSTEM).setValue("7561234567890").setUse(IdentifierUse.OFFICIAL);
 		patient.addIdentifier().setSystem("other-system").setValue("other-value");
 
 		PatientDto dto = mapper.toPatientDto(patient);
 
-		assertEquals("756.1234.5678.90", dto.ahvNumber());
+		assertEquals("7561234567890", dto.ahvNumber());
 	}
 
 	@Test
-	void toPatientDto_ahvByPattern_fallsBackToPatternMatch() {
+	void toPatientDto_ahvByPattern_fallsBackToPatternMatchAndStripsDots() {
 		Patient patient = new Patient();
 		patient.addName().setFamily("Muster").addGiven("Max");
 		patient.addIdentifier().setSystem("other-system").setValue("756.1234.5678.90");
 
 		PatientDto dto = mapper.toPatientDto(patient);
 
-		assertEquals("756.1234.5678.90", dto.ahvNumber());
+		assertEquals("7561234567890", dto.ahvNumber());
 	}
 
 	@Test
@@ -180,7 +180,7 @@ class PatientMapperTest {
 		List<Identifier> identifiers = patient.getIdentifier();
 		assertEquals(1, identifiers.size());
 		assertEquals(PatientMapper.AHV_SYSTEM, identifiers.get(0).getSystem());
-		assertEquals("756.1234.5678.90", identifiers.get(0).getValue());
+		assertEquals("7561234567890", identifiers.get(0).getValue());
 
 		Address address = patient.getAddressFirstRep();
 		assertTrue(address.getLine().stream().anyMatch(l -> l.getValue().contains("Bahnhofstrasse 1")));
@@ -196,6 +196,16 @@ class PatientMapperTest {
 				.filter(cp -> ContactPoint.ContactPointSystem.PHONE.equals(cp.getSystem())).findFirst()
 				.map(ContactPoint::getValue).orElse(null);
 		assertEquals("+41791234567", phone);
+	}
+
+	@Test
+	void toPatient_dottedAhv_storesDigitsOnly() {
+		PatientCreateDto dto = new PatientCreateDto("Muster", "Max", null, Gender.MÄNNLICH, null, null, null,
+				"756.1234.5678.90");
+
+		Patient patient = mapper.toPatient(dto);
+
+		assertEquals("7561234567890", patient.getIdentifierFirstRep().getValue());
 	}
 
 	@Test
@@ -333,7 +343,7 @@ class PatientMapperTest {
 		patient.setGender(Enumerations.AdministrativeGender.MALE);
 		patient.setBirthDate(Date.from(LocalDate.of(1980, 6, 15).atStartOfDay(ZoneId.systemDefault()).toInstant()));
 
-		patient.addIdentifier().setSystem(PatientMapper.AHV_SYSTEM).setValue("756.1234.5678.90").setUse(IdentifierUse.OFFICIAL);
+		patient.addIdentifier().setSystem(PatientMapper.AHV_SYSTEM).setValue("7561234567890").setUse(IdentifierUse.OFFICIAL);
 
 		Address address = new Address();
 		address.addLine("Bahnhofstrasse 1");
@@ -349,13 +359,13 @@ class PatientMapperTest {
 
 	private PatientDto buildFullPatientDto() {
 		return new PatientDto("patient-1", "Muster", "Max", LocalDate.of(1980, 6, 15), 43, Gender.MÄNNLICH,
-				"756.1234.5678.90", new AddressDto("Bahnhofstrasse 1", "8001", "Zürich"), "max.muster@example.com",
+				"7561234567890", new AddressDto("Bahnhofstrasse 1", "8001", "Zürich"), "max.muster@example.com",
 				"+41791234567");
 	}
 
 	private PatientCreateDto buildFullPatientCreateDto() {
 		return new PatientCreateDto("Muster", "Max", LocalDate.of(1980, 6, 15), Gender.MÄNNLICH,
 				new AddressDto("Bahnhofstrasse 1", "8001", "Zürich"), "max.muster@example.com", "+41791234567",
-				"756.1234.5678.90");
+				"7561234567890");
 	}
 }

@@ -136,13 +136,13 @@
 				},
 				"text": {
 					"status": "generated",
-					"div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><div class=\"hapiHeaderText\">Hugo <b>BEISPIEL </b></div><table class=\"hapiPropertyTable\"><tbody><tr><td>Identifier</td><td>756.1234.5678.90</td></tr><tr><td>Address</td><td><span>Hugo 1 </span><span>8009 </span><span>Hugenswil </span></td></tr><tr><td>Date of birth</td><td><span>31 December 1999</span></td></tr></tbody></table></div>"
+					"div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><div class=\"hapiHeaderText\">Hugo <b>BEISPIEL </b></div><table class=\"hapiPropertyTable\"><tbody><tr><td>Identifier</td><td>7561234567890</td></tr><tr><td>Address</td><td><span>Hugo 1 </span><span>8009 </span><span>Hugenswil </span></td></tr><tr><td>Date of birth</td><td><span>31 December 1999</span></td></tr></tbody></table></div>"
 				},
 				"identifier": [
 					{
 						"use": "official",
 						"system": "urn:oid:2.16.756.5.32",
-						"value": "756.1234.5678.90"
+						"value": "7561234567890"
 					},
 					{
 						"use": "usual",

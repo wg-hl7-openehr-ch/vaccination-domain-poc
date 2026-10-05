@@ -179,7 +179,7 @@ function inferDisease(vaccine) {
 
 function loadMockFallback() {
   window.AppData.patients = [
-    { id: 'P-0001', firstName: 'Demo', lastName: 'Patient', dob: '1990-01-01', sex: 'M', address: 'Musterstrasse 1, 8000 Zürich', email: 'demo@example.ch', phone: '+41 00 000 00 00', ahv: '756.0000.0000.00' },
+    { id: 'P-0001', firstName: 'Demo', lastName: 'Patient', dob: '1990-01-01', sex: 'M', address: 'Musterstrasse 1, 8000 Zürich', email: 'demo@example.ch', phone: '+41 00 000 00 00', ahv: '7560000000000' },
   ];
   window.AppData.vaccinations = {};
 }
