@@ -376,28 +376,8 @@ services:
 # are still exposed for host-side tools (browsers, Postman).
 volumes:
   fhir-db-data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /home/roeland/development/ws-vaccination-domain/data/fhirdb
   ehrbase-db-data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /home/roeland/development/ws-vaccination-domain/data/ehrdb
   openfhir-mongo-data: 
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /home/roeland/development/ws-vaccination-domain/data/mongodb
   iam-mock-data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /home/roeland/development/ws-vaccination-domain/data/iam-mock
 
 
