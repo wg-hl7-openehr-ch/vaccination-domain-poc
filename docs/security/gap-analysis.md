@@ -1,7 +1,7 @@
 # Security Gap Analysis — Vaccination Domain POC
 
 > **Snapshot:** 2026-10-05 (branch `25-security-ausbauen`).
-> **Target:** [security concept](security.md). **Phases:** [roadmap](../roadmap.md#2-phases).
+> **Target:** [security concept](security.md).
 
 This document tracks the distance between the current code and the
 target described in the [security concept](security.md). It is a dated
@@ -14,8 +14,7 @@ with synthetic test data. Most of them are tolerated in development
 also violate the rules that apply to development itself (published ports bound
 to `localhost`, §1.4). When a gap is fixed, set its status to
 `closed` (with the closing commit or PR) or remove the row. IDs are
-stable and are not reused, because the concept and the roadmap refer to
-them.
+stable and are not reused, because the concept refers to them.
 
 **Path abbreviations**
 
@@ -26,7 +25,7 @@ them.
 | `bff-producer/` | `services/bff-producer/src/main/java/ch/bff/producer/` |
 | `audit/` | `services/audit-trace-logger/src/main/java/ch/vaccination/domain/audittrace/` |
 
-**Roadmap phases:** 0 quick fix, 1 MVP, 2 proxy access, 3 M2M + gateway,
+**Phases:** 0 quick fix, 1 MVP, 2 proxy access, 3 M2M + gateway,
 4 hardening.
 
 ---

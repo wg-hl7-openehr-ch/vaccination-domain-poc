@@ -105,7 +105,7 @@ deployment and to real data.
 | Authorization data | Consents, share codes, proxy relationships (`RelatedPerson`), identity attributes in Keycloak (`patient`, `organization_reference`, `gln`) | Security-critical — whoever can change them can reach clinical data |
 | Credentials and keys | AS signing keys, client keys, passwords, database and EHRbase credentials, share-code HMAC key | Security-critical |
 | Audit trail | `AuditEvent`s | Personal data; integrity-critical (evidence) |
-| Directory data | Organizations, practitioners, practitioner roles (GLN) | Low confidentiality, integrity-critical (used for author checks) |
+| Directory data (registry, §4.1) | Organizations, practitioners, practitioner roles (GLN) | Low confidentiality, integrity-critical (used for author checks, consent display and `fhirUser` targets) |
 
 ### 2.2 Security objectives
 
@@ -135,6 +135,10 @@ following apply and **MUST** be addressed:
   Art. 50c ff.). The platform does not use it as an identifier.
 - **EPR / EPDG** only if EPR interoperability becomes a goal
   ([open question](#14-open-questions)).
+
+This assumes a controller under federal law. If the controller is a
+cantonal body, cantonal data protection law (e.g. IDG ZH) applies
+instead; naming the controller is an [open question](#14-open-questions).
 
 ---
 
@@ -192,6 +196,7 @@ graph TD
         OF[openFHIR]:::core
         OES[EHRbase]:::core
         AUD[Audit Trace Logger]:::core
+        REG[(Registry<br/>directory data)]:::db
         FDB[(FHIR DB<br/>Consents, share codes,<br/>proxy relationships)]:::db
         ODB[(openEHR DB)]:::db
         ADB[(Audit DB)]:::db
@@ -222,6 +227,7 @@ graph TD
     FAS -->|AuditEvent| AUD
     AUD --- ADB
     FAS --> FDB
+    FAS -->|read only| REG
     FAS --> OF
     FAS -->|service account| OES
     OES --> ODB
@@ -239,6 +245,7 @@ graph TD
 | **CH VACD FHIR API** (Resource Server, Policy Decision Point) | Steps 1–3 of §8. Owns consents, share codes and proxy relationships. Serves `/.well-known/smart-configuration`. Writes `AuditEvent`s. The only component that talks to openFHIR and EHRbase. |
 | **openFHIR, EHRbase** | Mapping and clinical storage; reachable only from the FHIR API. |
 | **Audit Trace Logger** | Append-only `AuditEvent` repository (§9). |
+| **Registry** | Directory of organizations, practitioners and practitioner roles with their GLNs; source of `organization_reference` URLs, `fhirUser` targets (`PractitionerRole`), the organization name and GLN in `Consent.provision.actor.display`, and the GLNs used in author checks (§8.7). Run by the platform operator and written **only** by the operator during onboarding and offboarding (§5.5) — never through the FHIR API's client interface. The FHIR API reads it. Keycloak does not access it: the operator copies the organization claims into the client or account at onboarding. In the POC the registry **MAY** be a set of directory resources in the FHIR DB; the same rules apply. |
 
 **Why the fine-grained decision lives in the FHIR API.** It needs FHIR
 knowledge: looking up consents, resolving references inside document
@@ -255,7 +262,7 @@ anything (§8.1).
 | DMZ | Edge proxy, Security Gateway | Internet (HTTPS only); BFFs (gateway) |
 | Identity zone | Keycloak, its database | Edge proxy (authorization, token, end-session and login endpoints; no admin console); BFFs (token, end-session, JWKS for back-channel logout tokens); gateway, FHIR API and audit logger (JWKS); gateway and FHIR API (token endpoint, as service clients) |
 | Application zone | BFFs | Edge proxy; Keycloak (back-channel logout) |
-| Data zone | FHIR API, openFHIR, EHRbase, audit logger, all databases | Gateway (FHIR API; audit logger for `POST /AuditEvent` only); FHIR API (everything else). In deployments without a gateway: BFFs (FHIR API only). |
+| Data zone | FHIR API, openFHIR, EHRbase, audit logger, registry, all databases | Gateway (FHIR API; audit logger for `POST /AuditEvent` only); FHIR API (everything else). In deployments without a gateway: BFFs (FHIR API only). |
 
 No component of the data zone may be reachable from the internet. The
 only outbound internet access is Keycloak fetching registered M2M JWKS
@@ -329,7 +336,7 @@ FHIR API relies on this — it **MUST** be configured as follows:
 | --- | --- | --- | --- |
 | `bff-consumer` | Accounts with role `patient` and/or `representative` | Patient: `openid fhirUser launch/patient patient/Patient.r patient/Immunization.rs patient/Consent.rs`. Representative: `openid user/Patient.r user/Immunization.rs user/Consent.rs`. Both: `__vacd_share_code_create`. | `patient`, `fhirUser` = `Patient/{id}` (only if role `patient`); `caller_type` = `consumer` |
 | `bff-producer` | Accounts with role `practitioner` | `openid fhirUser user/Patient.r user/Immunization.rus user/Bundle.c __vacd_share_code_redeem` | `fhirUser` = `PractitionerRole/{id}`, `gln`, `organization_reference`, `organization_gln`; `caller_type` = `practitioner` |
-| M2M client (one per primary system) | — (client credentials) | Subset of `system/Patient.r system/Immunization.rs system/Bundle.c __vacd_share_code_redeem`, fixed at onboarding | `organization_reference`, `organization_gln` (from onboarding); `fhirContext` (if requested, §6.7); `caller_type` = `system` |
+| M2M client (one per primary system) | — (client credentials) | Subset of `system/Patient.r system/Immunization.rus system/Bundle.c __vacd_share_code_redeem`, fixed at onboarding | `organization_reference`, `organization_gln` (from onboarding); `fhirContext` (if requested, §6.7); `caller_type` = `system` |
 | Service clients (`fhir-api`, `gateway`) | — (client credentials) | `system/AuditEvent.c` | `caller_type` = `service` |
 
 - A login attempt at a client by an account without the required role
@@ -357,15 +364,17 @@ FHIR API relies on this — it **MUST** be configured as follows:
 | Password reset | Self-service reset via e-mail is acceptable for the POC. Before real data, the reset channel **MUST** be at least as strong as the login (e.g. MFA required after reset). |
 | MFA reset | Only by an administrator after an identity check; logged. |
 | Deprovisioning | When a practitioner leaves an organization or a custody relationship ends, the account (or attribute, or `RelatedPerson`) **MUST** be deactivated the same day; open sessions are revoked (§8.10). |
-| Session revocation | Disabling an account **MUST** end its BFF sessions via back-channel logout; at most one access-token lifetime remains (§7.4). |
+| Session revocation | Deprovisioning **MUST** both disable the account and explicitly log out all its sessions at the AS, which triggers back-channel logout to the BFFs. Disabling alone is not relied on to end sessions. At most one access-token lifetime remains (§7.4). |
 
 ### 5.5 M2M client onboarding and offboarding
 
 Onboarding is a one-time, out-of-band process run by the platform
 operator:
 
-1. The organization proves its identity and GLN (verified against a
-   registry, assumption A4) and names a responsible contact.
+1. The organization proves its identity and GLN (verified against an
+   external GLN registry, assumption A4) and names a responsible contact.
+   The operator creates or updates its entry in the platform registry
+   (§4.1); `organization_reference` is the URL of that entry.
 2. It registers a **JWKS URL** (preferred, enables key rotation) or a
    public key. JWKS URLs **MUST** use HTTPS, resolve to public addresses,
    and be fetched by the AS through an egress path that cannot reach
@@ -436,7 +445,7 @@ sequenceDiagram
     PR->>API: POST /Patient/$redeem-share-code {code}  (via gateway if present)
     API->>API: token, scope __vacd_share_code_redeem, rate limit
     API->>API: HMAC(code) → atomically: active, not expired, not used → used
-    API->>API: create Consent (patient, organization, until end of day)
+    API->>API: create Consent (patient, organization, consent period §6.3)
     API->>AUD: AuditEvent (redeem, patient, organization)
     API-->>PR: 200 { patient, name, birthDate, consent, consentUntil }
     PR->>D: show name + birth date
@@ -461,12 +470,19 @@ sequenceDiagram
 - Invalid, expired and already used codes all give the same response
   (`403`).
 - Redemption **MUST** be rate-limited per organization, per client and
-  globally (default: 10 attempts per minute per organization). These
+  globally. The per-organization limit counts **failed** attempts
+  (default: 10 per minute); a separate, higher limit applies to all
+  attempts, so that busy sites (e.g. mass vaccination) are not blocked by
+  successful redemptions. All limits are configurable; their values
+  **MUST** be set from the expected peak load and documented. These
   limits are enforced by the FHIR API, which knows the organization and
   the outcome; a gateway may add coarse limits in front. Failed attempts
   are audited and alerted on (§10.5).
 - The consumer app **MUST** show which organization redeemed the code,
-  and list all active consents.
+  list all active consents, and let the patient — or a representative
+  with an active proxy relationship — **withdraw** any of them
+  (`$withdraw`, §8.4). This lets the patient react to an unwanted
+  redemption (R1).
 
 **Why 60 bit is enough.** A code lives 10 minutes, is single use, can
 only be redeemed with an organization token, and redemption is
@@ -488,7 +504,7 @@ A redeemed share code creates a FHIR R4 `Consent`:
 | `dateTime` | redemption time |
 | `policyRule` | `http://terminology.hl7.org/CodeSystem/v3-ActCode#OPTIN` |
 | `provision.type` | `permit` |
-| `provision.period` | redemption time until **23:59:59 Europe/Zurich** of the same day |
+| `provision.period` | redemption time until the **later** of 23:59:59 Europe/Zurich of the redemption day and redemption time + **4 hours** (minimum window, configurable) |
 | `provision.actor` | role `http://terminology.hl7.org/CodeSystem/v3-ParticipationType#PRCP`, reference = the redeeming organization (`organization_reference`), `display` = organization name and GLN taken from the registry (never from the token or the request) |
 | `identifier` | platform system URI + id of the internal share-code record (never the code) |
 
@@ -496,23 +512,27 @@ A redeemed share code creates a FHIR R4 `Consent`:
   `provision.period` covering the current time.
 - Consents are created **only** by `$redeem-share-code`. No client gets
   `Consent.c`; consents are never updated or deleted by clients. The only
-  change a client can make is `$withdraw` by the organization the consent
-  was granted to (§6.2).
+  change a client can make is `$withdraw` — by the organization the
+  consent was granted to, or by the patient or a representative with an
+  active proxy relationship (§6.2).
 - A consent covers **the organization** — every practitioner and every
   M2M client of that organization — for **reading the record and
   submitting documents**. "Organization" means the site with its own GLN,
   not a group or chain.
 - **One code per visit.** Every later visit, also within a vaccination
   series, needs a new code.
-- A consent cannot be ended early by the patient (accepted for the POC,
-  §12; see §14).
+- The patient (or a representative) can end a consent early with
+  `$withdraw`; the organization loses access with its next request. Data
+  the organization has already read stays with it (R8).
 
 ### 6.4 Patient identification and onboarding
 
 - Organizations **MUST NOT** be able to search for patients — not even
   with an exact name and birth date, which would reveal whether a person
-  is registered. They get a patient id only from a share code and store
-  it locally for later visits (a new consent is still needed).
+  is registered. They get a patient id only from a share code. Primary
+  systems may store it locally to match later visits (a new consent is
+  still needed); the producer frontend and BFF keep no patient lists
+  (§8.10).
 - New `Patient` resources are created **only by patient onboarding** —
   never implicitly by a document, a read, or a `PUT` (no upsert). How
   onboarding works is an [open question](#14-open-questions); it **MUST**
@@ -537,18 +557,25 @@ entries with `primarySource = false`, so readers can tell a transcribed
 entry from a first-hand one.
 
 **Corrections.** A wrong entry is corrected by setting its status to
-`entered-in-error` — never by deleting or rewriting it.
+`entered-in-error` — never by deleting or rewriting it. Corrections use
+the dedicated operation `POST /Immunization/{id}/$mark-entered-in-error`,
+whose only input is a reason (`statusReason`). There is no
+`PUT /Immunization/{id}`: a full-body update would have to be compared
+with a stored resource that comes back through openFHIR, and that round
+trip is not guaranteed to be lossless.
 
-- Only the organization that **recorded** the entry may correct it. The
+- Only the organization that **recorded** the entry may correct it —
+  through a practitioner or one of its primary systems (M2M). The
   recording organization is stored by the FHIR API at creation time; it
   is not taken from `Immunization.performer`.
-- A correction changes only `status` (to `entered-in-error`) and
-  `statusReason`; every other element **MUST** stay unchanged.
+- The operation changes only `status` (to `entered-in-error`) and
+  `statusReason`; clients cannot send any other element.
 - The previous version **MUST** be preserved in storage (CDR
-  versioning) and available to auditors and operators for
+  versioning: a new version of the affected composition, not a
+  deletion) and available to auditors and operators for
   investigations; it is not exposed to clients through the API. The
-  correction **MUST** be visible in every read path (also in documents
-  built from the CDR).
+  correction **MUST** be visible in every read path (`GET /Immunization`
+  and documents built from the CDR such as `$export-document`).
 - A correction needs an active consent like any other access (see §14
   for a possible grace period).
 
@@ -570,8 +597,8 @@ normal case. The FHIR API stores who may act for whom as `RelatedPerson`:
 - Several representatives per person and several persons per
   representative are possible.
 - A representative may **list the persons they represent**, **read** a
-  represented person's record, **issue share codes** for them, and **see
-  their active consents** — nothing else.
+  represented person's record, **issue share codes** for them, **see
+  their active consents** and **withdraw** them — nothing else.
 - The list comes from `GET /$represented-persons` (§8.4). It returns only
   the active relationships of the calling account (identified by token
   issuer and `sub`, never by request parameters): patient reference,
@@ -653,7 +680,7 @@ scopes; SMART requires custom scopes to be full URIs or to start with
 
 | Scope | Meaning |
 | --- | --- |
-| `__vacd_share_code_create` | Call `$create-share-code` (consumer only) |
+| `__vacd_share_code_create` | Call `$create-share-code`, and `$withdraw` on consents of a patient the caller may issue codes for (consumer only) |
 | `__vacd_share_code_redeem` | Call `$redeem-share-code` — which creates the consent and returns the minimal identification data of §6.2 — and `$withdraw` on a consent received that way (practitioner, system) |
 
 These scopes cover everything their operations do; no additional
@@ -771,7 +798,7 @@ registered JWKS, `typ` `JWT`. Payload: `exp` at most 5 minutes after
 | Refresh token | User flows only, held in the BFF session, rotated on use |
 | BFF session | Idle timeout 30 min, absolute timeout 8 h |
 | Share code | 10 min, single use |
-| Consent from a redeemed code | Until 23:59:59 Europe/Zurich of the redemption day |
+| Consent from a redeemed code | Until the later of 23:59:59 Europe/Zurich of the redemption day and redemption + 4 h (§6.3) |
 | Access-token signature (AS) | RS256 or ES256 — the allow-list for step 1 (§8.2) |
 | Client-assertion signature | RS384 or ES384 |
 | AS signing keys | Rotated regularly; validators cache JWKS and refetch on unknown `kid` |
@@ -787,6 +814,8 @@ registered JWKS, `typ` `JWT`. Payload: `exp` at most 5 minutes after
 - `Bundle.c` on `POST /Bundle` means submitting an Immunization
   Administration Document, which creates immunizations and compositions
   on the server. `Immunization.c` is deliberately not granted (§6.5).
+- `Immunization.u` permits only `$mark-entered-in-error` (§6.5); there is
+  no `PUT` on `Immunization`.
 - RFC 9068 names the client `client_id`; the AS may emit `azp` instead.
   The RS treats `azp` as the client id.
 - `/.well-known/smart-configuration` is served by the FHIR API (SMART
@@ -815,9 +844,8 @@ gateway (§4.2). The audit logger enforces its own rules (§9.4).
 - `Authorization: Bearer` present, JWT well-formed.
 - Signature valid against the AS JWKS; `alg` from the allow-list in §7.4
   (never `none`, never `HS*`).
-- Token type is an access token (header `typ` `at+jwt`, or the AS's
-  access-token type claim) — ID tokens and other JWTs from the same AS
-  are rejected.
+- Token type is an access token: JOSE header `typ` = `at+jwt`
+  (RFC 9068). ID tokens and other JWTs from the same AS are rejected.
 - `iss` = the realm; `aud` contains the FHIR API base URL; `exp` / `nbf`
   valid with small clock skew; `azp` is a known client.
 - If token binding is enabled (DPoP or mTLS, §10.1): the `cnf` binding
@@ -857,10 +885,10 @@ resource type not listed (e.g. `RelatedPerson`, `Organization`,
 | `GET /Immunization/{id}` | ✓ | ✓ | ✓ | `*/Immunization.r` |
 | `GET /Immunization?patient=` (patient mandatory) | ✓ | ✓ | ✓ | `*/Immunization.s` |
 | `POST /Bundle` (Immunization Administration Document) | — | ✓ | ✓ | `user/Bundle.c`, `system/Bundle.c` |
-| `PUT /Immunization/{id}` (correction only, §6.5) | — | ✓ | — | `user/Immunization.u` |
+| `POST /Immunization/{id}/$mark-entered-in-error` (correction, §6.5) | — | ✓ | ✓ | `user/Immunization.u`, `system/Immunization.u` |
 | `POST /Patient/{id}/$create-share-code` | ✓ | — | — | `__vacd_share_code_create` |
 | `POST /Patient/$redeem-share-code` | — | ✓ | ✓ | `__vacd_share_code_redeem` |
-| `POST /Consent/{id}/$withdraw` (only a consent granted to the caller's organization) | — | ✓ | ✓ | `__vacd_share_code_redeem` |
+| `POST /Consent/{id}/$withdraw` (consumer: consent of the own or a represented patient; practitioner, system: consent granted to the caller's organization) | ✓ | ✓ | ✓ | `__vacd_share_code_create` (consumer), `__vacd_share_code_redeem` (practitioner, system) |
 | `GET /Consent?patient=` | ✓ | — | — | `patient/Consent.s`, `user/Consent.s` |
 | `GET /$represented-persons` (§6.6) | ✓ | — | — | `user/Patient.r` |
 | `GET /ValueSet`, `GET /ValueSet/{id}`, `POST /ValueSet/{id}/$expand` | ✓ | ✓ | ✓ | any valid token (no patient data) |
@@ -868,7 +896,8 @@ resource type not listed (e.g. `RelatedPerson`, `Organization`,
 The audit logger is a separate server with its own rules (§9.4).
 
 Not allowed for any client: patient search (`GET /Patient?…`), creating
-or updating patients (onboarding only, §6.4), `POST /Immunization`.
+or updating patients (onboarding only, §6.4), `POST /Immunization`,
+`PUT /Immunization/{id}` (corrections use `$mark-entered-in-error`, §6.5).
 
 Rules for adding interactions:
 
@@ -894,7 +923,7 @@ check and the request handler **MUST** use the same resolution logic.
 | --- | --- |
 | `/Patient/{id}…` | path id |
 | `?patient=` | exactly one value, `{id}` or `Patient/{id}`. Absolute URLs, chained parameters (`patient.identifier=…`), modifiers and repeated parameters are rejected. Searches without `patient` are rejected. |
-| `GET` / `PUT /Immunization/{id}` | `Immunization.patient` of the **stored** resource; on `PUT`, the new body **MUST** reference the same patient |
+| `GET /Immunization/{id}`, `$mark-entered-in-error` | `Immunization.patient` of the **stored** resource |
 | `POST /Bundle` | `Composition.subject` and the patient / subject reference of **every** entry that has one — resolved inside the Bundle (`urn:uuid` full URLs) — **MUST** all point to the same `Patient` entry, which **MUST** carry the id of an existing patient |
 | `$create-share-code` | path id |
 | `$redeem-share-code` | the patient of the share code |
@@ -910,7 +939,7 @@ A missing patient and a patient without access give the same response
 | --- | --- |
 | consumer, own patient | Token has `patient/` scopes and `token.patient` = request patient. |
 | consumer, representative | Token has `user/` scopes and an active `RelatedPerson` exists for (request patient, issuer + `sub`) with `period` covering now. |
-| consumer, both fail | Deny (except the interactions without a request patient below). A consumer may never write clinical data. |
+| consumer, both fail | Deny (except the interactions without a request patient below). A consumer may never write clinical data; `$withdraw` on a consent of the own or a represented patient is the only change a consumer can make to authorization data. |
 | any, no request patient | Public and terminology rows of §8.4: no patient check. `$represented-persons`: consumer with `user/Patient.r`; the result is limited to active `RelatedPerson`s of the token's issuer and `sub` (§6.6). |
 | practitioner | Active consent for (request patient, `organization_reference`). Exceptions: `$redeem-share-code`; `$withdraw` (consent granted to the caller's organization, active or not). |
 | system | `fhirContext` contains exactly one patient, equal to the request patient, **and** active consent for (request patient, `organization_reference`). Exceptions as for practitioner — the only patient-data interactions allowed without `fhirContext`. |
@@ -936,13 +965,21 @@ For `POST /Bundle` (Immunization Administration Document), in addition to
   (historical entries), the performer is free text / any organization.
 - `Practitioner`, `PractitionerRole` and `Organization` entries in a
   Bundle **MUST NOT** be persisted as directory data; directory data comes
-  only from the registry maintained by the operator.
+  only from the registry maintained by the operator (§4.1).
 - The FHIR API stores the **recording organization** (from the token)
   with every created immunization; it is the basis for corrections.
+- **All or nothing:** a document is stored completely or not at all. If
+  it maps to several openEHR compositions and EHRbase cannot store them
+  in one transaction, the FHIR API **MUST** remove the compositions
+  already created when a later one fails (compensation) and return an
+  error. The outcome `AuditEvent` records the failure and the
+  compensation (§9.2); if the compensation fails, an alert is raised
+  (§10.5) and the remaining compositions are listed in the outcome
+  `AuditEvent`, so the partial state is visible.
 
-For `PUT /Immunization/{id}` (correction): only by the recording
-organization; only `status` → `entered-in-error` and `statusReason` may
-change; active consent required (§6.5).
+For `POST /Immunization/{id}/$mark-entered-in-error` (correction): only
+by the recording organization; only `status` → `entered-in-error` and
+`statusReason` change; active consent required (§6.5).
 
 ### 8.8 Response check
 
@@ -1019,7 +1056,8 @@ tokens in the browser.
   the change; if that fails, the change is not executed (`503`). After
   the change, a second `AuditEvent` records the outcome, correlated via a
   request id. If the outcome event cannot be written, an alert is raised
-  (§10.5).
+  (§10.5). A failed write records whether it was fully rolled back or
+  compensated (§8.7).
 - Fail-closed means an audit outage stops the platform. This is
   intended (§2.2) and listed in §12.
 
@@ -1095,7 +1133,7 @@ Audit entries contain references, not clinical content.
 | BFF client keys (`private_key_jwt`) | Each BFF | One key pair per BFF, mounted as a secret, public part registered at the AS; rotated at least yearly and on suspicion. |
 | Service client keys (FHIR API, gateway) | Each service | As BFF client keys. |
 | M2M client keys | The organization | Published via JWKS URL (§5.5); the platform never sees the private key. |
-| Share-code HMAC key | FHIR API | Random, ≥ 256 bit; secret storage. |
+| Share-code HMAC key | FHIR API | Random, ≥ 256 bit; secret storage. Rotating it invalidates all active share codes, which is acceptable given their 10-minute validity. |
 | Database and EHRbase credentials | Each service | One account per service with least privilege; generated per environment; never default values. |
 | Keycloak bootstrap admin | Operator | Removed after setup; personal admin accounts with MFA instead. |
 
@@ -1111,6 +1149,9 @@ in version control).
 - Direct database access by operators is limited to maintenance and
   logged; changes to consents or proxy relationships outside the API are
   forbidden.
+- Registry entries (§4.1) are changed only by the operator as part of
+  onboarding or offboarding; every change is logged and retained like
+  the audit trail.
 
 ### 10.4 Data at rest and backups
 
@@ -1151,7 +1192,7 @@ reviewed.
 | T5 | User changes own identity attribute | Managed, admin-only attributes (§5.2) |
 | T6 | Account obtains a role's scopes it does not hold (e.g. patient logs in at `bff-producer`) | Issuance policy, client-specific claims, caller-type check (§5.3, §8.3) |
 | T7 | Organization grants itself access | Consent only via redemption of the patient's code; no `Consent.c` for anyone (§6.2) |
-| T8 | Share code disclosed (shoulder surfing, phishing call) and redeemed by someone else | 10-min validity, single use, redeeming organization shown in the app, rate limits, audit (§6.2); residual risk (§12) |
+| T8 | Share code disclosed (shoulder surfing, phishing call) and redeemed by someone else | 10-min validity, single use, redeeming organization shown in the app, withdrawal by the patient, rate limits, audit (§6.2); residual risk (§12) |
 | T9 | Share code guessed or redeemed twice concurrently | 60 bit, atomic single use, rate limits, alerting (§6.2) |
 | T10 | Wrong-patient documentation (code of a sibling, wrong local record in a primary system) | Name and birth date returned on redemption, mandatory confirmation, withdrawal on mismatch (§6.2); birth-date check on submission (§8.7) |
 | T11 | Someone poses as a parent | Proxy relationship only via onboarding with identity check (§6.6) |
@@ -1172,6 +1213,8 @@ reviewed.
 | T26 | Weak user authentication | Password policy, brute-force detection, MFA (§5.1) |
 | T27 | Malicious or oversized input | Profile validation, size limits, generic errors (§8.7, §8.9) |
 | T28 | Direct access to backing services | Only edge and gateway published, no default credentials (§10.1, §10.2) |
+| T29 | Tampering with registry data (e.g. changing an organization's GLN or name to pass author checks or mislead the patient in the consent display) | Registry written only by the operator, never through the client API; default deny for directory types (§4.1, §8.4); change logging (§10.3) |
+| T30 | Partially stored document (some compositions written, others not) | All-or-nothing with compensation, audited outcome, alert on failed compensation (§8.7, §9.2) |
 
 ---
 
@@ -1182,8 +1225,8 @@ before real data is used.
 
 | # | Risk | Why accepted |
 | --- | --- | --- |
-| R1 | A disclosed share code (e.g. read aloud in a waiting room) can be redeemed by any registered organization within 10 minutes. | Short validity and single use; the patient sees the redeeming organization; all redemptions are audited. |
-| R2 | A consent cannot be ended early by the patient; it lasts until the end of the day (unless the organization withdraws it, §6.2) and covers the whole organization, also for reading the full record. | Keeps the model simple; exposure is limited to one day. See §14. |
+| R1 | A disclosed share code (e.g. read aloud in a waiting room) can be redeemed by any registered organization within 10 minutes. | Short validity and single use; the patient sees the redeeming organization and can withdraw the consent; all redemptions are audited. Data read before the withdrawal remains with the organization (R8). |
+| R2 | A consent lasts until the end of the consent period (§6.3) unless withdrawn, and covers the whole organization, also for reading the full record. | Keeps the model simple; exposure is limited to about one day and the patient can withdraw early. See §14. |
 | R3 | `purpose_of_use` and the practitioner named by a primary system are claimed, not verified. | Recorded in the audit only, never used for decisions; the organization is authoritative. |
 | R4 | The AS issues M2M tokens for any patient the client names. | The token alone grants nothing; the FHIR API requires an active consent. |
 | R5 | After an account is disabled, an access token remains valid for up to its lifetime. | 5–10 minutes. |
@@ -1213,18 +1256,18 @@ tests are as important as positive ones.
 | AC8 | Practitioner reads a patient without an active consent; with an expired consent; with a consent of another organization | `403` |
 | AC9 | M2M token for patient X used for patient Y; M2M token with two patients in `fhirContext`; M2M token without `fhirContext` used for any patient-data interaction other than redemption and withdrawal | `403` |
 | AC10 | Redeem an invalid, an expired and a used code | identical `403`; `AuditEvent` for each |
-| AC11 | Redemption attempts by one organization above the configured limit (default 10 per minute) | rejected (`429`), alert raised |
+| AC11 | Failed redemption attempts by one organization above the configured limit (default 10 per minute); successful redemptions above that number but below the total limit | rejected (`429`), alert raised; `200` |
 | AC12 | Representative reads the child's record; after the `RelatedPerson` is deactivated | `200`, then `403` |
-| AC13 | Representative or patient submits a Bundle or updates an Immunization | `403` |
+| AC13 | Representative or patient submits a Bundle or calls `$mark-entered-in-error` | `403` |
 | AC14 | Bundle with mixed patients; for a non-existent patient; with an author GLN of another organization; with `primarySource=true` and a foreign performer | `403` / `422`, nothing stored |
 | AC15 | Bundle with `primarySource=false` and a foreign performer, author = caller | `201` |
-| AC16 | Correction by the recording organization (status only); correction changing another field; correction by another organization; `PUT` changing `Immunization.patient` | `200` with the previous version preserved in storage; `403`; `403`; `403` |
+| AC16 | `$mark-entered-in-error` by the recording organization (practitioner and M2M); by another organization; without an active consent; `PUT /Immunization/{id}` | `200`, previous version preserved in storage, status `entered-in-error` shown by `GET /Immunization` and `$export-document`; `403`; `403`; `403` |
 | AC17 | `DELETE` on any resource; `POST /RelatedPerson`; `GET /Practitioner`; `GET /List`; `PUT /Patient/{id}`; `GET /Patient?name=` | `403` |
 | AC18 | Audit logger unavailable during a read and during a write | `503`, no data returned, nothing changed |
 | AC19 | At the audit logger: `PUT` / `DELETE` on `AuditEvent`; `POST /AuditEvent` with a user token or a token for the FHIR API audience; `GET` / search with any token | `403` / `401` |
 | AC20 | State-changing BFF request without CSRF token or with a foreign `Origin` | `403` |
 | AC21 | Consumer frontend opened without a session | redirect to login, no patient data |
-| AC22 | Logout, then reuse of the old session cookie | no access |
+| AC22 | Logout, then reuse of the old session cookie; account deprovisioned (§5.4), then reuse of its BFF session | no access; no access |
 | AC23 | Request with clinical payload in a non-development profile | no payload in any log |
 | AC24 | Port scan of a secured deployment from outside | only edge proxy and gateway reachable |
 | AC25 | Representative calls `$create-share-code` or reads for a person without an active `RelatedPerson` | `403` |
@@ -1237,6 +1280,10 @@ tests are as important as positive ones.
 | AC32 | `$represented-persons` for a representative with two children and one deactivated relationship | exactly the two active relationships of the caller |
 | AC33 | Bundle whose `Patient` entry has a birth date different from the stored patient | `422`, nothing stored |
 | AC34 | BFF session cookie after login | `__Host-` prefix, `HttpOnly`, `Secure`, `SameSite`; session id differs from the one before login |
+| AC35 | Patient withdraws a consent for themselves; representative withdraws a consent of a represented person; consumer withdraws a consent of a patient they neither are nor represent | consent inactive, organization's next request `403`; same; `403` |
+| AC36 | Share code redeemed at 23:50 Europe/Zurich; at 10:00 | consent ends at 03:50 the next day; at 23:59:59 the same day |
+| AC37 | `POST /Bundle` whose n-th composition fails to store in EHRbase | error response; no composition of the document remains; outcome `AuditEvent` records the compensation |
+| AC38 | Client tries to create or update `Organization`, `Practitioner` or `PractitionerRole`; Bundle with a changed `Organization` entry | `403`; registry unchanged |
 
 ---
 
@@ -1254,13 +1301,15 @@ tests are as important as positive ones.
    practitioners working for **several organizations** handled — one
    account per organization, or an organization choice at login that the
    AS validates? (Invariant either way: one token, one organization.)
-4. **Consent lifetime:** should patients be able to end a consent early
-   (R2)? Should the recording organization be allowed to **correct its
-   own entries** for a limited time (e.g. 30 days) without a new code?
-   Should documents for a visit during the consent period be accepted
-   after it ended (late entry, retry after an outage), e.g. if
-   `occurrenceDateTime` lies within the period, for a few days (R10)?
-   Should a consent allow writing only, without reading the full record?
+4. **Consent lifetime and content:** should the recording organization be
+   allowed to **correct its own entries** for a limited time (e.g. 30
+   days) without a new code? Should documents for a visit during the
+   consent period be accepted after it ended (late entry, retry after an
+   outage), e.g. if `occurrenceDateTime` lies within the period, for a
+   few days (R10)? Should a consent allow writing only, without reading
+   the full record — in particular for pharmacies, which today also see
+   allergies and conditions (data minimization)? Is the 4-hour minimum
+   window (§6.3) right?
 5. **Retention:** how long are `AuditEvent`s (≥ 1 year), expired consents
    and share-code records kept, and who may read them?
 6. **EPR alignment:** if EPR interoperability becomes a goal, IHE IUA /
@@ -1273,6 +1322,10 @@ tests are as important as positive ones.
    component validates the DPoP proof (`htu` is the gateway URL), and how
    does the FHIR API verify the binding (forwarded proof, or trust in the
    gateway via mTLS)? Decide before DPoP is enabled (§10.1).
+9. **Controller:** who is the controller (and processor, if any) once
+   real data is processed? A cantonal body would fall under cantonal data
+   protection law (e.g. IDG ZH) instead of the nDSG, and §2.3 must be
+   adjusted. Not urgent while only synthetic data is used (A3).
 
 ---
 

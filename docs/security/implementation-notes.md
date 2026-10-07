@@ -237,11 +237,13 @@ The storage pointcuts fire only if provider code calls
   entries in a custom rule tester or in the provider (§8.5, §8.7).
 - **Update:** only the **new body** is checked; the stored resource is
   seen only via `STORAGE_PRESTORAGE_RESOURCE_UPDATED`, which does not
-  fire. The provider must load the stored resource and check patient,
-  recording organization and the "status only" rule itself (§6.5, §8.7)
-  — or fire that pointcut.
+  fire. This is one reason the concept replaces `PUT /Immunization` with
+  `$mark-entered-in-error` (§6.5): no `update` rule is needed at all. The
+  operation provider loads the stored resource and checks patient and
+  recording organization itself (§8.7).
 - **Operations** (`$export-document`, `$create-share-code`,
-  `$redeem-share-code`, `$withdraw`, `$represented-persons`, `$expand`)
+  `$redeem-share-code`, `$withdraw`, `$mark-entered-in-error`,
+  `$represented-persons`, `$expand`)
   need explicit
   `allow().operation().named(...)` rules. Without `andAllowAllResponses()`
   the output document is unpacked one level and every entry is checked
