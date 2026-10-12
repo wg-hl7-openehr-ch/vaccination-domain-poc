@@ -63,6 +63,8 @@ public class ImmunizationBusinessServiceImpl extends AbstractBusinessService imp
 			patient = fhirContext.newJsonParser().parseResource(patient.getClass(), parResEnt.getJson());
 		}
 
+		RessourceUtil.validateOccurrenceDate(immunization, patient);
+
 		String ehrId = ehrbaseClient.findEhrByPatient(patientId);
 		log.info("EHR ID for patient {}: {}", patientId, ehrId);
 
