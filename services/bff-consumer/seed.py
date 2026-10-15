@@ -2,7 +2,7 @@
 
 Consulted by `_ensure_patient` in app.py when an unknown patient ID is
 first requested: known iam-mock user IDs get persisted with realistic
-demographics, unknown IDs are not created.
+demographics, unknown IDs fall back to a minimal stub.
 
 IDs are kept in sync with USERS (role == "patient") in
 services/iam-mock/server.py."""
@@ -39,18 +39,17 @@ PATIENTS: dict[str, dict[str, Any]] = {
 }
 
 
-def patient_resource(patient_id: str) -> dict[str, Any] | None:
-    """Return a FHIR Patient resource for the given ID, or None if unknown.
+def patient_resource(patient_id: str) -> dict[str, Any]:
+    """Return a FHIR Patient resource for the given ID.
 
-    The FHIR server rejects Patients without name, birthDate, gender and
-    active, so only known iam-mock users can be created."""
+    If the ID matches a known iam-mock user, the resource carries full
+    demographic mock data; otherwise it is a minimal stub."""
     p = PATIENTS.get(patient_id)
     if p is None:
-        return None
+        return {"resourceType": "Patient", "id": patient_id}
     return {
         "resourceType": "Patient",
         "id": patient_id,
-        "active": True,
         "name": [{"family": p["lastName"], "given": [p["firstName"]]}],
         "gender": p["gender"],
         "birthDate": p["birthDate"],
