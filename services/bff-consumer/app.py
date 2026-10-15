@@ -83,9 +83,12 @@ async def _ensure_patient(patient_id: str) -> bool:
     }
     if patient_id in stored_ids:
         return False
+    resource = patient_resource(patient_id)
+    if resource is None:
+        raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
     create = await fhir.put(
         f"{FHIR_BASE}/Patient/{patient_id}",
-        json=patient_resource(patient_id),
+        json=resource,
         headers={"Content-Type": "application/fhir+json"},
     )
     if create.status_code not in (200, 201):
