@@ -208,7 +208,7 @@ public class RessourceUtil {
 				practitionerRoles, medications);
 	}
 
-	// --- Immunization status validation ---
+	// --- Immunization status / birthDateSource validation ---
 	public static void validateStatus(Immunization immunization) {
 		String status = immunization.getStatus() != null ? immunization.getStatus().toCode() : null;
 		if (!"completed".equals(status)) {
@@ -232,6 +232,17 @@ public class RessourceUtil {
 				.filter(Immunization.class::isInstance)
 				.map(Immunization.class::cast)
 				.collect(Collectors.toList());
+	}
+
+	/**
+	 * Patient whose birthDate the occurrence check uses: the stored Patient if it
+	 * has a birthDate value, otherwise the Patient carried in the Bundle. Checks
+	 * the value rather than hasBirthDate(), which is also true for an element
+	 * carrying only a data-absent-reason extension.
+	 */
+	public static Patient birthDateSource(Patient storedPatient, Patient bundlePatient) {
+		return storedPatient != null && storedPatient.getBirthDateElement().getValue() != null ? storedPatient
+				: bundlePatient;
 	}
 
 	public static void validateOccurrenceDate(Immunization immunization, Patient patient) {

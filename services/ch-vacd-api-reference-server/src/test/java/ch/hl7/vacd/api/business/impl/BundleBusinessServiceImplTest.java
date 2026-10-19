@@ -159,4 +159,12 @@ class BundleBusinessServiceImplTest {
 
 		assertPassesValidation(bundle);
 	}
+
+	@Test
+	void createBundle_storedPatientWithoutBirthDate_usesBundleBirthDate() {
+		storePatient(null);
+		Bundle bundle = bundle("2020-05-10", immunization("2019-01-01"));
+
+		assertRejectedWithoutSideEffects(bundle, "must not be before Patient.birthDate");
+	}
 }

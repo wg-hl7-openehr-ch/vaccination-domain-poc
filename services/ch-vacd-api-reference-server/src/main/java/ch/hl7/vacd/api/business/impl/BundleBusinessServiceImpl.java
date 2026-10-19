@@ -86,8 +86,7 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 
 		// Validate status and occurrence date of every Immunization entry
 		Patient storedPatient = getResourceEntry("Patient", patientId);
-		Patient birthDateSource = storedPatient != null ? storedPatient : peeled.patient;
-		for (Immunization immunization : peeled.immunizations) {
+		Patient birthDateSource = RessourceUtil.birthDateSource(storedPatient, peeled.patient);
 		for (Immunization immunization : RessourceUtil.immunizationEntries(bundle)) {
 			RessourceUtil.validateStatus(immunization);
 			RessourceUtil.validateOccurrenceDate(immunization, birthDateSource);

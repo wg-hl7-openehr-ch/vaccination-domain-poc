@@ -154,4 +154,22 @@ class RessourceUtilTest {
 		assertTrue(entries.containsAll(peeled.immunizations));
 	}
 
+	@Test
+	void birthDateSource_prefersStoredPatientWithBirthDate() {
+		var stored = patient("2010-01-01");
+		assertSame(stored, RessourceUtil.birthDateSource(stored, patient("2020-05-10")));
+	}
+
+	@Test
+	void birthDateSource_storedPatientWithoutBirthDate_fallsBackToBundlePatient() {
+		var inBundle = patient("2020-05-10");
+		assertSame(inBundle, RessourceUtil.birthDateSource(new Patient(), inBundle));
+		assertSame(inBundle, RessourceUtil.birthDateSource(null, inBundle));
+
+		var absent = new Patient();
+		absent.getBirthDateElement().addExtension("http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+				new StringType("unknown"));
+		assertSame(inBundle, RessourceUtil.birthDateSource(absent, inBundle));
+	}
+
 }
