@@ -39,7 +39,10 @@ async function importVaccinations(personId, file) {
     headers: { ...authHeaders() },
     body: formData,
   });
-  if (!res.ok) throw new Error('Fehler beim Importieren des Impfausweises');
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || 'Fehler beim Importieren des Impfausweises');
+  }
   return res.json();
 }
 
@@ -79,7 +82,12 @@ async function createImmunization(personId, data) {
     },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Fehler beim Erfassen der Impfung');
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const err = new Error(body?.message || 'Fehler beim Erfassen der Impfung');
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
