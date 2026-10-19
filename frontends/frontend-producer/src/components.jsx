@@ -139,6 +139,11 @@ function formatDate(iso, opts = {}) {
   return d.toLocaleDateString("de-CH", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function localIsoToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function calcAge(dob) {
   const b = new Date(dob);
   const n = new Date();
