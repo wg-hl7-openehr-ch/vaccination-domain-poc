@@ -1,6 +1,8 @@
 package ch.bff.producer.services.impl;
 
 import java.io.InputStream;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -10,6 +12,7 @@ import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.DateType;
 import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.hl7.fhir.r4.model.Immunization;
 import org.hl7.fhir.r4.model.Medication;
@@ -35,9 +38,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.model.api.TemporalPrecisionEnum;
 import ca.uhn.fhir.parser.IParser;
 import ch.bff.producer.client.FhirClient;
 import ch.bff.producer.client.TxClient;
+import ch.bff.producer.exception.FhirErrorMessages;
+import ch.bff.producer.exception.ValidationException;
+import feign.FeignException;
 import ch.bff.producer.provider.models.CodingDto;
 import ch.bff.producer.provider.models.ImmunizationCreateDto;
 import ch.bff.producer.provider.models.PractitionerDto;
@@ -50,6 +57,7 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 		implements ImmunizationAdministrationService {
 
 	private static final Logger log = LoggerFactory.getLogger(ImmunizationAdministrationServiceImpl.class);
+	private static final ZoneId CH_ZONE = ZoneId.of("Europe/Zurich");
 
 	private final TxClient txClient;
 	private final FhirContext fhirContext;
@@ -83,6 +91,9 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 			Bundle bundle = iparser.parseResource(org.hl7.fhir.r4.model.Bundle.class, inputStream);
 			var response = fhirClient.postImmunizationAdministrationBundle(bundle);
 			log.debug("Posted Bundle, response ID: {}", response.getIdElement().getIdPart());
+		} catch (FeignException.UnprocessableEntity e) {
+			log.warn("Bundle rejected by FHIR server: {}", e.getMessage());
+			throw new ValidationException(FhirErrorMessages.diagnostics(e));
 		} catch (Exception e) {
 			log.error("Error parsing bundle: {}", e.getMessage(), e);
 			throw new IllegalArgumentException("Error parsing bundle: " + e.getMessage());
@@ -98,6 +109,7 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 		ChVacdImmunizationAdministrationDocument bundle = new ChVacdImmunizationAdministrationDocument();
 		// 2. Real patient from FHIR
 		var fhirPatient = fhirClient.getPatientById(patientIamId);
+		validateVaccinationDate(createDto.vaccinationDate(), fhirPatient, LocalDate.now(CH_ZONE));
 		bundle.setPatient(fhirPatient);
 
 		// 3. Build PractitionerRole, Practitioner and Organization resources for author
@@ -126,6 +138,32 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 						&& immunization.getProtocolAppliedFirstRep().getTargetDisease() != null)
 								? immunization.getProtocolAppliedFirstRep().getTargetDiseaseFirstRep().getCoding()
 								: List.of());
+	}
+
+	// ---- Validation ----
+
+	/**
+	 * Rejects vaccination dates before the patient's birth date or after today.
+	 * Compares calendar days only; the birth date is read from its FHIR
+	 * year/month/day fields to avoid timezone shifts. Partial birth dates
+	 * (YYYY, YYYY-MM) are treated as their earliest possible day so that valid
+	 * records are never rejected. Without a birth date only the future check
+	 * applies.
+	 */
+	static void validateVaccinationDate(LocalDate vaccinationDate, Patient patient, LocalDate today) {
+		if (patient != null && patient.getBirthDateElement().getValue() != null) {
+			DateType bd = patient.getBirthDateElement();
+			int precision = bd.getPrecision().ordinal();
+			int month = precision >= TemporalPrecisionEnum.MONTH.ordinal() ? bd.getMonth() + 1 : 1;
+			int day = precision >= TemporalPrecisionEnum.DAY.ordinal() ? bd.getDay() : 1;
+			LocalDate birthDate = LocalDate.of(bd.getYear(), month, day);
+			if (vaccinationDate.isBefore(birthDate)) {
+				throw new ValidationException("Impfdatum darf nicht vor dem Geburtsdatum liegen");
+			}
+		}
+		if (vaccinationDate.isAfter(today)) {
+			throw new ValidationException("Impfdatum darf nicht in der Zukunft liegen");
+		}
 	}
 
 	// ---- Resource builders ----

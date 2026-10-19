@@ -1,17 +1,24 @@
 package ch.bff.producer.services.impl;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Calendar;
+import java.util.Map;
 
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.DateType;
 import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Patient;
@@ -29,7 +36,11 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.param.StringParam;
 import ca.uhn.fhir.rest.param.TokenParam;
 import ch.bff.producer.client.FhirClient;
+import feign.FeignException;
+import feign.Request;
+import feign.Response;
 import ch.bff.producer.client.TxClient;
+import ch.bff.producer.exception.ValidationException;
 import ch.bff.producer.provider.models.AdministeredDose;
 import ch.bff.producer.provider.models.ImmunizationCreateDto;
 import ch.bff.producer.provider.models.RouteOfAdministration;
@@ -255,6 +266,128 @@ class ImmunizationAdministrationServiceImplTest {
 		assertEquals("test-patient", fhirClient.capturedPatientId);
 	}
 
+	// ---- vaccination date validation ----
+	@Test
+	void createImmunizationAdministration_vaccinationBeforeBirth_throwsAndPostsNothing() {
+		var dto = createDto(LocalDate.of(1990, 1, 14));
+
+		var ex = assertThrows(ValidationException.class,
+				() -> service.createImmunizationAdministration("test-patient", dto));
+
+		assertEquals("Impfdatum darf nicht vor dem Geburtsdatum liegen", ex.getMessage());
+		assertNull(fhirClient.postedBundle);
+	}
+
+	@Test
+	void createImmunizationAdministration_vaccinationOnBirthDate_isAccepted() {
+		var dto = createDto(LocalDate.of(1990, 1, 15));
+
+		service.createImmunizationAdministration("test-patient", dto);
+
+		assertNotNull(fhirClient.postedBundle);
+	}
+
+	@Test
+	void createImmunizationAdministration_vaccinationInFuture_throwsAndPostsNothing() {
+		var dto = createDto(LocalDate.now(ZoneId.of("Europe/Zurich")).plusDays(2));
+
+		var ex = assertThrows(ValidationException.class,
+				() -> service.createImmunizationAdministration("test-patient", dto));
+
+		assertEquals("Impfdatum darf nicht in der Zukunft liegen", ex.getMessage());
+		assertNull(fhirClient.postedBundle);
+	}
+
+	@Test
+	void validateVaccinationDate_today_isAccepted() {
+		var today = LocalDate.of(2026, 10, 12);
+
+		assertDoesNotThrow(() -> ImmunizationAdministrationServiceImpl.validateVaccinationDate(today,
+				createMockPatient(), today));
+	}
+
+	@Test
+	void validateVaccinationDate_tomorrow_throws() {
+		var today = LocalDate.of(2026, 10, 12);
+
+		assertThrows(ValidationException.class, () -> ImmunizationAdministrationServiceImpl
+				.validateVaccinationDate(today.plusDays(1), createMockPatient(), today));
+	}
+
+	@Test
+	void validateVaccinationDate_noBirthDate_skipsBirthCheck() {
+		var patient = createMockPatient();
+		patient.setBirthDate(null);
+
+		assertDoesNotThrow(() -> ImmunizationAdministrationServiceImpl
+				.validateVaccinationDate(LocalDate.of(1900, 1, 1), patient, LocalDate.of(2026, 10, 12)));
+	}
+
+	@Test
+	void validateVaccinationDate_noPatient_skipsBirthCheck() {
+		assertDoesNotThrow(() -> ImmunizationAdministrationServiceImpl
+				.validateVaccinationDate(LocalDate.of(1900, 1, 1), null, LocalDate.of(2026, 10, 12)));
+	}
+
+	@Test
+	void validateVaccinationDate_yearOnlyBirthDate_usesEarliestDay() {
+		var patient = createMockPatient();
+		patient.setBirthDateElement(new DateType("1990"));
+		var today = LocalDate.of(2026, 10, 12);
+
+		assertDoesNotThrow(() -> ImmunizationAdministrationServiceImpl
+				.validateVaccinationDate(LocalDate.of(1990, 1, 1), patient, today));
+		assertThrows(ValidationException.class, () -> ImmunizationAdministrationServiceImpl
+				.validateVaccinationDate(LocalDate.of(1989, 12, 31), patient, today));
+	}
+
+	@Test
+	void validateVaccinationDate_yearMonthBirthDate_usesEarliestDay() {
+		var patient = createMockPatient();
+		patient.setBirthDateElement(new DateType("1990-03"));
+		var today = LocalDate.of(2026, 10, 12);
+
+		assertDoesNotThrow(() -> ImmunizationAdministrationServiceImpl
+				.validateVaccinationDate(LocalDate.of(1990, 3, 1), patient, today));
+		assertThrows(ValidationException.class, () -> ImmunizationAdministrationServiceImpl
+				.validateVaccinationDate(LocalDate.of(1990, 2, 28), patient, today));
+	}
+
+	// ---- FHIR server rejections ----
+
+	@Test
+	void importVaccinations_fhirServer422_throwsValidationExceptionWithDiagnostics() {
+		fhirClient.postError = unprocessable(
+				"{\"resourceType\":\"OperationOutcome\",\"issue\":[{\"severity\":\"error\",\"code\":\"processing\","
+						+ "\"diagnostics\":\"Immunization.occurrenceDateTime (2020-05-09) must not be before Patient.birthDate (2020-05-10)\"}]}");
+		var bundle = new ByteArrayInputStream("{\"resourceType\":\"Bundle\"}".getBytes(StandardCharsets.UTF_8));
+
+		var ex = assertThrows(ValidationException.class,
+				() -> service.importVaccinations("test-patient", "application/json", bundle));
+
+		assertEquals("Immunization.occurrenceDateTime (2020-05-09) must not be before Patient.birthDate (2020-05-10)",
+				ex.getMessage());
+	}
+
+	@Test
+	void importVaccinations_fhirServer422WithoutOperationOutcome_fallsBackToFeignMessage() {
+		fhirClient.postError = unprocessable("not json");
+		var bundle = new ByteArrayInputStream("{\"resourceType\":\"Bundle\"}".getBytes(StandardCharsets.UTF_8));
+
+		var ex = assertThrows(ValidationException.class,
+				() -> service.importVaccinations("test-patient", "application/json", bundle));
+
+		assertTrue(ex.getMessage().contains("422"));
+	}
+
+	private static FeignException unprocessable(String body) {
+		var request = Request.create(Request.HttpMethod.POST, "http://fhir/Bundle", Map.of(), null,
+				StandardCharsets.UTF_8, null);
+		var response = Response.builder().status(422).reason("Unprocessable Entity").request(request)
+				.headers(Map.of()).body(body, StandardCharsets.UTF_8).build();
+		return FeignException.errorStatus("FhirClient#postImmunizationAdministrationBundle", response);
+	}
+
 	// ---- helpers ----
 
 	private static Patient createMockPatient() {
@@ -270,13 +403,17 @@ class ImmunizationAdministrationServiceImplTest {
 	}
 
 	private static ImmunizationCreateDto createDefaultDto() {
+		return createDto(LocalDate.of(2025, 6, 15));
+	}
+
+	private static ImmunizationCreateDto createDto(LocalDate vaccinationDate) {
 		return new ImmunizationCreateDto(//
 				"http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|681|Boostrix Polio", //
 				"TestPharma AG", //
 				"LOT12345", //
 				"12345678987654", //
 
-				LocalDate.of(2026, 1, 1), LocalDate.of(2025, 6, 15), RouteOfAdministration.IM,
+				LocalDate.of(2026, 1, 1), vaccinationDate, RouteOfAdministration.IM,
 				new AdministeredDose(0.5, "ml"), "Left upper arm", new VaccinationReason("840539006", "COVID-19", null),
 				3, 3, false);
 	}
@@ -288,6 +425,7 @@ class ImmunizationAdministrationServiceImplTest {
 		Patient patientToReturn;
 		Bundle postedBundle;
 		String capturedPatientId;
+		RuntimeException postError;
 
 		@Override
 		public Bundle getPatient() {
@@ -302,6 +440,8 @@ class ImmunizationAdministrationServiceImplTest {
 
 		@Override
 		public Bundle postImmunizationAdministrationBundle(Bundle bundle) {
+			if (postError != null)
+				throw postError;
 			postedBundle = bundle;
 			var response = new Bundle();
 			response.setId("response-123");
