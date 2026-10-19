@@ -139,4 +139,19 @@ class RessourceUtilTest {
 		}
 	}
 
+	// --- immunizationEntries ---
+
+	@Test
+	void immunizationEntries_includesImmunizationsNotReferencedBySection() {
+		var orphan = immunization("2099-01-01");
+		testBundle.addEntry().setFullUrl("urn:uuid:orphan").setResource(orphan);
+
+		var peeled = RessourceUtil.peel(testBundle);
+		var entries = RessourceUtil.immunizationEntries(testBundle);
+
+		assertFalse(peeled.immunizations.contains(orphan));
+		assertTrue(entries.contains(orphan));
+		assertTrue(entries.containsAll(peeled.immunizations));
+	}
+
 }

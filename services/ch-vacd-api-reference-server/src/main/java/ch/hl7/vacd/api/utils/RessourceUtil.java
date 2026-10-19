@@ -220,6 +220,20 @@ public class RessourceUtil {
 	// --- Immunization occurrence vs. patient birthDate validation ---
 	private static final ZoneId CH_ZONE = ZoneId.of("Europe/Zurich");
 
+	/**
+	 * Every Immunization entry of the Bundle, including those no Composition
+	 * section references. Validation must cover all of them because
+	 * {@link #createOpenFhirImmunizationAdministrationDocument} writes every
+	 * Immunization entry to openEHR, not only {@link Peeled#immunizations}.
+	 */
+	public static List<Immunization> immunizationEntries(Bundle bundle) {
+		return bundle.getEntry().stream()
+				.map(Bundle.BundleEntryComponent::getResource)
+				.filter(Immunization.class::isInstance)
+				.map(Immunization.class::cast)
+				.collect(Collectors.toList());
+	}
+
 	public static void validateOccurrenceDate(Immunization immunization, Patient patient) {
 		validateOccurrenceDate(immunization, patient, LocalDate.now(CH_ZONE));
 	}

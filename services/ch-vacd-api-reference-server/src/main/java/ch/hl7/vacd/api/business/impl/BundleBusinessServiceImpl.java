@@ -84,10 +84,11 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 		// Extract IDs.
 		String patientId = RessourceUtil.extractId(peeled.patient, fullUrlMap);
 
-		// Validate each Immunization status and occurrence date
+		// Validate status and occurrence date of every Immunization entry
 		Patient storedPatient = getResourceEntry("Patient", patientId);
 		Patient birthDateSource = storedPatient != null ? storedPatient : peeled.patient;
 		for (Immunization immunization : peeled.immunizations) {
+		for (Immunization immunization : RessourceUtil.immunizationEntries(bundle)) {
 			RessourceUtil.validateStatus(immunization);
 			RessourceUtil.validateOccurrenceDate(immunization, birthDateSource);
 		}
