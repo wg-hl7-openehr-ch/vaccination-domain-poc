@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,18 +9,66 @@ import { groupByDisease } from '../utils';
 import { Avatar } from '../components/Avatar';
 import { VaccinationGroup } from '../components/VaccinationGroup';
 
+type LoadError = {
+  title: string;
+  message: string;
+  retryable: boolean;
+};
+
+/** Maps an HTTP status (or a network failure) to a user-facing message. */
+function describeError(status: number | null): LoadError {
+  if (status === null) {
+    return {
+      title: 'Verbindungsfehler',
+      message: 'Der Server konnte nicht erreicht werden. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.',
+      retryable: true,
+    };
+  }
+  if (status === 404) {
+    return {
+      title: 'Kein Impfdossier gefunden',
+      message: 'Für Ihr Konto ist im System kein Patient registriert. Bitte wenden Sie sich an Ihre Ärztin oder Ihren Arzt.',
+      retryable: false,
+    };
+  }
+  if (status >= 500) {
+    return {
+      title: 'Dienst nicht erreichbar',
+      message: 'Das Impfdossier kann momentan nicht geladen werden. Bitte versuchen Sie es später erneut.',
+      retryable: true,
+    };
+  }
+  return {
+    title: 'Impfdossier konnte nicht geladen werden',
+    message: `Unerwartete Antwort vom Server (Status ${status}).`,
+    retryable: true,
+  };
+}
+
+class HttpError extends Error {
+  status: number;
+
+  constructor(status: number, detail: unknown) {
+    super(`HTTP ${status}: ${typeof detail === 'string' ? detail : JSON.stringify(detail)}`);
+    this.status = status;
+  }
+}
+
 export function ImpfpassScreen() {
   const insets = useSafeAreaInsets();
   const [dossier, setDossier] = useState<PatientDossier | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<LoadError | null>(null);
 
   const logout = () => {
     try { sessionStorage.removeItem('auth'); } catch {}
     window.location.replace('/');
   };
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+
     let patientId = '18c5b3b4-92d6-4481-8906-b7402e5ff685'; // Default Fallback
     try {
       const authStr = sessionStorage.getItem('auth');
@@ -35,9 +83,10 @@ export function ImpfpassScreen() {
     }
 
     fetch(`/api/bff-consumer/patients/${patientId}`)
-      .then((res) => {
+      .then(async (res) => {
         if (!res.ok) {
-          throw new Error(`Server lieferte Status ${res.status}`);
+          const body = await res.json().catch(() => null);
+          throw new HttpError(res.status, body?.detail ?? null);
         }
         return res.json();
       })
@@ -70,10 +119,14 @@ export function ImpfpassScreen() {
       })
       .catch((err) => {
         console.error('Error loading patient dossier:', err);
-        setError(err.message || 'Verbindungsfehler beim Laden des Impfdossiers.');
+        setError(describeError(err instanceof HttpError ? err.status : null));
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const groups = useMemo(() => {
     if (!dossier) return [];
@@ -82,21 +135,39 @@ export function ImpfpassScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.root, styles.center]}>
+      <View style={styles.root}>
         <StatusBar style="dark" />
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.messageText, { marginTop: spacing.md }]}>Lade Impfdossier...</Text>
+        <AppBar topInset={insets.top} onLogout={logout} />
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.messageText, { marginTop: spacing.md }]}>Lade Impfdossier...</Text>
+        </View>
       </View>
     );
   }
 
   if (error || !dossier) {
+    const shown = error ?? describeError(null);
     return (
-      <View style={[styles.root, styles.center]}>
+      <View style={styles.root}>
         <StatusBar style="dark" />
-        <Text style={[styles.messageText, styles.errorText]}>
-          {error || 'Ein unerwarteter Fehler ist aufgetreten.'}
-        </Text>
+        <AppBar topInset={insets.top} onLogout={logout} />
+        <View style={styles.center}>
+          <View style={styles.errorCard} accessibilityRole="alert">
+            <Text style={styles.emptyTitle}>{shown.title}</Text>
+            <Text style={styles.errorMessage}>{shown.message}</Text>
+            <View style={styles.errorActions}>
+              {shown.retryable && (
+                <Pressable style={styles.primaryBtn} onPress={load} accessibilityRole="button">
+                  <Text style={styles.primaryBtnText}>Erneut versuchen</Text>
+                </Pressable>
+              )}
+              <Pressable style={styles.secondaryBtn} onPress={logout} accessibilityRole="button">
+                <Text style={styles.secondaryBtnText}>Abmelden</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </View>
     );
   }
@@ -105,21 +176,7 @@ export function ImpfpassScreen() {
     <View style={styles.root}>
       <StatusBar style="dark" />
 
-      <View style={[styles.appBar, { paddingTop: insets.top + spacing.sm }]}>
-        <View style={styles.brand}>
-          <SwissCross />
-          <View>
-            <Text accessibilityRole="header" style={styles.brandTitle}>
-              Impfdossier <Text style={styles.brandAccent}>CH</Text>
-            </Text>
-            <Text style={styles.brandSub}>Elektronisches Impfdossier</Text>
-          </View>
-          <View style={{ flex: 1 }} />
-          <Pressable style={styles.logoutBtn} onPress={logout} accessibilityLabel="Abmelden" accessibilityRole="button">
-            <Text style={styles.logoutText}>Abmelden</Text>
-          </Pressable>
-        </View>
-      </View>
+      <AppBar topInset={insets.top} onLogout={logout} />
 
       <FlatList<DiseaseGroup>
         data={groups}
@@ -138,6 +195,26 @@ export function ImpfpassScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       />
+    </View>
+  );
+}
+
+function AppBar({ topInset, onLogout }: { topInset: number; onLogout: () => void }) {
+  return (
+    <View style={[styles.appBar, { paddingTop: topInset + spacing.sm }]}>
+      <View style={styles.brand}>
+        <SwissCross />
+        <View>
+          <Text accessibilityRole="header" style={styles.brandTitle}>
+            Impfdossier <Text style={styles.brandAccent}>CH</Text>
+          </Text>
+          <Text style={styles.brandSub}>Elektronisches Impfdossier</Text>
+        </View>
+        <View style={{ flex: 1 }} />
+        <Pressable style={styles.logoutBtn} onPress={onLogout} accessibilityLabel="Abmelden" accessibilityRole="button">
+          <Text style={styles.logoutText}>Abmelden</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -207,9 +284,51 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
   },
-  errorText: {
-    color: colors.swissRed || '#d32f2f',
+  errorCard: {
+    width: '100%',
+    maxWidth: 480,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.xl,
+  },
+  errorMessage: {
+    marginTop: spacing.sm,
+    fontSize: font.label,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  errorActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  primaryBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  primaryBtnText: {
+    fontSize: font.label,
     fontWeight: '600',
+    color: colors.surface,
+  },
+  secondaryBtn: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  secondaryBtnText: {
+    fontSize: font.label,
+    fontWeight: '500',
+    color: colors.text,
   },
   appBar: {
     backgroundColor: colors.surface,
