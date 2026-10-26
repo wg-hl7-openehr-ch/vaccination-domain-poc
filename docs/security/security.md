@@ -558,18 +558,29 @@ entry from a first-hand one.
 
 **Corrections.** A wrong entry is corrected by setting its status to
 `entered-in-error` — never by deleting or rewriting it. Corrections use
-the dedicated operation `POST /Immunization/{id}/$mark-entered-in-error`,
-whose only input is a reason (`statusReason`). There is no
-`PUT /Immunization/{id}`: a full-body update would have to be compared
-with a stored resource that comes back through openFHIR, and that round
-trip is not guaranteed to be lossless.
+the regular update `PUT /Immunization/{id}` (listed for `Immunization`
+in the [CH VACD CapabilityStatement](https://fhir.ch/ig/ch-vacd/7.0.0-ballot/CapabilityStatement-ch-vacd-api-capstmt-srv.html)
+without an expectation), so that generic FHIR clients need no custom
+operation. It is restricted to this one change: the body is the
+resource as last read, with `status` set to `entered-in-error` and the
+reason in `statusReason`. The FHIR API **MUST NOT** convert the body
+back to openEHR through openFHIR; that round trip is not guaranteed to
+be lossless (e.g. `protocolApplied` is merged on read, and composition
+content without a FHIR mapping would be lost). It only checks the body
+and then changes the stored composition directly.
 
 - Only the organization that **recorded** the entry may correct it —
   through a practitioner or one of its primary systems (M2M). The
   recording organization is stored by the FHIR API at creation time; it
   is not taken from `Immunization.performer`.
-- The operation changes only `status` (to `entered-in-error`) and
-  `statusReason`; clients cannot send any other element.
+- The body **MUST** match the resource the FHIR API currently returns
+  for `GET /Immunization/{id}`, except `meta`, `text`, `status` and
+  `statusReason`. `status` may only change to `entered-in-error`; it
+  cannot be reset. Any other difference is rejected (`422`).
+- The update **MUST** be version-aware: `If-Match` with the current
+  version id; a missing or stale version is rejected (`412`). `PUT`
+  never creates a resource (no update-as-create); an unknown id gives
+  `403` like any request without access (§8.5).
 - The previous version **MUST** be preserved in storage (CDR
   versioning: a new version of the affected composition, not a
   deletion) and available to auditors and operators for
@@ -814,8 +825,9 @@ registered JWKS, `typ` `JWT`. Payload: `exp` at most 5 minutes after
 - `Bundle.c` on `POST /Bundle` means submitting an Immunization
   Administration Document, which creates immunizations and compositions
   on the server. `Immunization.c` is deliberately not granted (§6.5).
-- `Immunization.u` permits only `$mark-entered-in-error` (§6.5); there is
-  no `PUT` on `Immunization`.
+- `Immunization.u` permits only the correction `PUT /Immunization/{id}`
+  with the rules of §6.5; it does not allow rewriting the resource or
+  update-as-create.
 - RFC 9068 names the client `client_id`; the AS may emit `azp` instead.
   The RS treats `azp` as the client id.
 - `/.well-known/smart-configuration` is served by the FHIR API (SMART
@@ -885,7 +897,7 @@ resource type not listed (e.g. `RelatedPerson`, `Organization`,
 | `GET /Immunization/{id}` | ✓ | ✓ | ✓ | `*/Immunization.r` |
 | `GET /Immunization?patient=` (patient mandatory) | ✓ | ✓ | ✓ | `*/Immunization.s` |
 | `POST /Bundle` (Immunization Administration Document) | — | ✓ | ✓ | `user/Bundle.c`, `system/Bundle.c` |
-| `POST /Immunization/{id}/$mark-entered-in-error` (correction, §6.5) | — | ✓ | ✓ | `user/Immunization.u`, `system/Immunization.u` |
+| `PUT /Immunization/{id}` (correction only, §6.5) | — | ✓ | ✓ | `user/Immunization.u`, `system/Immunization.u` |
 | `POST /Patient/{id}/$create-share-code` | ✓ | — | — | `__vacd_share_code_create` |
 | `POST /Patient/$redeem-share-code` | — | ✓ | ✓ | `__vacd_share_code_redeem` |
 | `POST /Consent/{id}/$withdraw` (consumer: consent of the own or a represented patient; practitioner, system: consent granted to the caller's organization) | ✓ | ✓ | ✓ | `__vacd_share_code_create` (consumer), `__vacd_share_code_redeem` (practitioner, system) |
@@ -896,8 +908,8 @@ resource type not listed (e.g. `RelatedPerson`, `Organization`,
 The audit logger is a separate server with its own rules (§9.4).
 
 Not allowed for any client: patient search (`GET /Patient?…`), creating
-or updating patients (onboarding only, §6.4), `POST /Immunization`,
-`PUT /Immunization/{id}` (corrections use `$mark-entered-in-error`, §6.5).
+or updating patients (onboarding only, §6.4), `POST /Immunization`, and
+any `PUT /Immunization/{id}` other than a correction (§6.5).
 
 Rules for adding interactions:
 
@@ -923,7 +935,7 @@ check and the request handler **MUST** use the same resolution logic.
 | --- | --- |
 | `/Patient/{id}…` | path id |
 | `?patient=` | exactly one value, `{id}` or `Patient/{id}`. Absolute URLs, chained parameters (`patient.identifier=…`), modifiers and repeated parameters are rejected. Searches without `patient` are rejected. |
-| `GET /Immunization/{id}`, `$mark-entered-in-error` | `Immunization.patient` of the **stored** resource |
+| `GET /Immunization/{id}`, `PUT /Immunization/{id}` | `Immunization.patient` of the **stored** resource |
 | `POST /Bundle` | `Composition.subject` and the patient / subject reference of **every** entry that has one — resolved inside the Bundle (`urn:uuid` full URLs) — **MUST** all point to the same `Patient` entry, which **MUST** carry the id of an existing patient |
 | `$create-share-code` | path id |
 | `$redeem-share-code` | the patient of the share code |
@@ -977,9 +989,10 @@ For `POST /Bundle` (Immunization Administration Document), in addition to
   (§10.5) and the remaining compositions are listed in the outcome
   `AuditEvent`, so the partial state is visible.
 
-For `POST /Immunization/{id}/$mark-entered-in-error` (correction): only
-by the recording organization; only `status` → `entered-in-error` and
-`statusReason` change; active consent required (§6.5).
+For `PUT /Immunization/{id}` (correction): only by the recording
+organization; only `status` → `entered-in-error` and `statusReason`
+change, checked against the current resource; version-aware
+(`If-Match`); active consent required (§6.5).
 
 ### 8.8 Response check
 
@@ -1258,10 +1271,10 @@ tests are as important as positive ones.
 | AC10 | Redeem an invalid, an expired and a used code | identical `403`; `AuditEvent` for each |
 | AC11 | Failed redemption attempts by one organization above the configured limit (default 10 per minute); successful redemptions above that number but below the total limit | rejected (`429`), alert raised; `200` |
 | AC12 | Representative reads the child's record; after the `RelatedPerson` is deactivated | `200`, then `403` |
-| AC13 | Representative or patient submits a Bundle or calls `$mark-entered-in-error` | `403` |
+| AC13 | Representative or patient submits a Bundle or calls `PUT /Immunization/{id}` | `403` |
 | AC14 | Bundle with mixed patients; for a non-existent patient; with an author GLN of another organization; with `primarySource=true` and a foreign performer | `403` / `422`, nothing stored |
 | AC15 | Bundle with `primarySource=false` and a foreign performer, author = caller | `201` |
-| AC16 | `$mark-entered-in-error` by the recording organization (practitioner and M2M); by another organization; without an active consent; `PUT /Immunization/{id}` | `200`, previous version preserved in storage, status `entered-in-error` shown by `GET /Immunization` and `$export-document`; `403`; `403`; `403` |
+| AC16 | Correction `PUT /Immunization/{id}` by the recording organization (practitioner and M2M); by another organization; without an active consent; with another changed element or `status` reset; without or with a stale `If-Match`; on an unknown id | `200`, previous version preserved in storage, status `entered-in-error` shown by `GET /Immunization` and `$export-document`; `403`; `403`; `422`; `412`; `403` |
 | AC17 | `DELETE` on any resource; `POST /RelatedPerson`; `GET /Practitioner`; `GET /List`; `PUT /Patient/{id}`; `GET /Patient?name=` | `403` |
 | AC18 | Audit logger unavailable during a read and during a write | `503`, no data returned, nothing changed |
 | AC19 | At the audit logger: `PUT` / `DELETE` on `AuditEvent`; `POST /AuditEvent` with a user token or a token for the FHIR API audience; `GET` / search with any token | `403` / `401` |
@@ -1326,6 +1339,20 @@ tests are as important as positive ones.
    real data is processed? A cantonal body would fall under cantonal data
    protection law (e.g. IDG ZH) instead of the nDSG, and §2.3 must be
    adjusted. Not urgent while only synthetic data is used (A3).
+10. **Entries on the wrong patient:** §6.5 keeps a corrected entry
+    visible, which would show another person's data to the patient and
+    everyone with their consent. Should such entries instead be removed
+    from the record (openEHR logical delete via a contribution with
+    `change_type = deleted`; `GET` → `410 Gone`, left out of search and
+    documents)? If so, how does a client signal this case, since the
+    correction `PUT` sets the same `status` for both cases (e.g. a
+    dedicated `statusReason` code, or `DELETE`, which AC17 currently
+    forbids)?
+11. **Storing the correction in openEHR:** the FHIRconnect mapping fixes
+    `status = completed`, and the openEHR template has no element for
+    `entered-in-error`. Which element should carry the marker and the
+    reason, and who decides on the template change (CH VACD modelling
+    group)? Until then, corrections cannot be stored as required by §6.5.
 
 ---
 
