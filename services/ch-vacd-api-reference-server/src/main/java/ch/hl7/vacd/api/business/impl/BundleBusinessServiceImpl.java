@@ -79,15 +79,19 @@ public class BundleBusinessServiceImpl extends AbstractBusinessService implement
 		// Validate and extract bundle structure.
 		Peeled peeled = RessourceUtil.peel(bundle);
 
-		// Validate each Immunization status.
-		for (Immunization immunization : peeled.immunizations) {
-			RessourceUtil.validateStatus(immunization);
-		}
-
 		Map<Resource, String> fullUrlMap = RessourceUtil.buildFullUrlMap(bundle);
 
 		// Extract IDs.
 		String patientId = RessourceUtil.extractId(peeled.patient, fullUrlMap);
+
+		// Validate status and occurrence date of every Immunization entry
+		Patient storedPatient = getResourceEntry("Patient", patientId);
+		Patient birthDateSource = RessourceUtil.birthDateSource(storedPatient, peeled.patient);
+		for (Immunization immunization : RessourceUtil.immunizationEntries(bundle)) {
+			RessourceUtil.validateStatus(immunization);
+			RessourceUtil.validateOccurrenceDate(immunization, birthDateSource);
+		}
+
 		logArtefact(sessionId, patientId, ArtefactEntityType.INBUNDLE, inBundleJson);
 		String ehrId = ehrbaseClient.findEhrByPatient(patientId);
 

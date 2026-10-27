@@ -6,6 +6,9 @@
 
 package ch.hl7.vacd.api.utils;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -18,10 +21,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.hl7.fhir.r4.model.BaseDateTimeType;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CanonicalType;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Composition;
+import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.DateType;
 import org.hl7.fhir.r4.model.Device;
 import org.hl7.fhir.r4.model.Device.DeviceNameType;
 import org.hl7.fhir.r4.model.Device.FHIRDeviceStatus;
@@ -51,6 +57,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.model.api.TemporalPrecisionEnum;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import ch.hl7.vacd.api.domain.Peeled;
 
@@ -201,13 +208,91 @@ public class RessourceUtil {
 				practitionerRoles, medications);
 	}
 
-	// --- Immunization status validation ---
+	// --- Immunization status / birthDateSource validation ---
 	public static void validateStatus(Immunization immunization) {
 		String status = immunization.getStatus() != null ? immunization.getStatus().toCode() : null;
 		if (!"completed".equals(status)) {
 			throw new UnprocessableEntityException(
 					"Immunization.status must be 'completed' for ingestion (was '" + status + "')");
 		}
+	}
+
+	// --- Immunization occurrence vs. patient birthDate validation ---
+	private static final ZoneId CH_ZONE = ZoneId.of("Europe/Zurich");
+
+	/**
+	 * Every Immunization entry of the Bundle, including those no Composition
+	 * section references. Validation must cover all of them because
+	 * {@link #createOpenFhirImmunizationAdministrationDocument} writes every
+	 * Immunization entry to openEHR, not only {@link Peeled#immunizations}.
+	 */
+	public static List<Immunization> immunizationEntries(Bundle bundle) {
+		return bundle.getEntry().stream()
+				.map(Bundle.BundleEntryComponent::getResource)
+				.filter(Immunization.class::isInstance)
+				.map(Immunization.class::cast)
+				.collect(Collectors.toList());
+	}
+
+	/**
+	 * Patient whose birthDate the occurrence check uses: the stored Patient if it
+	 * has a birthDate value, otherwise the Patient carried in the Bundle. Checks
+	 * the value rather than hasBirthDate(), which is also true for an element
+	 * carrying only a data-absent-reason extension.
+	 */
+	public static Patient birthDateSource(Patient storedPatient, Patient bundlePatient) {
+		return storedPatient != null && storedPatient.getBirthDateElement().getValue() != null ? storedPatient
+				: bundlePatient;
+	}
+
+	public static void validateOccurrenceDate(Immunization immunization, Patient patient) {
+		validateOccurrenceDate(immunization, patient, LocalDate.now(CH_ZONE));
+	}
+
+	/**
+	 * Rejects an Immunization whose occurrenceDateTime lies before the patient's
+	 * birthDate or after {@code today}. Compares calendar days as written in the
+	 * resource (own offset, no UTC conversion), so 2026-10-12T00:00+02:00 stays
+	 * the 12th. Partial dates (YYYY, YYYY-MM) are compared leniently so valid
+	 * historic records are never rejected. occurrenceString and a missing
+	 * birthDate are not checkable and are skipped.
+	 */
+	public static void validateOccurrenceDate(Immunization immunization, Patient patient, LocalDate today) {
+		if (!immunization.hasOccurrenceDateTimeType() || immunization.getOccurrenceDateTimeType().getValue() == null) {
+			return;
+		}
+		DateTimeType occ = immunization.getOccurrenceDateTimeType();
+		if (earliestDay(occ).isAfter(today)) {
+			throw new UnprocessableEntityException(
+					"Immunization.occurrenceDateTime (" + occ.getValueAsString() + ") must not be in the future");
+		}
+		if (patient != null && patient.getBirthDateElement().getValue() != null) {
+			DateType birthDate = patient.getBirthDateElement();
+			if (latestDay(occ).isBefore(earliestDay(birthDate))) {
+				throw new UnprocessableEntityException("Immunization.occurrenceDateTime (" + occ.getValueAsString()
+						+ ") must not be before Patient.birthDate (" + birthDate.getValueAsString() + ")");
+			}
+		}
+	}
+
+	/** First calendar day covered by a (possibly partial) FHIR date. getMonth() is 0-based. */
+	private static LocalDate earliestDay(BaseDateTimeType date) {
+		int precision = date.getPrecision().ordinal();
+		int month = precision >= TemporalPrecisionEnum.MONTH.ordinal() ? date.getMonth() + 1 : 1;
+		int day = precision >= TemporalPrecisionEnum.DAY.ordinal() ? date.getDay() : 1;
+		return LocalDate.of(date.getYear(), month, day);
+	}
+
+	/** Last calendar day covered by a (possibly partial) FHIR date. */
+	private static LocalDate latestDay(BaseDateTimeType date) {
+		int precision = date.getPrecision().ordinal();
+		if (precision >= TemporalPrecisionEnum.DAY.ordinal()) {
+			return earliestDay(date);
+		}
+		if (precision >= TemporalPrecisionEnum.MONTH.ordinal()) {
+			return YearMonth.of(date.getYear(), date.getMonth() + 1).atEndOfMonth();
+		}
+		return LocalDate.of(date.getYear(), 12, 31);
 	}
 
 	// --- Full URL map building ---

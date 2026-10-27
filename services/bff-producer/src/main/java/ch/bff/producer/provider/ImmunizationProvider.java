@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import ch.bff.producer.exception.ValidationException;
 import ch.bff.producer.provider.models.ImmunizationCreateDto;
 import ch.bff.producer.provider.models.ImportDto;
 import ch.bff.producer.provider.models.VaccinationDto;
@@ -44,6 +45,10 @@ public class ImmunizationProvider {
 					personId, file.getName(), file.getOriginalFilename(), file.getContentType());
 
 			immunizationService.importVaccinations(personId, file.getContentType(), file.getInputStream());
+		} catch (ValidationException e) {
+			log.warn("Import rejected: {}", e.getMessage());
+			return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED)
+					.body(new ImportDto(HttpStatus.PRECONDITION_FAILED.name(), e.getMessage()));
 		} catch (Exception e) {
 			log.warn("Import failed: {}", e.getMessage(), e);
 			return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED)
