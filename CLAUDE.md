@@ -2,8 +2,8 @@
 
 Orientation for Claude Code sessions in this repo.
 
-- **What this repo is:** a dev harness for the Swiss GovTech Hackathon
-  2026 VACD challenge. `README.md` has the overview, service table, and
+- **What this repo is:** a dev harness for the Vaccination Domain POC
+  `README.md` has the overview, service table, and
   architecture patterns.
 
 ## Scope

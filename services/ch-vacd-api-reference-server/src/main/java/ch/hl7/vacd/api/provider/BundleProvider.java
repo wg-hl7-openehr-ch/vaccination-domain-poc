@@ -14,9 +14,11 @@ import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
 import ca.uhn.fhir.rest.annotation.Search;
+import ca.uhn.fhir.rest.annotation.Validate;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ca.uhn.fhir.validation.ValidationResult;
 import ch.hl7.vacd.api.business.BundleBusinessService;
 import ch.hl7.vacd.api.exceptions.PatientNotFoundException;
 import ch.hl7.vacd.api.utils.RessourceUtil;
@@ -63,6 +65,16 @@ public class BundleProvider implements IResourceProvider {
 			throw new ResourceNotFoundException(e.getMessage(), oo);
 		}
 
+	}
+
+	@Validate
+	public MethodOutcome validate(@ResourceParam Bundle bundle) {
+		// Ensure CH VACD profile is present in meta.
+		ValidationResult result = fhirContext.newValidator().validateWithResult(bundle);
+
+		MethodOutcome outcome = new MethodOutcome();
+		outcome.setOperationOutcome((OperationOutcome) result.toOperationOutcome());
+		return outcome;
 	}
 
 //	@Read

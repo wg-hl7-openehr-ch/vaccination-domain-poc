@@ -20,7 +20,7 @@ public record PatientDto(
         if (firstName == null || firstName.isBlank()) {
             throw new IllegalArgumentException("Vorname darf nicht leer sein");
         }
-        if (ahvNumber != null && !ahvNumber.matches("^756\\.\\d{4}\\.\\d{4}\\.\\d{2}$")) {
+        if (ahvNumber != null && !ahvNumber.matches("^756\\d{10}$")) {
             throw new IllegalArgumentException("Ungültiges AHV-Format");
         }
     }

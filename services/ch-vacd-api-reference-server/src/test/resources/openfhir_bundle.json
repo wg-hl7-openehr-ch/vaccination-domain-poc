@@ -1,0 +1,222 @@
+{
+	"resourceType": "Bundle",
+	"meta": {
+		"profile": [
+			"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-document-vaccination-record"
+		]
+	},
+	"identifier": {
+		"system": "urn:ietf:rfc:3986",
+		"value": "b870c9fe-ef60-4d14-ab06-e295331577a6"
+	},
+	"type": "document",
+	"timestamp": "2026-09-14T14:43:32.934+00:00",
+	"entry": [
+		{
+			"resource": {
+				"resourceType": "Composition",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-composition-vaccination-record"
+					]
+				},
+				"status": "final",
+				"type": {
+					"coding": [
+						{
+							"system": "http://snomed.info/sct",
+							"code": "41000179103",
+							"display": "Immunization record"
+						}
+					]
+				},
+				"category": [
+					{
+						"coding": [
+							{
+								"system": "urn:oid:2.16.756.5.30.1.127.3.10.10",
+								"code": "urn:che:epr:ch-vacd:vaccination-record:2022"
+							}
+						]
+					}
+				],
+				"title": "Vaccination Record",
+				"confidentiality": "N",
+				"_confidentiality": {
+					"extension": [
+						{
+							"url": "http://fhir.ch/ig/ch-core/StructureDefinition/ch-ext-epr-confidentialitycode",
+							"valueCodeableConcept": {
+								"coding": [
+									{
+										"system": "http://snomed.info/sct",
+										"code": "17621005",
+										"display": "Normal (qualifier value)"
+									}
+								]
+							}
+						}
+					]
+				},
+				"section": [
+					{
+						"title": "Immunization Administration",
+						"code": {
+							"coding": [
+								{
+									"system": "http://loinc.org",
+									"code": "11369-6",
+									"display": "Hx of Immunization"
+								}
+							]
+						},
+						"entry": [
+							{
+								"reference": "urn:uuid:8cb2c9b6-6419-4689-bc4a-ccf550c22d37"
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"fullUrl": "urn:uuid:8cb2c9b6-6419-4689-bc4a-ccf550c22d37",
+			"resource": {
+				"resourceType": "Immunization",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-immunization"
+					]
+				},
+				"extension": [
+					{
+						"url": "http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-immunization-medication-reference",
+						"valueReference": {
+							"reference": "urn:uuid:94e9c67f-d136-4d5d-97ab-bdcc9df13a07"
+						}
+					}
+				],
+				"identifier": [
+					{
+						"system": "urn:ietf:rfc:3986",
+						"value": "urn:uuid:99ff4dd4-31f0-4d7b-86a8-7976c520848a"
+					},
+					{
+						"system": "urn:che:epr:ch-vacd:ehr-id",
+						"value": "urn:uuid:5ca5a6bd-150e-4262-8144-6420487cd547"
+					}
+				],
+				"status": "completed",
+				"vaccineCode": {
+					"coding": [
+						{
+							"system": "http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs",
+							"code": "681",
+							"display": "Boostrix Polio"
+						}
+					],
+					"text": "Boostrix Polio"
+				},
+				"occurrenceDateTime": "1976-06-26T00:00:00+00:00",
+				"lotNumber": "A23456",
+				"route": {
+					"coding": [
+						{
+							"system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration",
+							"code": "IM",
+							"display": "IM"
+						}
+					],
+					"text": "IM"
+				},
+				"doseQuantity": {
+					"value": 0.5,
+					"unit": "ml",
+					"system": "http://unitsofmeasure.org",
+					"code": "ml"
+				},
+				"performer": [
+					{
+						"function": {
+							"text": "performer"
+						},
+						"actor": {
+							"identifier": {
+								"system": "http://hl7.org/fhir",
+								"value": "PractitionerRole/92e6a099-6256-471f-a111-aef6c51afcc9"
+							},
+							"display": "performer"
+						}
+					}
+				],
+				"reasonCode": [
+					{
+						"coding": [
+							{
+								"system": "http://snomed.info/sct",
+								"code": "33879002",
+								"display": "Administration of vaccine to produce active immunity (procedure)"
+							}
+						],
+						"text": "Administration of vaccine to produce active immunity (procedure)"
+					}
+				],
+				"protocolApplied": [
+					{
+						"doseNumberPositiveInt": 1
+					},
+					{
+						"targetDisease": [
+							{
+								"coding": [
+									{
+										"system": "http://snomed.info/sct",
+										"code": "398102009",
+										"display": "Acute poliomyelitis"
+									},
+									{
+										"system": "http://snomed.info/sct",
+										"code": "76902006",
+										"display": "Tetanus"
+									},
+									{
+										"system": "http://snomed.info/sct",
+										"code": "27836007",
+										"display": "Pertussis"
+									},
+									{
+										"system": "http://snomed.info/sct",
+										"code": "397430003",
+										"display": "Diphtheria caused by Corynebacterium diphtheriae"
+									}
+								],
+								"text": "Acute poliomyelitis"
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"fullUrl": "urn:uuid:94e9c67f-d136-4d5d-97ab-bdcc9df13a07",
+			"resource": {
+				"resourceType": "Medication",
+				"meta": {
+					"profile": [
+						"http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-medication-for-immunization"
+					]
+				},
+				"code": {
+					"coding": [
+						{
+							"system": "urn:oid:2.51.1.1",
+							"code": "7680006810013",
+							"display": "7680006810013"
+						}
+					],
+					"text": "7680006810013"
+				}
+			}
+		}
+	]
+}

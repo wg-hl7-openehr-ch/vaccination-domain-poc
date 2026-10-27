@@ -1,0 +1,15 @@
+{
+	"lastName": "Müller",
+	"firstName": "Anna",
+	"birthDate": "1957-06-12",
+	"age": 0,
+	"gender": "WEIBLICH",
+	"ahvNumber": "",
+	"address": {
+		"street": "Mustergasse 999",
+		"zipCode": "8999",
+		"city": "Zürich2"
+	},
+	"email": "anna.mueller@zurich2.ch",
+	"phoneNumber": "+41 79 999 88 77"
+}

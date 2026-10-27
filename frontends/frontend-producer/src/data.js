@@ -11,33 +11,8 @@ window.AppData = { doctor };
 
 // Catalog used in form dropdowns
 const vaccineCatalog = [
-  "Boostrix",
-  "Boostrix Polio",
-  "Comirnaty (BNT162b2)",
-  "Comirnaty Omicron XBB.1.5",
-  "Efluelda (HD)",
-  "Encepur",
-  "Engerix-B",
-  "FSME-Immun CC",
-  "Fluarix Tetra",
-  "Gardasil 9",
-  "Havrix 1440",
-  "Influvac Tetra",
-  "Infanrix-IPV",
-  "Infanrix hexa",
-  "Menveo",
-  "MMR-VaxPro",
-  "Nimenrix",
-  "Pentavac",
-  "Prevenar 13",
-  "Priorix",
-  "Rabipur",
-  "Shingrix",
-  "Spikevax (mRNA-1273)",
-  "Stamaril",
-  "Td-pur",
-  "Twinrix",
-  "Varilrix",
+  { combined: "http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|681|Boostrix Polio", display: "Boostrix"},
+  { combined: "http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs|637|Boostrix", display: "Boostrix Polio"}
 ];
 
 const manufacturers = [
@@ -69,11 +44,11 @@ const sites = [
 ];
 
 const reasons = [
-  { code: "373068000", display: "Not known", swissLabel: "Grundimmunisierung" },
-  { code: "Booster", display: "Booster", swissLabel: "Auffrischimpfung (Booster)" },
-  { code: "Nachholimpfung", display: "Nachholimpfung", swissLabel: "Nachholimpfung" },
-  { code: "14747002", display: "Elective immunization for international travel", swissLabel: "Reiseimpfung" },
-  { code: "Postexpositionsprophylaxe", display: "Postexpositionsprophylaxe", swissLabel: "Postexpositionsprophylaxe" },
+  { code: "33879002", display: "Administration of vaccine to produce active immunity (procedure)", swissLabel: "Grundimmunisierung" },
+  { code: "359953009", display: "Booster vaccination (procedure)", swissLabel: "Auffrischimpfung (Booster)" },
+  { code: "308432007", display: "Immunization recall (procedure)", swissLabel: "Nachholimpfung" },
+  { code: "14747002", display: "Elective immunization for international travel (procedure)", swissLabel: "Reiseimpfung" },
+  { code: "409516001", display: "Post-exposure prophylaxis (procedure)", swissLabel: "Postexpositionsprophylaxe" },
   
   // Offizielle Schweizer Risikocodes aus dem Risks ValueSet (CH-VACD 6.0.0):
   { code: "223366009", display: "Healthcare professional", swissLabel: "Risikogruppe: Medizinisches Fachpersonal (beruflich)" },

@@ -14,7 +14,7 @@ log_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
 echo
 echo "=================================================="
-echo "  GovTech Hackathon 2026 - VACD Dev Environment"
+echo "  Vaccination Domain POC - Dev Environment"
 echo "=================================================="
 echo
 

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Locale;
 
 import org.apache.commons.lang3.StringUtils;
+import org.hl7.fhir.common.hapi.validation.support.DefaultProfileValidationSupportNpmStrategy;
 import org.hl7.fhir.common.hapi.validation.support.NpmPackageValidationSupport;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.utilities.npm.NpmPackage;
@@ -31,8 +32,8 @@ public class ChVacdNpmPackageValidationSupport extends NpmPackageValidationSuppo
 
 	@Override
 	public void loadPackageFromClasspath(String theClasspath) throws IOException {
+		
 		if (StringUtils.isNotEmpty(theClasspath) && theClasspath.startsWith("file")) {
-
 			String fileName = theClasspath.substring("file:".length());
 			try (InputStream is = new FileInputStream(fileName)) {
 				NpmPackage pkg = NpmPackage.fromPackage(is);
@@ -53,6 +54,7 @@ public class ChVacdNpmPackageValidationSupport extends NpmPackageValidationSuppo
 
 		for (String nextFile : packageFolder.listFiles()) {
 			if (nextFile.toLowerCase(Locale.US).endsWith(".json")) {
+				
 				String input = new String(packageFolder.getContent().get(nextFile), StandardCharsets.UTF_8);
 				IBaseResource resource = getFhirContext().newJsonParser().parseResource(input);
 				super.addResource(resource);

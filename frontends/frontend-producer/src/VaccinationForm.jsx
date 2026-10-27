@@ -1,13 +1,28 @@
 // Screen 3 — New vaccination form (modal-style sheet)
 
 function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
-  const { vaccineCatalog, manufacturers, routes, sites, reasons } = window.AppData;
-  const today = new Date().toISOString().slice(0, 10);
+  const { manufacturers, routes, sites, reasons } = window.AppData;
+
+  const formatIsoDateToEuropean = (iso) => {
+    const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "";
+    return `${m[3]}.${m[2]}.${m[1]}`;
+  };
+
+  const todayIso = localIsoToday();
+
+  const [vaccineCatalog, setVaccineCatalog] = useState(window.AppData.vaccineCatalog);
+
+  useEffect(() => {
+    DataService.fetchVaccineCodes()
+      .then(setVaccineCatalog)
+      .catch(() => {/* keep fallback */});
+  }, []);
 
   const [form, setForm] = useState({
     vaccine: "",
     vaccineCode: "",
-    date: today,
+    date: todayIso,
     manufacturer: "",
     batch: "",
     organization: "Hausarztpraxis Bahnhofstrasse, Zürich",
@@ -25,14 +40,37 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
 
   const [touched, setTouched] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState(null);
   const SUPPRESS_ERROR_ON_SUBMIT = true;
-  const set = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
+  const set = (k, v) => {
+    setForm((prev) => ({ ...prev, [k]: v }));
+    setServerError(null);
+  };
   const touch = (k) => setTouched((prev) => ({ ...prev, [k]: true }));
+  const [incompleteDates, setIncompleteDates] = useState({});
+  const markIncomplete = (k, input) => setIncompleteDates((prev) => ({ ...prev, [k]: input.validity.badInput }));
+  const setDateField = (k, input) => {
+    markIncomplete(k, input);
+    set(k, input.value);
+  };
+  const blurDateField = (k, input) => {
+    markIncomplete(k, input);
+    touch(k);
+  };
 
   const errors = {};
   if (!form.vaccine) errors.vaccine = "Pflichtfeld";
-  if (!form.date) errors.date = "Pflichtfeld";
-  if (!form.manufacturer) errors.manufacturer = "Pflichtfeld";
+  let dateErrorIsLive = false;
+  const dobIso = (patient?.dob || "").slice(0, 10);
+  if (!form.date) errors.date = incompleteDates.date ? "Ungültiges Datum" : "Pflichtfeld";
+  else if (dobIso && form.date < dobIso) {
+    errors.date = `Impfdatum darf nicht vor dem Geburtsdatum (${formatIsoDateToEuropean(dobIso)}) liegen`;
+    dateErrorIsLive = true;
+  } else if (form.date > todayIso) {
+    errors.date = "Impfdatum darf nicht in der Zukunft liegen";
+    dateErrorIsLive = true;
+  }
+  if (incompleteDates.expiry) errors.expiry = "Ungültiges Datum";
   if (!form.batch) errors.batch = "Pflichtfeld";
   if (!form.amount) errors.amount = "Pflichtfeld";
 
@@ -40,11 +78,12 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
 
   const submit = async () => {
     if (!isValid) {
-      setTouched({ vaccine: 1, date: 1, manufacturer: 1, batch: 1, amount: 1 });
+      setTouched({ vaccine: 1, date: 1, expiry: 1, batch: 1, amount: 1 });
       return;
     }
 
     setSubmitting(true);
+    setServerError(null);
     try {
       const doseNum = parseInt(form.doseNumber, 10) || 1;
       const seriesDoses = form.doseTotal ? parseInt(form.doseTotal, 10) : null;
@@ -77,7 +116,9 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
       onVaccinationCreated(record);
     } catch (err) {
       console.error('Fehler beim Speichern der Impfung:', err);
-      if (SUPPRESS_ERROR_ON_SUBMIT) {
+      if (err.status === 400) {
+        setServerError(err.message);
+      } else if (SUPPRESS_ERROR_ON_SUBMIT) {
         onCancel();
       } else {
         alert('Fehler beim Speichern der Impfung: ' + err.message);
@@ -107,23 +148,21 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
         <div className="sheet-body">
           <FormGroup title="Impfstoff" eyebrow="1">
             <div className="grid-2">
-              <Autocomplete
-                label="Impfstoff"
-                required
-                placeholder="z. B. Boostrix Polio"
-                value={form.vaccine}
-                onChange={(v) => set("vaccine", v)}
-                onBlur={() => touch("vaccine")}
-                options={vaccineCatalog}
-                error={touched.vaccine && errors.vaccine}
-              />
-              <Field label="Impfstoffcode" hint="z. B. ATC- oder GTIN-Code" required>
-                <input className="input mono" placeholder="J07CA02" value={form.vaccineCode}
+              <Field label="Impfstoff" required>
+                <select className="select" value={form.vaccine} onChange={(e) => set("vaccine", e.target.value)}>
+                  {vaccineCatalog.map((r) => <option key={r.combined} value={r.combined}>{r.display}</option>)}
+                </select>
+              </Field>
+              <Field label="Chargennummer" required hint="Auf der Impfstoffpackung — z. B. EW0150" error={touched.batch && errors.batch}>
+                <input className="input mono" placeholder="A1B2C3" value={form.batch}
+                onChange={(e) => set("batch", e.target.value.toUpperCase())} onBlur={() => touch("batch")} />
+              </Field>
+              <Field label="Produktnummer" hint="z. B.GTIN-Code">
+                <input className="input mono" placeholder="7680006810037" value={form.vaccineCode}
                 onChange={(e) => set("vaccineCode", e.target.value)} />
               </Field>
               <Autocomplete
                 label="Zulassungsinhaberin / Hersteller"
-                required
                 placeholder="z. B. GlaxoSmithKline"
                 value={form.manufacturer}
                 onChange={(v) => set("manufacturer", v)}
@@ -131,21 +170,19 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
                 options={manufacturers}
                 error={touched.manufacturer && errors.manufacturer}
               />
-              <Field label="Chargennummer" required hint="Auf der Impfstoffpackung — z. B. EW0150" error={touched.batch && errors.batch}>
-                <input className="input mono" placeholder="A1B2C3" value={form.batch}
-                onChange={(e) => set("batch", e.target.value.toUpperCase())} onBlur={() => touch("batch")} />
-              </Field>
-              <Field label="Verfallsdatum" hint="laut Packung">
-                <input className="input tnum" type="date" value={form.expiry} onChange={(e) => set("expiry", e.target.value)} />
+             
+              <Field label="Verfallsdatum" hint="laut Packung" error={touched.expiry && errors.expiry}>
+                <input className="input tnum" type="date" max="9999-12-31"
+                value={form.expiry} onChange={(e) => setDateField("expiry", e.target)} onBlur={(e) => blurDateField("expiry", e.target)} />
               </Field>
             </div>
           </FormGroup>
 
           <FormGroup title="Verabreichung" eyebrow="2">
             <div className="grid-2">
-              <Field label="Impfdatum" required error={touched.date && errors.date}>
-                <input className="input tnum" type="date" value={form.date}
-                onChange={(e) => set("date", e.target.value)} onBlur={() => touch("date")} />
+              <Field label="Impfdatum" required error={(dateErrorIsLive || touched.date) && errors.date}>
+                <input className="input tnum" type="date" min={dobIso || undefined} max={todayIso}
+                value={form.date} onChange={(e) => setDateField("date", e.target)} onBlur={(e) => blurDateField("date", e.target)} />
               </Field>
 
               <Field label="Applikationsweg" required>
@@ -239,8 +276,9 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
         <footer className="sheet-foot">
           <div className="foot-left">
             {!isValid && Object.keys(touched).length > 0 &&
-            <span className="foot-error"><Icon.Alert /> Bitte alle Pflichtfelder ausfüllen.</span>
+            <span className="foot-error"><Icon.Alert /> {Object.values(errors).includes("Pflichtfeld") ? "Bitte alle Pflichtfelder ausfüllen." : "Bitte Eingaben prüfen."}</span>
             }
+            {serverError && <span className="foot-error"><Icon.Alert /> {serverError}</span>}
           </div>
           <div className="foot-right">
             <button className="btn" onClick={onCancel} disabled={submitting}>Abbrechen</button>
