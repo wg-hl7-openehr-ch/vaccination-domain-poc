@@ -11,6 +11,16 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
   const [errorMsg, setErrorMsg] = useState(null);
 
   const showError = (msg) => setErrorMsg(msg);
+  const formatArtefact = (artefact) => {
+    if (artefact == null || artefact === '') return '-';
+    try {
+      const value = typeof artefact === 'string' ? JSON.parse(artefact) : artefact;
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(artefact);
+    }
+  };
+
   const formatLogDateTime = (value) => {
     if (!value) return '-';
     const dt = new Date(value);
@@ -281,7 +291,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
                     <div className="patient-log-timestamp">{formatLogDateTime(entry.dateTime)}</div>
                     <details className="patient-log-artefact-collapsible">
                       <summary>Artefakt anzeigen</summary>
-                      <pre className="patient-log-artefact">{entry.artefact || '-'}</pre>
+                      <pre className="patient-log-artefact">{formatArtefact(entry.artefact)}</pre>
                     </details>
                   </li>
                 ))}
