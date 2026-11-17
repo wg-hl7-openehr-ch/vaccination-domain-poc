@@ -27,6 +27,8 @@ import ca.uhn.fhir.rest.param.ReferenceParam;
 import ch.hl7.vacd.api.business.ImmunizationBusinessService;
 import ch.hl7.vacd.api.client.EhrbaseClient;
 import ch.hl7.vacd.api.client.OpenFhirClient;
+import ch.hl7.vacd.api.domain.CompositionVersion;
+import ch.hl7.vacd.api.domain.FlatComposition;
 import ch.hl7.vacd.api.entity.ArtefactEntity;
 import ch.hl7.vacd.api.entity.ArtefactEntityType;
 import ch.hl7.vacd.api.entity.ResourceEntity;
@@ -142,52 +144,7 @@ public class ImmunizationBusinessServiceImpl extends AbstractBusinessService imp
 
 		List<ResourceEntity> found = store.findByResourceTypeAndResourceId("Immunization", id.getIdPart());
 		if (found != null && !found.isEmpty()) {
-			ResourceEntity entity = found.get(0);
-			String compositionuid = entity.getIdentifiers().stream()
-					.filter(idt -> "urn:che:epr:ch-vacd:composition-uid".equals(idt.getIdSystem())).findFirst()
-					.orElseThrow(() -> new IllegalArgumentException(
-							"Stored Immunization resource does not have composition-uid identifier"))
-					.getIdValue();
-
-			String ehrId = entity.getIdentifiers().stream()
-					.filter(idt -> "urn:che:epr:ch-vacd:ehr-id".equals(idt.getIdSystem())).findFirst()
-					.orElseThrow(() -> new IllegalArgumentException(
-							"Stored Immunization resource does not have ehr-id identifier"))
-					.getIdValue();
-
-			String flatImmJson = ehrbaseClient.getCompositionFlat(RessourceUtil.removeUrn(ehrId), compositionuid);
-			log.info("Retrieved flat JSON for compositionUid={} ehrId={}:\n{}", compositionuid, ehrId, flatImmJson);
-
-			List<ResourceReferenceEntity> references = entity.getReferences();
-			log.info("References for Immunization id={}: {}", id.getIdPart(), references);
-			Optional<ResourceReferenceEntity> patientReference = references.stream()
-					.filter(ref -> "Immunization.patient".equals(ref.getSourceField())).findFirst();
-
-			String fhirString = openFhirClient.toFhir(flatImmJson);
-			log.info("toFhir:\n{}", fhirString);
-			Bundle fromEhr = fhirContext.newJsonParser().parseResource(Bundle.class, fhirString);
-
-			Optional<Immunization> immOpt = fromEhr.getEntry().stream()
-					.filter(entry -> entry.getResource() instanceof Immunization).findFirst()
-					.map(entry -> (Immunization) entry.getResource());
-
-			if (immOpt.isPresent()) {
-				Immunization imm = immOpt.get();
-				imm.setId(id.getIdPart());
-
-				if (patientReference.isPresent()) {
-					imm.setPatient(new Reference().setReference(
-							patientReference.get().getTargetType() + "/" + patientReference.get().getTargetId()));
-				}
-
-				RessourceUtil.fixProtocolApplied(imm);
-
-				log.info("Immunization:\n{}", fhirContext.newJsonParser().encodeResourceToString(imm));
-				return imm;
-			} else {
-				throw new IllegalStateException(
-						"No Immunization resource found in Composition with uid=" + compositionuid);
-			}
+			return loadCurrent(found.get(0)).immunization();
 
 //			try {
 //				log.info(entity.getJson());
@@ -204,6 +161,76 @@ public class ImmunizationBusinessServiceImpl extends AbstractBusinessService imp
 //			}
 		}
 		return new Immunization();
+	}
+
+	/**
+	 * The current state of a stored Immunization: the latest version of its
+	 * Composition in the EHR and the Immunization read from it.
+	 */
+	private record Current(String ehrId, String versionUid, String flat, Immunization immunization) {
+	}
+
+	/**
+	 * Loads the latest version of the Composition of a stored Immunization from the
+	 * EHR and converts it to FHIR. The stored composition-uid may carry the version
+	 * the Immunization was created with; only its versioned object uid is used.
+	 */
+	private Current loadCurrent(ResourceEntity entity) {
+		String compositionuid = entity.getIdentifiers().stream()
+				.filter(idt -> "urn:che:epr:ch-vacd:composition-uid".equals(idt.getIdSystem())).findFirst()
+				.orElseThrow(() -> new IllegalArgumentException(
+						"Stored Immunization resource does not have composition-uid identifier"))
+				.getIdValue();
+
+		String ehrId = RessourceUtil.removeUrn(entity.getIdentifiers().stream()
+				.filter(idt -> "urn:che:epr:ch-vacd:ehr-id".equals(idt.getIdSystem())).findFirst()
+				.orElseThrow(() -> new IllegalArgumentException(
+						"Stored Immunization resource does not have ehr-id identifier"))
+				.getIdValue());
+
+		String versionedObjectUid = CompositionVersion.versionedObjectUid(compositionuid);
+		FlatComposition composition = ehrbaseClient.getLatestCompositionFlat(ehrId, versionedObjectUid);
+		String flatImmJson = composition.flat();
+		log.info("Retrieved flat JSON for compositionUid={} ehrId={}:\n{}", composition.versionUid(), ehrId,
+				flatImmJson);
+
+		List<ResourceReferenceEntity> references = entity.getReferences();
+		log.info("References for Immunization id={}: {}", entity.getResourceId(), references);
+		Optional<ResourceReferenceEntity> patientReference = references.stream()
+				.filter(ref -> "Immunization.patient".equals(ref.getSourceField())).findFirst();
+
+		String fhirString = openFhirClient.toFhir(flatImmJson);
+		log.info("toFhir:\n{}", fhirString);
+		Bundle fromEhr = fhirContext.newJsonParser().parseResource(Bundle.class, fhirString);
+
+		Optional<Immunization> immOpt = fromEhr.getEntry().stream()
+				.filter(entry -> entry.getResource() instanceof Immunization).findFirst()
+				.map(entry -> (Immunization) entry.getResource());
+
+		if (immOpt.isPresent()) {
+			Immunization imm = immOpt.get();
+			imm.setId(entity.getResourceId());
+
+			// HAPI builds the ETag and Last-Modified headers from these.
+			CompositionVersion version = ehrbaseClient.getCompositionVersion(ehrId, versionedObjectUid);
+			imm.getMeta().setVersionId(CompositionVersion.versionNumber(composition.versionUid()));
+			if (version != null && composition.versionUid().equals(version.versionUid())) {
+				imm.getMeta().setLastUpdated(version.timeCommitted());
+			}
+
+			if (patientReference.isPresent()) {
+				imm.setPatient(new Reference().setReference(
+						patientReference.get().getTargetType() + "/" + patientReference.get().getTargetId()));
+			}
+
+			RessourceUtil.fixProtocolApplied(imm);
+
+			log.info("Immunization:\n{}", fhirContext.newJsonParser().encodeResourceToString(imm));
+			return new Current(ehrId, composition.versionUid(), flatImmJson, imm);
+		} else {
+			throw new IllegalStateException(
+					"No Immunization resource found in Composition with uid=" + composition.versionUid());
+		}
 	}
 
 	@Override

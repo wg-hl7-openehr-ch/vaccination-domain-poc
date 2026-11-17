@@ -7,6 +7,7 @@
 package ch.hl7.vacd.api.business.impl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.IdType;
+import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.hl7.fhir.r4.model.Immunization;
 import org.hl7.fhir.r4.model.ListResource;
@@ -43,6 +45,7 @@ import ca.uhn.fhir.rest.param.StringParam;
 import ch.hl7.vacd.api.business.PatientBusinessService;
 import ch.hl7.vacd.api.client.EhrbaseClient;
 import ch.hl7.vacd.api.client.OpenFhirClient;
+import ch.hl7.vacd.api.domain.CompositionVersion;
 import ch.hl7.vacd.api.entity.ArtefactEntity;
 import ch.hl7.vacd.api.entity.ArtefactEntityType;
 import ch.hl7.vacd.api.entity.ResourceEntity;
@@ -193,11 +196,25 @@ public class PatientBusinessServiceImpl extends AbstractBusinessService implemen
 		log.info("Medications: {}", medEntries.keySet());
 		
 		
-		for (Immunization immunization : immEntries) {
+		// Each entry gets the id of the stored Immunization it was created from, plus
+		// the version and commit time of its Composition. An entry without a stored
+		// Immunization of its own keeps a random id.
+		Map<String, CompositionVersion> versions = ehrbaseClient.getCompositionVersions(ehrId);
+		List<ResourceEntity> storedEntries = findStoredImmunizations(immEntries, versions);
+
+		for (int i = 0; i < immEntries.size(); i++) {
+			Immunization immunization = immEntries.get(i);
+			ResourceEntity stored = storedEntries.get(i);
 			log.info("Immunization resource: id={}, status={}, vaccineCode={}", immunization.getId(),
 					immunization.getStatus(), immunization.getVaccineCode().getCodingFirstRep().getCode());
 
-			ChVacdImmunization immun = copyImmunization(immunization, patient, medEntries, chVaccinationRecordDocument);
+			ChVacdImmunization immun = copyImmunization(immunization, patient, medEntries, chVaccinationRecordDocument,
+					stored != null ? stored.getResourceId() : null);
+			if (stored != null) {
+				CompositionVersion version = versions.get(compositionUid(stored));
+				immun.getMeta().setVersionId(version.versionNumber());
+				immun.getMeta().setLastUpdated(version.timeCommitted());
+			}
 //			chVaccinationRecordDocument.addImmunization(immun);
 		}
 
@@ -206,6 +223,60 @@ public class PatientBusinessServiceImpl extends AbstractBusinessService implemen
 		logArtefact(sessionId, purePatientId, ArtefactEntityType.OUTBUNDLE, outBundleJson);
 		return chVaccinationRecordDocument;
 
+	}
+
+	/**
+	 * Finds for each vaccination record entry the stored Immunization it was
+	 * created from. Immunization.identifier round-trips through the EHR, so an
+	 * entry carries the identifiers of its stored Immunization. Only a stored
+	 * Immunization whose Composition is in this EHR counts.
+	 *
+	 * @param versions the Compositions of the EHR by versioned object uid
+	 * @return the stored Immunization per entry; null where an entry has none or
+	 *         does not have one of its own
+	 */
+	private List<ResourceEntity> findStoredImmunizations(List<Immunization> immEntries,
+			Map<String, CompositionVersion> versions) {
+		List<ResourceEntity> storedEntries = new ArrayList<>();
+		for (Immunization immunization : immEntries) {
+			Map<String, ResourceEntity> candidates = new HashMap<>();
+			for (Identifier identifier : immunization.getIdentifier()) {
+				// the ehr-id is the same for all Immunizations of the patient
+				if (!identifier.hasSystem() || !identifier.hasValue()
+						|| "urn:che:epr:ch-vacd:ehr-id".equals(identifier.getSystem())) {
+					continue;
+				}
+				for (ResourceEntity entity : store.findByResourceTypeAndIdentifier("Immunization",
+						identifier.getSystem(), identifier.getValue())) {
+					if (versions.containsKey(compositionUid(entity))) {
+						candidates.put(entity.getResourceId(), entity);
+					}
+				}
+			}
+			storedEntries.add(candidates.size() == 1 ? candidates.values().iterator().next() : null);
+		}
+
+		List<String> storedIds = storedEntries.stream().map(stored -> stored != null ? stored.getResourceId() : null)
+				.collect(Collectors.toList());
+		for (int i = 0; i < storedEntries.size(); i++) {
+			if (storedEntries.get(i) == null || Collections.frequency(storedIds, storedIds.get(i)) != 1) {
+				storedEntries.set(i, null);
+				log.warn("No unique stored Immunization for vaccination record entry with identifiers {}",
+						immEntries.get(i).getIdentifier().stream().map(Identifier::getValue)
+								.collect(Collectors.toList()));
+			}
+		}
+		return storedEntries;
+	}
+
+	/**
+	 * @return the versioned object uid of the Composition of a stored Immunization,
+	 *         or null if it has none
+	 */
+	private String compositionUid(ResourceEntity entity) {
+		return entity.getIdentifiers().stream()
+				.filter(idt -> "urn:che:epr:ch-vacd:composition-uid".equals(idt.getIdSystem())).findFirst()
+				.map(idt -> CompositionVersion.versionedObjectUid(idt.getIdValue())).orElse(null);
 	}
 
 	@Override

@@ -2,6 +2,7 @@ package ch.hl7.vacd.api.repo;
 
 import ca.uhn.fhir.context.FhirContext;
 import ch.hl7.vacd.api.entity.ResourceEntity;
+import ch.hl7.vacd.api.entity.ResourceIdentifierEntity;
 import org.hl7.fhir.r4.model.Patient;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,5 +64,35 @@ public class ResourceRepositoryIntegrationTest {
         repo.delete(toUpdate);
         List<ResourceEntity> afterDelete = repo.findByResourceTypeAndResourceId("Patient", idPart);
         assertTrue(afterDelete.isEmpty());
+    }
+
+    @Test
+    public void testFindByResourceTypeAndIdentifier() {
+        String idPart = UUID.randomUUID().toString();
+        String identifier = "urn:uuid:" + UUID.randomUUID();
+
+        ResourceEntity entity = new ResourceEntity();
+        entity.setResourceType("Immunization");
+        entity.setResourceId(idPart);
+        entity.setJson("{}");
+        entity.addIdentifier(new ResourceIdentifierEntity().setIdSystem("urn:ietf:rfc:3986").setIdValue(identifier)
+                .setResourceEntity(entity));
+        entity.addIdentifier(new ResourceIdentifierEntity().setIdSystem("urn:che:epr:ch-vacd:composition-uid")
+                .setIdValue("some-uid::local.ehrbase.org::1").setResourceEntity(entity));
+        repo.save(entity);
+
+        List<ResourceEntity> found = repo.findByResourceTypeAndIdentifier("Immunization", "urn:ietf:rfc:3986",
+                identifier);
+
+        assertEquals(1, found.size());
+        assertEquals(idPart, found.get(0).getResourceId());
+        // all identifiers are fetched, also outside of a transaction
+        assertEquals(2, found.get(0).getIdentifiers().size());
+
+        assertTrue(repo.findByResourceTypeAndIdentifier("Patient", "urn:ietf:rfc:3986", identifier).isEmpty());
+        assertTrue(repo.findByResourceTypeAndIdentifier("Immunization", "urn:che:epr:ch-vacd:composition-uid",
+                identifier).isEmpty());
+
+        repo.delete(found.get(0));
     }
 }
