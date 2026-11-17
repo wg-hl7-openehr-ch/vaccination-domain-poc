@@ -258,10 +258,6 @@ public class ImmunizationBusinessServiceImpl extends AbstractBusinessService imp
 			throw new ResourceNotFoundException(id);
 		}
 		ResourceEntity entity = found.get(0);
-		if (resource.getIdElement().hasIdPart() && !id.getIdPart().equals(resource.getIdElement().getIdPart())) {
-			throw new UnprocessableEntityException("Immunization.id (" + resource.getIdElement().getIdPart()
-					+ ") must match the id in the URL (" + id.getIdPart() + ")");
-		}
 		Provenance provenanceResource = parseProvenance(provenance);
 
 		Current current = loadCurrent(entity);
@@ -323,24 +319,10 @@ public class ImmunizationBusinessServiceImpl extends AbstractBusinessService imp
 			throw new UnprocessableEntityException("Immunization.status must stay 'completed' in a correction");
 		}
 		RessourceUtil.validateOccurrenceDate(corrected, patient);
-
-		// The vaccine comes with its target diseases and its product (Medication),
-		// which a correction does not carry.
-		if (!current.getVaccineCode().equalsDeep(corrected.getVaccineCode())
-				|| !targetDiseases(current).equals(targetDiseases(corrected))) {
-			throw new UnprocessableEntityException(
-					"Immunization.vaccineCode and protocolApplied.targetDisease cannot be corrected");
-		}
 	}
 
 	private static Set<String> identifiers(Immunization immunization) {
 		return immunization.getIdentifier().stream().map(idt -> idt.getSystem() + "|" + idt.getValue())
-				.collect(Collectors.toSet());
-	}
-
-	private static Set<String> targetDiseases(Immunization immunization) {
-		return immunization.getProtocolApplied().stream().flatMap(pa -> pa.getTargetDisease().stream())
-				.flatMap(td -> td.getCoding().stream()).map(c -> c.getSystem() + "|" + c.getCode())
 				.collect(Collectors.toSet());
 	}
 

@@ -338,14 +338,6 @@ class ImmunizationBusinessServiceImplTest {
 	}
 
 	@Test
-	void updateImmunization_idInBodyDiffersFromUrl_isRejected() {
-		ChVacdImmunization corrected = corrected(imm -> imm.setId("bbbbbbbb-0000-4000-8000-000000000002"));
-
-		assertRejectedWithoutSideEffects(UnprocessableEntityException.class, "must match the id in the URL", id("1"),
-				corrected);
-	}
-
-	@Test
 	void updateImmunization_staleIfMatch_isRejected() {
 		ehrHolds(2, "LOT-V2", "2021-01-01T00:00:00+00:00");
 		ChVacdImmunization corrected = corrected(imm -> imm.setLotNumber("LOT-KORR"));
@@ -386,23 +378,6 @@ class ImmunizationBusinessServiceImplTest {
 
 		assertRejectedWithoutSideEffects(UnprocessableEntityException.class,
 				"Immunization.identifier must not be changed", id("1"), corrected);
-	}
-
-	@Test
-	void updateImmunization_changedVaccine_isRejected() {
-		ChVacdImmunization corrected = corrected(imm -> imm.getVaccineCode().getCodingFirstRep().setCode("450"));
-
-		assertRejectedWithoutSideEffects(UnprocessableEntityException.class, "cannot be corrected", id("1"),
-				corrected);
-	}
-
-	@Test
-	void updateImmunization_changedTargetDiseases_isRejected() {
-		ChVacdImmunization corrected = corrected(imm -> imm.getProtocolAppliedFirstRep().addTargetDisease(
-				new CodeableConcept().addCoding(new Coding("http://snomed.info/sct", "76902006", "Tetanus"))));
-
-		assertRejectedWithoutSideEffects(UnprocessableEntityException.class, "cannot be corrected", id("1"),
-				corrected);
 	}
 
 	@Test
