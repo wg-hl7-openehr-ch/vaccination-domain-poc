@@ -18,6 +18,7 @@ import ca.uhn.fhir.rest.annotation.ResourceParam;
 import ca.uhn.fhir.rest.annotation.Search;
 import ca.uhn.fhir.rest.annotation.Update;
 import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.param.ReferenceParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ch.hl7.vacd.api.business.ImmunizationBusinessService;
@@ -53,14 +54,18 @@ public class ImmunizationProvider extends AbstractProvider implements IResourceP
 	}
 
 	@Update
-	public MethodOutcome update(@IdParam IdType id, @ResourceParam ChVacdImmunization resource) {
+	public MethodOutcome update(@IdParam IdType id, @ResourceParam ChVacdImmunization resource,
+			RequestDetails requestDetails) {
 
-		Immunization retImmunization = immunizationBusinessService.updateImmunization(resource);
+		// HAPI puts the version of an If-Match header into the version part of the id
+		Immunization retImmunization = immunizationBusinessService.updateImmunization(id, resource,
+				requestDetails.getHeader("X-Provenance"));
 
 		MethodOutcome outcome = new MethodOutcome();
-		outcome.setId(new IdType(retImmunization.fhirType(), retImmunization.getId()));
+		outcome.setId(new IdType(retImmunization.fhirType(), retImmunization.getIdElement().getIdPart(),
+				retImmunization.getMeta().getVersionId()));
 		outcome.setResource(retImmunization);
-		outcome.setCreated(retImmunization == null || retImmunization.isEmpty());
+		outcome.setCreated(false);
 		return outcome;
 	}
 

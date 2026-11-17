@@ -2,10 +2,13 @@ package ch.hl7.vacd.api.business.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.hl7.fhir.instance.model.api.IIdType;
 import org.hl7.fhir.r4.model.Bundle;
@@ -13,6 +16,7 @@ import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Immunization;
 import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.Provenance;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.projecthusky.fhir.vacd.ch.common.resource.r4.ChVacdImmunization;
@@ -23,7 +27,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.rest.param.ReferenceParam;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.PreconditionFailedException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import ch.hl7.vacd.api.business.ImmunizationBusinessService;
 import ch.hl7.vacd.api.client.EhrbaseClient;
 import ch.hl7.vacd.api.client.OpenFhirClient;
@@ -33,8 +42,10 @@ import ch.hl7.vacd.api.entity.ArtefactEntity;
 import ch.hl7.vacd.api.entity.ArtefactEntityType;
 import ch.hl7.vacd.api.entity.ResourceEntity;
 import ch.hl7.vacd.api.entity.ResourceReferenceEntity;
+import ch.hl7.vacd.api.openehr.ChVacdOpenEhrConstants;
 import ch.hl7.vacd.api.repo.ArtefactRepository;
 import ch.hl7.vacd.api.repo.ResourceRepository;
+import ch.hl7.vacd.api.utils.FlatDiff;
 import ch.hl7.vacd.api.utils.RessourceUtil;
 import jakarta.transaction.Transactional;
 
@@ -233,29 +244,158 @@ public class ImmunizationBusinessServiceImpl extends AbstractBusinessService imp
 		}
 	}
 
+	/**
+	 * Corrects the content of a stored Immunization by writing a new version of its
+	 * Composition. Only the keys that differ between the current and the corrected
+	 * Immunization are written, see {@link FlatDiff}.
+	 */
 	@Override
-	public Immunization updateImmunization(ChVacdImmunization resource) {
-		String type = resource.fhirType();
-		String idPart = resource.getIdPart();
-		String json = fhirContext.newJsonParser().encodeResourceToString(resource);
-		List<ResourceEntity> found = store.findByResourceTypeAndResourceId(type, idPart);
-		ResourceEntity entity;
-		if (found != null && !found.isEmpty()) {
-			entity = found.get(0);
-			entity.setJson(json);
-		} else {
-			entity = new ResourceEntity();
-			entity.setResourceType(type);
-			entity.setResourceId(
-					idPart == null || idPart.isEmpty()
-							? (resource.getIdElement() != null ? resource.getIdElement().getIdPart()
-									: java.util.UUID.randomUUID().toString())
-							: idPart);
-			entity.setJson(json);
+	@Transactional
+	public Immunization updateImmunization(IdType id, ChVacdImmunization resource, String provenance) {
+
+		List<ResourceEntity> found = store.findByResourceTypeAndResourceId("Immunization", id.getIdPart());
+		if (found == null || found.isEmpty()) {
+			throw new ResourceNotFoundException(id);
 		}
+		ResourceEntity entity = found.get(0);
+		if (resource.getIdElement().hasIdPart() && !id.getIdPart().equals(resource.getIdElement().getIdPart())) {
+			throw new UnprocessableEntityException("Immunization.id (" + resource.getIdElement().getIdPart()
+					+ ") must match the id in the URL (" + id.getIdPart() + ")");
+		}
+		Provenance provenanceResource = parseProvenance(provenance);
+
+		Current current = loadCurrent(entity);
+		String currentVersion = CompositionVersion.versionNumber(current.versionUid());
+		if (id.hasVersionIdPart() && !id.getVersionIdPart().equals(currentVersion)) {
+			throw new PreconditionFailedException("Immunization/" + id.getIdPart() + " is at version "
+					+ currentVersion + ", not at version " + id.getVersionIdPart());
+		}
+
+		String patientId = current.immunization().getPatient().getReferenceElement().getIdPart();
+		Patient patient = getResourceEntry("Patient", patientId);
+		if (patient == null) {
+			throw new IllegalStateException("Patient not found in local store: " + patientId);
+		}
+		validateCorrection(current.immunization(), resource, patient);
+
+		FlatDiff.Diff diff = FlatDiff.between(toFlat(current.immunization(), patient), toFlat(resource, patient));
+		if (diff.isEmpty()) {
+			log.info("Immunization id={} is unchanged, no new version", id.getIdPart());
+			return current.immunization();
+		}
+		log.info("Correcting Immunization id={}: changed={} removed={}", id.getIdPart(), diff.changed().keySet(),
+				diff.removed());
+
+		String versionUid = ehrbaseClient.updateCompositionFlat(current.ehrId(), current.versionUid(),
+				FlatDiff.apply(current.flat(), diff), ChVacdOpenEhrConstants.ADMIN_TEMPLATE);
+		log.info("Stored Composition uid={} for Immunization id={}", versionUid, id.getIdPart());
+
+		// identifiers and references of the entity stay as they are
+		entity.setJson(fhirContext.newJsonParser().encodeResourceToString(resource));
 		store.save(entity);
-		resource.setId(entity.getResourceId());
-		return resource;
+		if (provenanceResource != null) {
+			storeProvenance(provenanceResource, id.getIdPart(), CompositionVersion.versionNumber(versionUid));
+		}
+
+		return loadCurrent(entity).immunization();
+	}
+
+	/**
+	 * The rules a correction has to meet. This is the one place for them.
+	 *
+	 * @param current   the Immunization as it is stored
+	 * @param corrected the Immunization as it should be
+	 * @param patient   the patient of the stored Immunization
+	 */
+	private void validateCorrection(Immunization current, Immunization corrected, Patient patient) {
+		String currentPatientId = current.getPatient().getReferenceElement().getIdPart();
+		String correctedPatientId = RessourceUtil.removeUrn(corrected.getPatient().getReferenceElement().getIdPart());
+		if (!currentPatientId.equals(correctedPatientId)) {
+			throw new UnprocessableEntityException("Immunization.patient must not be changed by a correction");
+		}
+
+		// the export finds the stored Immunization by these
+		if (!identifiers(current).equals(identifiers(corrected))) {
+			throw new UnprocessableEntityException("Immunization.identifier must not be changed by a correction");
+		}
+
+		if (corrected.getStatus() != Immunization.ImmunizationStatus.COMPLETED) {
+			throw new UnprocessableEntityException("Immunization.status must stay 'completed' in a correction");
+		}
+		RessourceUtil.validateOccurrenceDate(corrected, patient);
+
+		// The vaccine comes with its target diseases and its product (Medication),
+		// which a correction does not carry.
+		if (!current.getVaccineCode().equalsDeep(corrected.getVaccineCode())
+				|| !targetDiseases(current).equals(targetDiseases(corrected))) {
+			throw new UnprocessableEntityException(
+					"Immunization.vaccineCode and protocolApplied.targetDisease cannot be corrected");
+		}
+	}
+
+	private static Set<String> identifiers(Immunization immunization) {
+		return immunization.getIdentifier().stream().map(idt -> idt.getSystem() + "|" + idt.getValue())
+				.collect(Collectors.toSet());
+	}
+
+	private static Set<String> targetDiseases(Immunization immunization) {
+		return immunization.getProtocolApplied().stream().flatMap(pa -> pa.getTargetDisease().stream())
+				.flatMap(td -> td.getCoding().stream()).map(c -> c.getSystem() + "|" + c.getCode())
+				.collect(Collectors.toSet());
+	}
+
+	private String toFlat(Immunization immunization, Patient patient) {
+		// work on a copy: the document resolves the patient from the reference
+		ChVacdImmunization imm = fhirContext.newJsonParser().parseResource(ChVacdImmunization.class,
+				fhirContext.newJsonParser().encodeResourceToString(immunization));
+		imm.setPatient(new Reference(patient));
+
+		ChVacdImmunizationAdministrationDocument immAdmin = RessourceUtil.createImmunizationAdministrationDocument();
+		immAdmin.addImmunization(imm);
+		immAdmin.setPatient(patient);
+
+		ChVacdImmunizationAdministrationDocument chvacdToEHR = RessourceUtil
+				.createOpenFhirImmunizationAdministrationDocument(immAdmin, fhirContext);
+		String flatJson = openFhirClient.toOpenEhr(fhirContext.newJsonParser().encodeResourceToString(chvacdToEHR));
+
+		List<String> splitDocuments = RessourceUtil.splitByMedicationManagement(flatJson);
+		if (splitDocuments.size() != 1) {
+			throw new IllegalStateException(
+					"Expected one Composition for one Immunization, got " + splitDocuments.size());
+		}
+		return splitDocuments.get(0);
+	}
+
+	private Provenance parseProvenance(String provenance) {
+		if (provenance == null || provenance.isBlank()) {
+			return null;
+		}
+		try {
+			return fhirContext.newJsonParser().parseResource(Provenance.class, provenance);
+		} catch (DataFormatException e) {
+			throw new InvalidRequestException("X-Provenance must be a Provenance resource in JSON: " + e.getMessage());
+		}
+	}
+
+	private void storeProvenance(Provenance provenance, String immunizationId, String version) {
+		provenance.setId(UUID.randomUUID().toString());
+		provenance.setTarget(List.of(new Reference("Immunization/" + immunizationId + "/_history/" + version)));
+		if (!provenance.hasRecorded()) {
+			provenance.setRecorded(new Date());
+		}
+
+		ResourceEntity entity = new ResourceEntity();
+		entity.setResourceType(provenance.fhirType());
+		entity.setResourceId(provenance.getIdElement().getIdPart());
+		// keep the version in the target reference; the parser strips it by default
+		entity.setJson(fhirContext.newJsonParser().setStripVersionsFromReferences(false)
+				.encodeResourceToString(provenance));
+		entity.addReference(new ResourceReferenceEntity()
+				.setTargetType("Immunization")
+				.setTargetId(immunizationId)
+				.setSourceEntity(entity)
+				.setSourceField("Provenance.target"));
+		store.save(entity);
 	}
 
 	@Override

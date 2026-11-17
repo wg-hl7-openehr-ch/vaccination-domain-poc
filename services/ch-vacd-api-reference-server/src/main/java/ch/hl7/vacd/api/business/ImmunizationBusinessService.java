@@ -14,7 +14,16 @@ public interface ImmunizationBusinessService {
 
 	Immunization readImmunization(IdType id);
 
-	Immunization updateImmunization(ChVacdImmunization resource);
+	/**
+	 * Corrects the content of a stored Immunization.
+	 *
+	 * @param id         the id of the stored Immunization; its version part, if
+	 *                   present, is the version the correction is based on
+	 * @param resource   the corrected Immunization
+	 * @param provenance a Provenance resource (JSON) describing the correction, or
+	 *                   null
+	 */
+	Immunization updateImmunization(IdType id, ChVacdImmunization resource, String provenance);
 
 	List<Immunization> searchImmunizations(ReferenceParam patient);
 

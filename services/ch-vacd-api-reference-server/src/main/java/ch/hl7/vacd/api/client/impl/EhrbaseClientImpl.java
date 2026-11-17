@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.PreconditionFailedException;
 import ch.hl7.vacd.api.client.EhrbaseClient;
 import ch.hl7.vacd.api.domain.CompositionVersion;
 import ch.hl7.vacd.api.domain.FlatComposition;
@@ -21,6 +22,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
@@ -295,6 +297,46 @@ public class EhrbaseClientImpl implements EhrbaseClient {
 			throw e;
 		} catch (Exception e) {
 			throw new RuntimeException("EHRbase GET composition failed", e);
+		}
+	}
+
+	/**
+	 * PUT a FLAT-format Composition as the new version of an existing one. Returns
+	 * the new version uid. EHRbase takes the preceding version uid unquoted in
+	 * If-Match and answers 412 if it is not the latest version. It parses the body
+	 * first, so any other error means the body is not a valid Composition.
+	 */
+	@Override
+	public String updateCompositionFlat(String ehrId, String precedingVersionUid, String flatBody,
+			String templateId) {
+		try {
+			String url = baseUrl + "/ehr/" + ehrId + "/composition/"
+					+ CompositionVersion.versionedObjectUid(precedingVersionUid) + "?format=FLAT&templateId="
+					+ templateId;
+
+			HttpHeaders hdrs = headers(MediaType.APPLICATION_JSON);
+			hdrs.set("If-Match", precedingVersionUid);
+			HttpEntity<String> request = new HttpEntity<>(flatBody, hdrs);
+
+			ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PUT, request, String.class);
+			String etag = response.getHeaders().getFirst("ETag");
+			if (etag == null) {
+				throw new RuntimeException("EHRbase PUT composition: no ETag in response for " + precedingVersionUid);
+			}
+			return etag.replace("\"", "").trim();
+		} catch (HttpStatusCodeException e) {
+			log.error("EHRbase PUT composition {} returned {}: {}", precedingVersionUid, e.getStatusCode(),
+					e.getResponseBodyAsString());
+			if (e.getStatusCode().value() == 412) {
+				throw new PreconditionFailedException(
+						"Composition " + precedingVersionUid + " is not the latest version anymore");
+			}
+			throw new RuntimeException(
+					"EHRbase PUT composition " + e.getStatusCode() + ": " + e.getResponseBodyAsString(), e);
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new RuntimeException("EHRbase PUT composition failed", e);
 		}
 	}
 
