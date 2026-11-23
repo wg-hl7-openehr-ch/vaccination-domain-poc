@@ -91,6 +91,25 @@ async function createImmunization(personId, data) {
   return res.json();
 }
 
+async function updateImmunization(personId, immunizationId, data) {
+  const url = '/api/bff-producer/immunizations/' + encodeURIComponent(immunizationId) + '?personId=' + encodeURIComponent(personId);
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const err = new Error(body?.message || 'Fehler beim Speichern der Korrektur');
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
 async function createPatient(data) {
   const res = await fetch('/api/bff-producer/patients', {
     method: 'POST',
@@ -153,12 +172,22 @@ function transformVaccination(apiImm) {
     site: apiImm.siteOfAdministration || '',
     practitioner: apiImm.practitioner || null,
     vaccinationReason: apiImm.vaccinationReason || staticReasons[apiImm.id] || null,
+    version: apiImm.version || null,
+    lastUpdated: apiImm.lastUpdated || null,
+    corrected: !!apiImm.corrected,
+    administeredDose: apiImm.administeredDose || null,
+    vaccineSystem: apiImm.vaccineSystem || '',
   };
 }
 
 function routeToApi(route) {
   const map = { 'i.m.': 'IM', 's.c.': 'SC', 'i.d.': 'ID', 'oral': 'ORAL', 'nasal': 'NASAL' };
   return map[route] || 'IM';
+}
+
+function routeFromApi(route) {
+  const map = { IM: 'i.m.', SC: 's.c.', ID: 'i.d.', ORAL: 'oral', NASAL: 'nasal' };
+  return map[route] || '';
 }
 
 function inferDisease(vaccine) {
@@ -198,6 +227,7 @@ window.DataService = {
   createPatient,
   fetchVaccinations,
   createImmunization,
+  updateImmunization,
   fetchVaccineCodes,
   importVaccinations,
   exportVaccinationRecord,
@@ -206,6 +236,7 @@ window.DataService = {
   transformPatient,
   transformVaccination,
   routeToApi,
+  routeFromApi,
   inferDisease,
   loadMockFallback,
 };

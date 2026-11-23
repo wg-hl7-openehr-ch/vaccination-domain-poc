@@ -598,6 +598,7 @@
 }
 .vax-entry-doc { color: var(--text-2); font-weight: 500; }
 .vax-entry-gln { font-size: 10.5px; margin-top: 2px; }
+.vax-entry-edit { margin-top: 8px; }
 
 
 /* ====================== SCREEN 3: FORM SHEET ====================== */

@@ -1,6 +1,6 @@
 // Screen 2 — Patient vaccination history (Swiss Impfausweis style)
 
-function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVaccinationCreated, onExportVaccination }) {
+function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVaccinationCreated, onExportVaccination, onEditVaccination, justCorrected, vaccinationsStamp }) {
   const { patients } = window.AppData;
   const patient = (patients || []).find((p) => p.id === patientId);
   const [records, setRecords] = useState([]);
@@ -88,6 +88,11 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
       loadPatientLog();
     }
   }, [justAdded]);
+
+  // Nach einer Korrektur (oder einem Versionskonflikt) die Liste neu laden
+  useEffect(() => {
+    if (vaccinationsStamp) loadVaccinations();
+  }, [vaccinationsStamp]);
 
   useEffect(() => {
     if (!importDone) return;
@@ -223,6 +228,18 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
         </div>
       }
 
+      {justCorrected &&
+      <div className="toast-success">
+          <div className="toast-icon"><Icon.Check /></div>
+          <div>
+            <div className="toast-title">Impfung korrigiert</div>
+            <div className="toast-sub">
+              {justCorrected.vaccine} · {formatDate(justCorrected.date, { short: true })} wurde als neue Version gespeichert.
+            </div>
+          </div>
+        </div>
+      }
+
       <section className="patient-hero">
         <div className="patient-hero-left">
           <PatientAvatar patient={patient} size={64} />
@@ -310,7 +327,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
       {!vaxLoading &&
       <div className="vax-groups">
           {groups.map((g) =>
-          <VaccinationGroup key={g.disease} group={g} justAddedId={justAdded?._addedId} />
+          <VaccinationGroup key={g.disease} group={g} justAddedId={justAdded?._addedId} onEdit={onEditVaccination} />
           )}
           {groups.length === 0 &&
           <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-3)' }}>
@@ -323,7 +340,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
 
 }
 
-function VaccinationGroup({ group, justAddedId }) {
+function VaccinationGroup({ group, justAddedId, onEdit }) {
   return (
     <section className="vax-group card">
       <header className="vax-group-head">
@@ -356,6 +373,7 @@ function VaccinationGroup({ group, justAddedId }) {
                     <span className="vax-vaccine">{r.vaccine}</span>
                     <span className="vax-dose-pill">{doseLabel}</span>
                     {justAddedId === r.id && <span className="badge badge-success">Neu</span>}
+                    {r.corrected && <span className="badge badge-neutral">Korrigiert am {formatDate(r.lastUpdated, { short: true })}</span>}
                   </div>
                   <div className="vax-entry-meta-row">
                     <span><b className="tnum">{formatDate(r.date)}</b></span>
@@ -379,6 +397,10 @@ function VaccinationGroup({ group, justAddedId }) {
                 <div className="vax-entry-side">
                   <div className="vax-entry-doc">{r.practitioner?.doctorName || 'Dr. S. Müller'}</div>
                   <div className="vax-entry-gln mono">{r.practitioner ? 'GLN ' + r.practitioner.gln?.slice(0, 4) + '…' + r.practitioner.gln?.slice(-4) : 'GLN 7601…3456'}</div>
+                  {/* nur Einträge mit Version lassen sich korrigieren */}
+                  {onEdit && r.version &&
+                    <button className="btn btn-sm vax-entry-edit" onClick={() => onEdit(r)}>Bearbeiten</button>
+                  }
                 </div>
               </div>
             </li>
