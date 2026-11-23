@@ -4,7 +4,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -13,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import ch.bff.producer.exception.ValidationException;
 import ch.bff.producer.provider.models.ImmunizationCreateDto;
+import ch.bff.producer.provider.models.ImmunizationUpdateDto;
 import ch.bff.producer.provider.models.ImportDto;
 import ch.bff.producer.provider.models.VaccinationDto;
 import ch.bff.producer.services.ImmunizationAdministrationService;
@@ -35,6 +38,14 @@ public class ImmunizationProvider {
 
 		var result = immunizationService.createImmunizationAdministration(personId, createDto);
 		return ResponseEntity.status(HttpStatus.CREATED).body(result);
+	}
+
+	@PutMapping("/{id}")
+	public ResponseEntity<VaccinationDto> updateImmunization(@PathVariable String id, @RequestParam String personId,
+			@RequestBody ImmunizationUpdateDto updateDto) {
+
+		var result = immunizationService.updateImmunization(personId, id, updateDto);
+		return ResponseEntity.ok(result);
 	}
 
 	@PostMapping(value = "/import", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
