@@ -27,20 +27,26 @@ const manufacturers = [
 ];
 
 const routes = [
-  { value: "i.m.", label: "i.m. (intramuskulär)" },
-  { value: "s.c.", label: "s.c. (subkutan)" },
-  { value: "i.d.", label: "i.d. (intradermal)" },
-  { value: "oral", label: "oral" },
-  { value: "nasal", label: "nasal" },
+  { value: "i.m.", labelKey: "route.im" },
+  { value: "s.c.", labelKey: "route.sc" },
+  { value: "i.d.", labelKey: "route.id" },
+  { value: "oral", labelKey: "route.oral" },
+  { value: "nasal", labelKey: "route.nasal" },
 ];
 
 const sites = [
-  "Oberarm links (M. deltoideus)",
-  "Oberarm rechts (M. deltoideus)",
-  "Oberschenkel links (M. vastus lateralis)",
-  "Oberschenkel rechts (M. vastus lateralis)",
-  "Gesäss links",
-  "Gesäss rechts",
+  { value: "Oberarm links (M. deltoideus)", labelKey: "site.upperArmLeft" },
+  { value: "Oberarm rechts (M. deltoideus)", labelKey: "site.upperArmRight" },
+  { value: "Oberschenkel links (M. vastus lateralis)", labelKey: "site.thighLeft" },
+  { value: "Oberschenkel rechts (M. vastus lateralis)", labelKey: "site.thighRight" },
+  { value: "Gesäss links", labelKey: "site.buttockLeft" },
+  { value: "Gesäss rechts", labelKey: "site.buttockRight" },
+];
+
+const units = [
+  { value: "ml", labelKey: "unit.ml" },
+  { value: "Dosis", labelKey: "unit.dose" },
+  { value: "Tropfen", labelKey: "unit.drops" },
 ];
 
 const reasons = [
@@ -64,4 +70,4 @@ const reasons = [
   { code: "414029004", display: "Disorder of immune function (disorder)", swissLabel: "Risikogruppe: Immundefizienz / Immungeschwächt" }
 ];
 
-window.AppData = { doctor, vaccineCatalog, manufacturers, routes, sites, reasons };
+window.AppData = { doctor, vaccineCatalog, manufacturers, routes, sites, units, reasons };

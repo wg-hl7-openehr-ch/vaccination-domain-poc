@@ -1,6 +1,7 @@
 // Screen 2 — Patient vaccination history (Swiss Impfausweis style)
 
 function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVaccinationCreated, onExportVaccination }) {
+  const t = useT();
   const { patients } = window.AppData;
   const patient = (patients || []).find((p) => p.id === patientId);
   const [records, setRecords] = useState([]);
@@ -19,20 +20,6 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
     } catch {
       return String(artefact);
     }
-  };
-
-  const formatLogDateTime = (value) => {
-    if (!value) return '-';
-    const dt = new Date(value);
-    if (Number.isNaN(dt.getTime())) return formatDate(value);
-    return dt.toLocaleString('de-CH', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
   };
 
   const loadVaccinations = () => {
@@ -91,14 +78,14 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
 
   useEffect(() => {
     if (!importDone) return;
-    const t = setTimeout(() => setImportDone(false), 4000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setImportDone(false), 4000);
+    return () => clearTimeout(timer);
   }, [importDone]);
 
   useEffect(() => {
     if (!errorMsg) return;
-    const t = setTimeout(() => setErrorMsg(null), 5000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setErrorMsg(null), 5000);
+    return () => clearTimeout(timer);
   }, [errorMsg]);
 
   const handleExportVaccination = async () => {
@@ -117,7 +104,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
       if (onExportVaccination) onExportVaccination(jsonContent);
     } catch (err) {
       console.error('Export fehlgeschlagen:', err);
-      showError('Export fehlgeschlagen: ' + (err.message || err));
+      showError(t('detail.exportFailed', { message: err.message || err }));
     }
   };
 
@@ -136,7 +123,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Patienten-Export fehlgeschlagen:', err);
-      showError('Patienten-Export fehlgeschlagen: ' + (err.message || err));
+      showError(t('detail.patientExportFailed', { message: err.message || err }));
     }
   };
 
@@ -153,13 +140,13 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
         setImportDone(true);
       } catch (err) {
         console.error('Import fehlgeschlagen:', err);
-        showError('Import fehlgeschlagen: ' + (err.message || err));
+        showError(t('detail.importFailed', { message: err.message || err }));
       }
     };
     input.click();
   };
 
-  if (!patient) return <div className="page">Patient:in nicht gefunden.</div>;
+  if (!patient) return <div className="page">{t("detail.notFound")}</div>;
 
   // Group by target disease, sort chronologically within group.
   const groups = useMemo(() => {
@@ -187,15 +174,15 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
 
   return (
     <main className="page">
-      <button className="back-link" onClick={onBack} title="Zurück zur Patient:innenliste" aria-label="Zurück zur Patient:innenliste">
-        <Icon.Back /> Zurück zur Patient:innenliste
+      <button className="back-link" onClick={onBack} title={t("detail.back")} aria-label={t("detail.back")}>
+        <Icon.Back /> {t("detail.back")}
       </button>
 
       {errorMsg &&
       <div className="toast-error">
           <div className="toast-icon"><Icon.Close /></div>
           <div>
-            <div className="toast-title">Fehler</div>
+            <div className="toast-title">{t("common.errorTitle")}</div>
             <div className="toast-sub">{errorMsg}</div>
           </div>
         </div>
@@ -205,8 +192,8 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
       <div className="toast-success">
           <div className="toast-icon"><Icon.Check /></div>
           <div>
-            <div className="toast-title">Impfausweis importiert</div>
-            <div className="toast-sub">Die Impfungen wurden erfolgreich importiert.</div>
+            <div className="toast-title">{t("detail.importedTitle")}</div>
+            <div className="toast-sub">{t("detail.importedText")}</div>
           </div>
         </div>
       }
@@ -215,9 +202,9 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
       <div className="toast-success">
           <div className="toast-icon"><Icon.Check /></div>
           <div>
-            <div className="toast-title">Impfung erfasst</div>
+            <div className="toast-title">{t("detail.addedTitle")}</div>
             <div className="toast-sub">
-              {justAdded.vaccine} · {formatDate(justAdded.date, { short: true })} wurde dem Dossier hinzugefügt.
+              {t("detail.addedText", { vaccine: justAdded.vaccine, date: formatDate(justAdded.date, { short: true }) })}
             </div>
           </div>
         </div>
@@ -232,21 +219,21 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
                 <h1 className="patient-name">{patient.lastName}, {patient.firstName}</h1>
               </div>
               <div className="patient-export-container">
-                <button className="btn btn-primary" onClick={handleExportPatient} title="Patient export" aria-label="Patient export"><Icon.Download /></button>
+                <button className="btn btn-primary" onClick={handleExportPatient} title={t("detail.exportPatient")} aria-label={t("detail.exportPatient")}><Icon.Download /></button>
               </div>
             </div>
             <div className="patient-meta">
-              <span><Icon.Cake /> {formatDate(patient.dob, { short: true })} <em className="muted">·</em> {patient.age ?? calcAge(patient.dob)} Jahre <em className="muted">·</em> {patient.sex === "F" ? "weiblich" : "männlich"}</span>
+              <span><Icon.Cake /> {formatDate(patient.dob, { short: true })} <em className="muted">·</em> {t("common.years", { count: patient.age ?? calcAge(patient.dob) })} <em className="muted">·</em> {t("sex." + patient.sex)}</span>
               <span><Icon.Pin /> {patient.address}</span>
               <span><Icon.Mail /> {patient.email}</span>
               <span><Icon.Phone /> <span className="tnum">{patient.phone}</span></span>
-              <span><Icon.User /> AHV <span className="mono">{formatAhv(patient.ahv)}</span></span>
+              <span><Icon.User /> {t("detail.ahv")} <span className="mono">{formatAhv(patient.ahv)}</span></span>
               <span>
                 <Icon.User /> ID <span className="mono">{patient.id}</span>
                 <button
                   className="copy-id-btn"
-                  title="ID kopieren"
-                  aria-label="ID kopieren"
+                  title={t("detail.copyId")}
+                  aria-label={t("detail.copyId")}
                   onClick={() => navigator.clipboard.writeText(patient.id)}
                 ><Icon.Copy /></button>
               </span>
@@ -257,7 +244,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
         <div className="patient-hero-right">
           <div className="hero-stat-naked">
             <div className="hero-stat-value tnum">{stats.total}</div>
-            <div className="hero-stat-label">Impfungen total</div>
+            <div className="hero-stat-label">{t("detail.totalVaccinations")}</div>
           </div>
         </div>
       </section>
@@ -267,30 +254,30 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
       <div className="detail-actions">
         <div className="detail-actions-head">
           <div className="detail-actions-title">
-            <h2 className="section-title">Impfausweis</h2>
+            <h2 className="section-title">{t("detail.vaccinationRecord")}</h2>
           </div>
           <div className="detail-actions-right">
-            <button className="btn btn-primary" onClick={handleImportVaccination} disabled={records.length > 0} title="Impfausweis importieren" aria-label="Impfausweis importieren"><Icon.Upload /></button>
-            <button className="btn btn-primary" onClick={handleExportVaccination} disabled={records.length === 0} title="Impfausweis exportieren" aria-label="Impfausweis exportieren"><Icon.Download /></button>
-            <button className="btn btn-primary" onClick={onAddVaccination} title="Neue Impfung erfassen" aria-label="Neue Impfung erfassen"><Icon.Plus /></button>
+            <button className="btn btn-primary" onClick={handleImportVaccination} disabled={records.length > 0} title={t("detail.importRecord")} aria-label={t("detail.importRecord")}><Icon.Upload /></button>
+            <button className="btn btn-primary" onClick={handleExportVaccination} disabled={records.length === 0} title={t("detail.exportRecord")} aria-label={t("detail.exportRecord")}><Icon.Download /></button>
+            <button className="btn btn-primary" onClick={onAddVaccination} title={t("detail.addVaccination")} aria-label={t("detail.addVaccination")}><Icon.Plus /></button>
           </div>
         </div>
 
         <details className="patient-log-collapsible">
           <summary>
-            Patienten Artefact Log {logLoading ? '(laedt …)' : `(${logEntries.length})`}
+            {t("detail.logTitle")} {logLoading ? t("detail.logLoadingSuffix") : `(${logEntries.length})`}
           </summary>
           <div className="patient-log-content">
-            {logLoading && <div className="patient-log-empty">Logeintraege werden geladen …</div>}
-            {!logLoading && logEntries.length === 0 && <div className="patient-log-empty">Keine Logeintraege vorhanden.</div>}
+            {logLoading && <div className="patient-log-empty">{t("detail.logLoading")}</div>}
+            {!logLoading && logEntries.length === 0 && <div className="patient-log-empty">{t("detail.logEmpty")}</div>}
             {!logLoading && logEntries.length > 0 &&
               <ul className="patient-log-list">
                 {logEntries.map((entry, idx) => (
                   <li key={`${entry.artefactType || 'entry'}-${idx}`} className="patient-log-item">
-                    <div className="patient-log-type">{entry.artefactType || 'Unbekannt'}</div>
-                    <div className="patient-log-timestamp">{formatLogDateTime(entry.dateTime)}</div>
+                    <div className="patient-log-type">{entry.artefactType || t("detail.logUnknownType")}</div>
+                    <div className="patient-log-timestamp">{entry.dateTime ? formatDateTime(entry.dateTime) : '-'}</div>
                     <details className="patient-log-artefact-collapsible">
-                      <summary>Artefakt anzeigen</summary>
+                      <summary>{t("detail.logShowArtefact")}</summary>
                       <pre className="patient-log-artefact">{formatArtefact(entry.artefact)}</pre>
                     </details>
                   </li>
@@ -303,7 +290,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
 
       {vaxLoading &&
       <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-3)' }}>
-          Impfungen werden geladen …
+          {t("detail.loadingVaccinations")}
         </div>
       }
 
@@ -314,7 +301,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
           )}
           {groups.length === 0 &&
           <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-3)' }}>
-              Noch keine Impfungen erfasst. Klicke auf „Neue Impfung erfassen".
+              {t("detail.noVaccinations")}
             </div>
           }
         </div>
@@ -324,28 +311,29 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
 }
 
 function VaccinationGroup({ group, justAddedId }) {
+  const t = useT();
   return (
     <section className="vax-group card">
       <header className="vax-group-head">
         <div className="vax-group-title-wrap">
           <div className="vax-target-icon"><Icon.Syringe /></div>
           <div>
-            <div className="vax-group-title">{group.disease}</div>
+            <div className="vax-group-title">{t("disease." + group.disease)}</div>
             <div className="vax-group-meta">
-              {group.items.length} {group.items.length === 1 ? "Eintrag" : "Einträge"}
-              {" · "}letzte Dosis {formatDate(group.latest, { short: true })}
+              {t("group.entries", { count: group.items.length })}
+              {" · "}{t("group.lastDose", { date: formatDate(group.latest, { short: true }) })}
             </div>
           </div>
         </div>
-        <span className="badge badge-accent"><Icon.Check /> Geschützt</span>
+        <span className="badge badge-accent"><Icon.Check /> {t("group.protected")}</span>
       </header>
 
       <ol className="vax-timeline">
         {group.items.map((r, i) => {
           const doseLabel = r.doseNumber === 'Booster'
-            ? 'Booster'
+            ? t("group.booster")
             : (r.doseNumber && r.seriesDoses)
-              ? `Dosis ${r.doseNumber} / ${r.seriesDoses}`
+              ? t("group.doseOfSeries", { number: r.doseNumber, total: r.seriesDoses })
               : r.dose;
           return (
             <li key={r.id} className={"vax-entry" + (justAddedId === r.id ? " is-new" : "")}>
@@ -355,14 +343,14 @@ function VaccinationGroup({ group, justAddedId }) {
                   <div className="vax-entry-headline">
                     <span className="vax-vaccine">{r.vaccine}</span>
                     <span className="vax-dose-pill">{doseLabel}</span>
-                    {justAddedId === r.id && <span className="badge badge-success">Neu</span>}
+                    {justAddedId === r.id && <span className="badge badge-success">{t("group.new")}</span>}
                   </div>
                   <div className="vax-entry-meta-row">
                     <span><b className="tnum">{formatDate(r.date)}</b></span>
                     <span className="dot">·</span>
                     <span>{r.manufacturer}</span>
                     <span className="dot">·</span>
-                    <span>Charge <span className="mono">{r.batch}</span></span>
+                    <span>{t("group.batch")} <span className="mono">{r.batch}</span></span>
                   </div>
                   <div className="vax-entry-meta-row sub">
                     <span>{r.route}</span>
@@ -372,7 +360,7 @@ function VaccinationGroup({ group, justAddedId }) {
                   </div>
                   {r.vaccinationReason && (
                     <div className="vax-entry-meta-row reason" style={{ fontStyle: 'italic', color: 'var(--primary)', marginTop: 4 }}>
-                      Impfgrund: {r.vaccinationReason.swissLabel || r.vaccinationReason.display || r.vaccinationReason}
+                      {t("group.reason", { reason: reasonLabel(t, r.vaccinationReason) })}
                     </div>
                   )}
                 </div>

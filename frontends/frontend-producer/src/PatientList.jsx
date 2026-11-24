@@ -1,6 +1,7 @@
 // Screen 1 — Patient list with search & filter
 
 function PatientList({ onOpenPatient }) {
+  const t = useT();
   const [patients, setPatients] = useState(window.AppData.patients || []);
   const [showAdd, setShowAdd] = useState(false);
   const [query, setQuery] = useState("");
@@ -44,7 +45,7 @@ function PatientList({ onOpenPatient }) {
     <main className="page">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Patient:innen</h1>
+          <h1 className="page-title">{t("list.title")}</h1>
         </div>
       </div>
 
@@ -54,31 +55,31 @@ function PatientList({ onOpenPatient }) {
           <Icon.Search className="search-icon" />
           <input
             className="search-input"
-            placeholder="Suche nach..."
+            placeholder={t("list.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)} />
           
           {query &&
-          <button className="search-clear" onClick={() => setQuery("")} aria-label="Suche leeren">
+          <button className="search-clear" onClick={() => setQuery("")} aria-label={t("list.clearSearch")}>
               <Icon.Close />
             </button>
           }
           <div className="kbd-hint">⌘K</div>
         </div>
 
-        <div className="chip-group" role="tablist" aria-label="Geschlecht">
+        <div className="chip-group" role="tablist" aria-label={t("list.sexFilter")}>
           {[
-          { v: "all", l: "Alle" },
-          { v: "F", l: "Weiblich" },
-          { v: "M", l: "Männlich" }].
+          { v: "all", l: t("list.all") },
+          { v: "F", l: t("list.female") },
+          { v: "M", l: t("list.male") }].
           map((o) =>
           <button key={o.v} className={"chip" + (sex === o.v ? " is-active" : "")} onClick={() => setSex(o.v)}>{o.l}</button>
           )}
         </div>
 
-        <div className="chip-group" role="tablist" aria-label="Altersgruppe">
+        <div className="chip-group" role="tablist" aria-label={t("list.ageFilter")}>
           {[
-          { v: "all", l: "Alle Alter" },
+          { v: "all", l: t("list.allAges") },
           { v: "child", l: "0–17" },
           { v: "adult", l: "18–64" },
           { v: "senior", l: "65+" }].
@@ -88,24 +89,24 @@ function PatientList({ onOpenPatient }) {
         </div>
 
         <div className="sort-wrap-quiet">
-            <select className="sort-select-quiet" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Sortieren">
-              <option value="name">Sortiert: Nachname A–Z</option>
-              <option value="age">Sortiert: Alter</option>
+            <select className="sort-select-quiet" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={t("list.sort")}>
+              <option value="name">{t("list.sortByName")}</option>
+              <option value="age">{t("list.sortByAge")}</option>
             </select>
         </div>
       </div>
 
       {/* Result count */}
       <div className="result-meta">
-        <span>{filtered.length} Treffer</span>
+        <span>{t("list.resultCount", { count: filtered.length })}</span>
         {(query || sex !== "all" || ageBand !== "all") &&
         <button className="reset-link" onClick={() => {setQuery("");setSex("all");setAgeBand("all");}}>
-            Filter zurücksetzen
+            {t("list.resetFilters")}
           </button>
         }
         <div style={{ marginLeft: "auto" }}>
           <button className="btn btn-primary btn-sm" onClick={() => setShowAdd(true)}>
-            <Icon.Plus /> Patient erfassen
+            <Icon.Plus /> {t("list.addPatient")}
           </button>
         </div>
       </div>
@@ -126,9 +127,9 @@ function PatientList({ onOpenPatient }) {
         <table className="patient-table">
           <thead>
             <tr>
-              <th style={{ width: "36%" }}>Patient:in</th>
-              <th style={{ width: "20%" }}>Geburtsdatum</th>
-              <th style={{ width: "40%" }}>Adresse</th>
+              <th style={{ width: "36%" }}>{t("list.columnPatient")}</th>
+              <th style={{ width: "20%" }}>{t("list.columnBirthDate")}</th>
+              <th style={{ width: "40%" }}>{t("list.columnAddress")}</th>
               <th style={{ width: "4%" }}></th>
             </tr>
           </thead>
@@ -143,13 +144,13 @@ function PatientList({ onOpenPatient }) {
                       <div className="name-line">
                         <span className="last">{p.lastName}</span>, <span className="first">{p.firstName}</span>
                       </div>
-                      <div className="sub-line">{p.sex === "F" ? "weiblich" : "männlich"}</div>
+                      <div className="sub-line">{t("sex." + p.sex)}</div>
                     </div>
                   </div>
                 </td>
                 <td>
                   <div className="dob-line tnum">{formatDate(p.dob, { short: true })}</div>
-                  <div className="sub-line">{p.age} Jahre</div>
+                  <div className="sub-line">{t("common.years", { count: p.age })}</div>
                 </td>
                 <td>
                   <div className="addr-line">{p.address}</div>
@@ -164,8 +165,8 @@ function PatientList({ onOpenPatient }) {
                 <td colSpan={4}>
                   <div className="empty-state">
                     <div className="empty-icon"><Icon.Search /></div>
-                    <div className="empty-title">Keine Patient:innen gefunden</div>
-                    <div className="empty-sub">Passe deine Suche oder die Filter an.</div>
+                    <div className="empty-title">{t("list.emptyTitle")}</div>
+                    <div className="empty-sub">{t("list.emptyHint")}</div>
                   </div>
                 </td>
               </tr>
@@ -180,6 +181,7 @@ function PatientList({ onOpenPatient }) {
 // ---- Add Patient sheet ----
 
 function AddPatientForm({ onCancel, onPatientAdded }) {
+  const t = useT();
   const [form, setForm] = useState({ lastName: "", firstName: "", gender: "MÄNNLICH", birthDate: "", ahv: "", street: "", streetNumber: "", zipCode: "", city: "", email: "", phone: "" });
   const [touched, setTouched] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -227,21 +229,21 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
   };
 
   const errors = {};
-  if (!form.lastName.trim()) errors.lastName = "Pflichtfeld";
-  if (!form.firstName.trim()) errors.firstName = "Pflichtfeld";
-  if (!form.birthDate) errors.birthDate = birthDateIncomplete ? "Ungültiges Datum" : "Pflichtfeld";
-  else if (form.birthDate > todayIso) errors.birthDate = "Geburtsdatum darf nicht in der Zukunft liegen";
+  if (!form.lastName.trim()) errors.lastName = t("common.required");
+  if (!form.firstName.trim()) errors.firstName = t("common.required");
+  if (!form.birthDate) errors.birthDate = birthDateIncomplete ? t("common.invalidDate") : t("common.required");
+  else if (form.birthDate > todayIso) errors.birthDate = t("addPatient.birthDateFuture");
 
   const ahvDigits = normalizeAhv(form.ahv);
   let ahvErrorIsLive = false;
   if (ahvDigits) {
     if (!"756".startsWith(ahvDigits.slice(0, 3))) {
-      errors.ahv = "AHV-Nummern beginnen mit 756";
+      errors.ahv = t("addPatient.ahvPrefix");
       ahvErrorIsLive = true;
     } else if (ahvDigits.length < 13) {
-      errors.ahv = "Unvollständig – die AHV-Nummer hat 13 Ziffern";
+      errors.ahv = t("addPatient.ahvIncomplete");
     } else if (!hasValidAhvCheckDigit(ahvDigits)) {
-      errors.ahv = "Prüfziffer stimmt nicht – bitte Nummer kontrollieren";
+      errors.ahv = t("addPatient.ahvCheckDigit");
       ahvErrorIsLive = true;
     }
   }
@@ -299,13 +301,13 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
 
   return (
     <div className="sheet-backdrop" onClick={onCancel}>
-      <aside className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Patient erfassen">
+      <aside className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t("addPatient.title")}>
         <header className="sheet-head">
           <div>
-            <div className="sheet-eyebrow">Neuer Patient</div>
-            <h2 className="sheet-title">Patient erfassen</h2>
+            <div className="sheet-eyebrow">{t("addPatient.eyebrow")}</div>
+            <h2 className="sheet-title">{t("addPatient.title")}</h2>
           </div>
-          <button className="btn-icon btn-ghost" onClick={onCancel} aria-label="Schliessen">
+          <button className="btn-icon btn-ghost" onClick={onCancel} aria-label={t("common.close")}>
             <Icon.Close />
           </button>
         </header>
@@ -313,9 +315,9 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
         <div className="sheet-body">
           <div className="grid-2">
             <div className="field">
-              <label className="field-label">Nachname<span className="req">*</span></label>
+              <label className="field-label">{t("addPatient.lastName")}<span className="req">*</span></label>
               <input className={"input" + (touched.lastName && errors.lastName ? " is-error" : "")}
-                placeholder="z. B. Müller"
+                placeholder={t("common.example", { value: "Müller" })}
                 value={form.lastName}
                 onChange={(e) => set("lastName", e.target.value)}
                 onBlur={() => touch("lastName")} />
@@ -323,9 +325,9 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
             </div>
 
             <div className="field">
-              <label className="field-label">Vorname<span className="req">*</span></label>
+              <label className="field-label">{t("addPatient.firstName")}<span className="req">*</span></label>
               <input className={"input" + (touched.firstName && errors.firstName ? " is-error" : "")}
-                placeholder="z. B. Anna"
+                placeholder={t("common.example", { value: "Anna" })}
                 value={form.firstName}
                 onChange={(e) => set("firstName", e.target.value)}
                 onBlur={() => touch("firstName")} />
@@ -333,16 +335,16 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
             </div>
 
             <div className="field">
-              <label className="field-label">Geschlecht<span className="req">*</span></label>
+              <label className="field-label">{t("addPatient.gender")}<span className="req">*</span></label>
               <select className="select" value={form.gender} onChange={(e) => set("gender", e.target.value)}>
-                <option value="MÄNNLICH">Männlich</option>
-                <option value="WEIBLICH">Weiblich</option>
-                <option value="DIVERS">Divers</option>
+                <option value="MÄNNLICH">{t("addPatient.genderMale")}</option>
+                <option value="WEIBLICH">{t("addPatient.genderFemale")}</option>
+                <option value="DIVERS">{t("addPatient.genderDiverse")}</option>
               </select>
             </div>
 
             <div className="field">
-              <label className="field-label">Geburtsdatum<span className="req">*</span></label>
+              <label className="field-label">{t("addPatient.birthDate")}<span className="req">*</span></label>
               <input className={"input tnum" + (touched.birthDate && errors.birthDate ? " is-error" : "")}
                 type="date"
                 max={todayIso}
@@ -353,35 +355,35 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
             </div>
 
             <div className="field" style={{ gridColumn: "1 / span 1" }}>
-              <label className="field-label">Strasse</label>
-              <input className="input" placeholder="z. B. Bahnhofstrasse"
+              <label className="field-label">{t("addPatient.street")}</label>
+              <input className="input" placeholder={t("common.example", { value: "Bahnhofstrasse" })}
                 value={form.street}
                 onChange={(e) => set("street", e.target.value)} />
             </div>
 
             <div className="field" style={{ gridColumn: "2 / span 1" }}>
-              <label className="field-label">Nummer</label>
-              <input className="input" placeholder="z. B. 12"
+              <label className="field-label">{t("addPatient.streetNumber")}</label>
+              <input className="input" placeholder={t("common.example", { value: "12" })}
                 value={form.streetNumber}
                 onChange={(e) => set("streetNumber", e.target.value)} />
             </div>
 
             <div className="field">
-              <label className="field-label">PLZ</label>
-              <input className="input tnum" placeholder="z. B. 8001"
+              <label className="field-label">{t("addPatient.zipCode")}</label>
+              <input className="input tnum" placeholder={t("common.example", { value: "8001" })}
                 value={form.zipCode}
                 onChange={(e) => set("zipCode", e.target.value)} />
             </div>
 
             <div className="field">
-              <label className="field-label">Stadt</label>
-              <input className="input" placeholder="z. B. Zürich"
+              <label className="field-label">{t("addPatient.city")}</label>
+              <input className="input" placeholder={t("common.example", { value: "Zürich" })}
                 value={form.city}
                 onChange={(e) => set("city", e.target.value)} />
             </div>
 
             <div className="field" style={{ gridColumn: "1 / -1" }}>
-              <label className="field-label">AHV-Nummer</label>
+              <label className="field-label">{t("addPatient.ahv")}</label>
               <input className={"input tnum" + (showAhvError ? " is-error" : "")}
                 type="text"
                 inputMode="numeric"
@@ -395,15 +397,15 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
             </div>
 
             <div className="field">
-              <label className="field-label">E-Mail</label>
-              <input className="input" type="email" placeholder="z. B. anna.mueller@example.ch"
+              <label className="field-label">{t("addPatient.email")}</label>
+              <input className="input" type="email" placeholder={t("common.example", { value: "anna.mueller@example.ch" })}
                 value={form.email}
                 onChange={(e) => set("email", e.target.value)} />
             </div>
 
             <div className="field">
-              <label className="field-label">Telefon</label>
-              <input className="input tnum" type="tel" placeholder="z. B. +41 79 123 45 67"
+              <label className="field-label">{t("addPatient.phone")}</label>
+              <input className="input tnum" type="tel" placeholder={t("common.example", { value: "+41 79 123 45 67" })}
                 value={form.phone}
                 onChange={(e) => set("phone", e.target.value)} />
             </div>
@@ -415,9 +417,9 @@ function AddPatientForm({ onCancel, onPatientAdded }) {
             {serverError && <span className="foot-error"><Icon.Alert /> {serverError}</span>}
           </div>
           <div className="foot-right">
-            <button className="btn" onClick={onCancel} disabled={submitting}>Abbrechen</button>
+            <button className="btn" onClick={onCancel} disabled={submitting}>{t("common.cancel")}</button>
             <button className="btn btn-primary" onClick={submit} disabled={submitting}>
-              <Icon.Plus /> {submitting ? "Speichert …" : "Patient speichern"}
+              <Icon.Plus /> {submitting ? t("common.saving") : t("addPatient.save")}
             </button>
           </div>
         </footer>

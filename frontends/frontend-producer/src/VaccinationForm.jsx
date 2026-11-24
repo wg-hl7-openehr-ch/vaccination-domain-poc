@@ -1,13 +1,8 @@
 // Screen 3 — New vaccination form (modal-style sheet)
 
 function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
-  const { manufacturers, routes, sites, reasons } = window.AppData;
-
-  const formatIsoDateToEuropean = (iso) => {
-    const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return "";
-    return `${m[3]}.${m[2]}.${m[1]}`;
-  };
+  const t = useT();
+  const { manufacturers, routes, sites, units, reasons } = window.AppData;
 
   const todayIso = localIsoToday();
 
@@ -58,21 +53,22 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
     touch(k);
   };
 
+  const requiredText = t("common.required");
   const errors = {};
-  if (!form.vaccine) errors.vaccine = "Pflichtfeld";
+  if (!form.vaccine) errors.vaccine = requiredText;
   let dateErrorIsLive = false;
   const dobIso = (patient?.dob || "").slice(0, 10);
-  if (!form.date) errors.date = incompleteDates.date ? "Ungültiges Datum" : "Pflichtfeld";
+  if (!form.date) errors.date = incompleteDates.date ? t("common.invalidDate") : requiredText;
   else if (dobIso && form.date < dobIso) {
-    errors.date = `Impfdatum darf nicht vor dem Geburtsdatum (${formatIsoDateToEuropean(dobIso)}) liegen`;
+    errors.date = t("form.dateBeforeBirth", { birthDate: formatDate(dobIso, { short: true }) });
     dateErrorIsLive = true;
   } else if (form.date > todayIso) {
-    errors.date = "Impfdatum darf nicht in der Zukunft liegen";
+    errors.date = t("form.dateFuture");
     dateErrorIsLive = true;
   }
-  if (incompleteDates.expiry) errors.expiry = "Ungültiges Datum";
-  if (!form.batch) errors.batch = "Pflichtfeld";
-  if (!form.amount) errors.amount = "Pflichtfeld";
+  if (incompleteDates.expiry) errors.expiry = t("common.invalidDate");
+  if (!form.batch) errors.batch = requiredText;
+  if (!form.amount) errors.amount = requiredText;
 
   const isValid = Object.keys(errors).length === 0;
 
@@ -112,7 +108,7 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
 
       const created = await DataService.createImmunization(patient.id, payload);
       const record = DataService.transformVaccination(created);
-      record.note = form.hasAdverse ? 'UAW: ' + form.adverseText : null;
+      record.note = form.hasAdverse ? t("form.adverseNote", { text: form.adverseText }) : null;
       onVaccinationCreated(record);
     } catch (err) {
       console.error('Fehler beim Speichern der Impfung:', err);
@@ -121,7 +117,7 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
       } else if (SUPPRESS_ERROR_ON_SUBMIT) {
         onCancel();
       } else {
-        alert('Fehler beim Speichern der Impfung: ' + err.message);
+        alert(t("form.saveFailed", { message: err.message }));
       }
     } finally {
       setSubmitting(false);
@@ -130,40 +126,40 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
 
   return (
     <div className="sheet-backdrop" onClick={onCancel}>
-      <aside className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Neue Impfung erfassen">
+      <aside className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t("form.dialogLabel")}>
         <header className="sheet-head">
           <div>
-            <div className="sheet-eyebrow">Neue Impfung</div>
-            <h2 className="sheet-title">Impfeintrag erfassen</h2>
+            <div className="sheet-eyebrow">{t("form.eyebrow")}</div>
+            <h2 className="sheet-title">{t("form.title")}</h2>
             <div className="sheet-sub">
-              für <b>{patient.lastName}, {patient.firstName}</b>
+              {withElements(t("form.forPatient"), { patient: <b>{patient.lastName}, {patient.firstName}</b> })}
               <span className="muted"> · {formatDate(patient.dob, { short: true })}</span>
             </div>
           </div>
-          <button className="btn-icon btn-ghost" onClick={onCancel} aria-label="Schliessen">
+          <button className="btn-icon btn-ghost" onClick={onCancel} aria-label={t("common.close")}>
             <Icon.Close />
           </button>
         </header>
 
         <div className="sheet-body">
-          <FormGroup title="Impfstoff" eyebrow="1">
+          <FormGroup title={t("form.sectionVaccine")} eyebrow="1">
             <div className="grid-2">
-              <Field label="Impfstoff" required>
+              <Field label={t("form.vaccine")} required>
                 <select className="select" value={form.vaccine} onChange={(e) => set("vaccine", e.target.value)}>
                   {vaccineCatalog.map((r) => <option key={r.combined} value={r.combined}>{r.display}</option>)}
                 </select>
               </Field>
-              <Field label="Chargennummer" required hint="Auf der Impfstoffpackung — z. B. EW0150" error={touched.batch && errors.batch}>
+              <Field label={t("form.batch")} required hint={t("form.batchHint")} error={touched.batch && errors.batch}>
                 <input className="input mono" placeholder="A1B2C3" value={form.batch}
                 onChange={(e) => set("batch", e.target.value.toUpperCase())} onBlur={() => touch("batch")} />
               </Field>
-              <Field label="Produktnummer" hint="z. B.GTIN-Code">
+              <Field label={t("form.productNumber")} hint={t("form.productNumberHint")}>
                 <input className="input mono" placeholder="7680006810037" value={form.vaccineCode}
                 onChange={(e) => set("vaccineCode", e.target.value)} />
               </Field>
               <Autocomplete
-                label="Zulassungsinhaberin / Hersteller"
-                placeholder="z. B. GlaxoSmithKline"
+                label={t("form.manufacturer")}
+                placeholder={t("common.example", { value: "GlaxoSmithKline" })}
                 value={form.manufacturer}
                 onChange={(v) => set("manufacturer", v)}
                 onBlur={() => touch("manufacturer")}
@@ -171,21 +167,21 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
                 error={touched.manufacturer && errors.manufacturer}
               />
              
-              <Field label="Verfallsdatum" hint="laut Packung" error={touched.expiry && errors.expiry}>
+              <Field label={t("form.expiry")} hint={t("form.expiryHint")} error={touched.expiry && errors.expiry}>
                 <input className="input tnum" type="date" max="9999-12-31"
                 value={form.expiry} onChange={(e) => setDateField("expiry", e.target)} onBlur={(e) => blurDateField("expiry", e.target)} />
               </Field>
             </div>
           </FormGroup>
 
-          <FormGroup title="Verabreichung" eyebrow="2">
+          <FormGroup title={t("form.sectionAdministration")} eyebrow="2">
             <div className="grid-2">
-              <Field label="Impfdatum" required error={(dateErrorIsLive || touched.date) && errors.date}>
+              <Field label={t("form.date")} required error={(dateErrorIsLive || touched.date) && errors.date}>
                 <input className="input tnum" type="date" min={dobIso || undefined} max={todayIso}
                 value={form.date} onChange={(e) => setDateField("date", e.target)} onBlur={(e) => blurDateField("date", e.target)} />
               </Field>
 
-              <Field label="Applikationsweg" required>
+              <Field label={t("form.route")} required>
                 <div className="seg" role="radiogroup">
                   {routes.map((r) =>
                   <button key={r.value}
@@ -197,67 +193,65 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
                     </button>
                   )}
                 </div>
-                <div className="field-hint">{routes.find((r) => r.value === form.route)?.label}</div>
+                <div className="field-hint">{t(routes.find((r) => r.value === form.route)?.labelKey)}</div>
               </Field>
 
-              <Field label="Verabreichte Menge" required error={touched.amount && errors.amount}>
+              <Field label={t("form.amount")} required error={touched.amount && errors.amount}>
                 <div className="input-affix">
                   <input className="input tnum" inputMode="decimal" placeholder="0.5" value={form.amount}
                   onChange={(e) => set("amount", e.target.value)} onBlur={() => touch("amount")} />
                   <select className="select affix-select" value={form.unit} onChange={(e) => set("unit", e.target.value)}>
-                    <option>ml</option>
-                    <option>Dosis</option>
-                    <option>Tropfen</option>
+                    {units.map((u) => <option key={u.value} value={u.value}>{t(u.labelKey)}</option>)}
                   </select>
                 </div>
               </Field>
 
-              <Field label="Applikationsort" required style={{ gridColumn: "1 / -1" }}>
+              <Field label={t("form.site")} required style={{ gridColumn: "1 / -1" }}>
                 <select className="select" value={form.site} onChange={(e) => set("site", e.target.value)}>
-                  {sites.map((s) => <option key={s}>{s}</option>)}
+                  {sites.map((s) => <option key={s.value} value={s.value}>{t(s.labelKey)}</option>)}
                 </select>
               </Field>
             </div>
           </FormGroup>
 
-          <FormGroup title="Klinischer Kontext" eyebrow="3">
+          <FormGroup title={t("form.sectionClinical")} eyebrow="3">
             <div className="grid-2">
-              <Field label="Impfgrund" required>
+              <Field label={t("form.reason")} required>
                 <select className="select" value={form.reason} onChange={(e) => set("reason", e.target.value)}>
-                  {reasons.map((r) => <option key={r.code} value={r.code}>{r.swissLabel}</option>)}
+                  {reasons.map((r) => <option key={r.code} value={r.code}>{reasonLabel(t, r)}</option>)}
                 </select>
               </Field>
 
-              <Field label="Dosisnummer in Impfserie">
+              <Field label={t("form.doseNumber")}>
                 <div className="dose-row">
                   <input className="input tnum" placeholder="2" value={form.doseNumber}
                   onChange={(e) => set("doseNumber", e.target.value.replace(/[^\d]/g, ""))} />
-                  <span className="dose-sep">von</span>
+                  <span className="dose-sep">{t("form.doseOf")}</span>
                   <input className="input tnum" placeholder="3" value={form.doseTotal}
                   onChange={(e) => set("doseTotal", e.target.value.replace(/[^\d]/g, ""))} />
                   <span className="field-hint" style={{ marginLeft: 8 }}>
-                    {form.doseNumber && form.doseTotal ? "Dosis " + form.doseNumber + " von " + form.doseTotal : "Booster? Leer lassen."}
+                    {form.doseNumber && form.doseTotal ? t("form.doseHint", { number: form.doseNumber, total: form.doseTotal }) : t("form.boosterHint")}
                   </span>
                 </div>
               </Field>
             </div>
 
-            <Field label="Unerwünschte Reaktion nach Impfung (UAW)" hint="Nur ausfüllen, falls eine Reaktion beobachtet wurde — meldepflichtig an Swissmedic.">
+            <Field label={t("form.adverse")} hint={t("form.adverseHint")}>
               <label className="toggle-row">
                 <input type="checkbox" checked={form.hasAdverse} onChange={(e) => set("hasAdverse", e.target.checked)} />
-                <span>Reaktion beobachtet</span>
+                <span>{t("form.adverseObserved")}</span>
               </label>
               {form.hasAdverse &&
               <>
                   <textarea
                   className="textarea"
-                  placeholder="z. B. Lokalreaktion (Rötung, Schwellung), Fieber, anaphylaktische Reaktion …"
+                  placeholder={t("form.adversePlaceholder")}
                   value={form.adverseText}
                   onChange={(e) => set("adverseText", e.target.value)} />
 
                   <div className="adverse-warn">
                     <Icon.Alert />
-                    <span>Schwerwiegende UAW sind via <b>ElViS</b> an Swissmedic zu melden.</span>
+                    <span>{withElements(t("form.adverseReport"), { system: <b>ElViS</b> })}</span>
                   </div>
                 </>
               }
@@ -267,8 +261,8 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
           <div className="audit-trail">
             <div className="audit-icon"><Icon.Info /></div>
             <div className="audit-text">
-              Dieser Eintrag wird signiert mit <b>{window.AppData.doctor?.name || 'Dr. med. Sarah Müller'}</b> · GLN <span className="mono">{window.AppData.doctor?.gln || '7601000123456'}</span>
-              <br />Zeitstempel: <span className="tnum">{new Date().toLocaleString("de-CH")}</span>
+              {withElements(t("form.signedBy"), { doctor: <b>{window.AppData.doctor?.name || 'Dr. med. Sarah Müller'}</b> })} · GLN <span className="mono">{window.AppData.doctor?.gln || '7601000123456'}</span>
+              <br />{withElements(t("form.timestamp"), { timestamp: <span className="tnum">{formatDateTime(new Date())}</span> })}
             </div>
           </div>
         </div>
@@ -276,17 +270,17 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
         <footer className="sheet-foot">
           <div className="foot-left">
             {!isValid && Object.keys(touched).length > 0 &&
-            <span className="foot-error"><Icon.Alert /> {Object.values(errors).includes("Pflichtfeld") ? "Bitte alle Pflichtfelder ausfüllen." : "Bitte Eingaben prüfen."}</span>
+            <span className="foot-error"><Icon.Alert /> {Object.values(errors).includes(requiredText) ? t("form.fillRequired") : t("form.checkInput")}</span>
             }
             {serverError && <span className="foot-error"><Icon.Alert /> {serverError}</span>}
           </div>
           <div className="foot-right">
-            <button className="btn" onClick={onCancel} disabled={submitting}>Abbrechen</button>
+            <button className="btn" onClick={onCancel} disabled={submitting}>{t("common.cancel")}</button>
             <button className="btn" onClick={submit} disabled={!isValid || submitting} style={(!isValid || submitting) ? { opacity: 0.5 } : null}>
-              {submitting ? 'Speichert …' : 'Speichern & weiter erfassen'}
+              {submitting ? t("common.saving") : t("form.saveAndContinue")}
             </button>
             <button className="btn btn-primary" onClick={submit} disabled={!isValid || submitting} style={(!isValid || submitting) ? { opacity: 0.5 } : null}>
-              <Icon.Check /> {submitting ? 'Speichert …' : 'Impfung speichern'}
+              <Icon.Check /> {submitting ? t("common.saving") : t("form.save")}
             </button>
           </div>
         </footer>
@@ -330,6 +324,7 @@ function inferDiseaseFromVaccine(vaccine) {
 /* ---------- Custom liquidglas Autocomplete component ---------- */
 
 function Autocomplete({ label, value, onChange, onBlur, options, placeholder, required, error, hint }) {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState(value || "");
   const containerRef = useRef(null);
@@ -394,7 +389,7 @@ function Autocomplete({ label, value, onChange, onBlur, options, placeholder, re
               alignItems: "center",
               background: "transparent"
             }}
-            aria-label="Liste öffnen"
+            aria-label={t("form.openList")}
           >
             <Icon.ChevronDown />
           </button>

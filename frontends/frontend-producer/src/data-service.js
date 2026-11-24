@@ -18,7 +18,7 @@ async function fetchPatients() {
   const res = await fetch('/api/bff-producer/patients', {
     headers: { ...authHeaders() },
   });
-  if (!res.ok) throw new Error('Fehler beim Laden der Patienten');
+  if (!res.ok) throw new Error(I18n.t('error.loadPatients'));
   return res.json();
 }
 
@@ -26,7 +26,7 @@ async function fetchVaccinations(personId) {
   const res = await fetch('/api/bff-producer/vaccinations?personId=' + encodeURIComponent(personId), {
     headers: { ...authHeaders() },
   });
-  if (!res.ok) throw new Error('Fehler beim Laden der Impfungen');
+  if (!res.ok) throw new Error(I18n.t('error.loadVaccinations'));
   return res.json();
 }
 
@@ -41,7 +41,7 @@ async function importVaccinations(personId, file) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.message || 'Fehler beim Importieren des Impfausweises');
+    throw new Error(body?.message || I18n.t('error.importRecord'));
   }
   return res.json();
 }
@@ -51,7 +51,7 @@ async function exportVaccinationRecord(personId, format) {
   const res = await fetch(url, {
     headers: { ...authHeaders() },
   });
-  if (!res.ok) throw new Error('Fehler beim Exportieren des Impfausweises');
+  if (!res.ok) throw new Error(I18n.t('error.exportRecord'));
   return res;
 }
 
@@ -60,7 +60,7 @@ async function exportPatient(personId, format) {
   const res = await fetch(url, {
     headers: { ...authHeaders() },
   });
-  if (!res.ok) throw new Error('Fehler beim Exportieren des Patienten');
+  if (!res.ok) throw new Error(I18n.t('error.exportPatient'));
   return res;
 }
 
@@ -69,7 +69,7 @@ async function patientLog(personId) {
   const res = await fetch(url, {
     headers: { ...authHeaders() },
   });
-  if (!res.ok) throw new Error('Fehler beim Holen der Log-Einträge des Patienten');
+  if (!res.ok) throw new Error(I18n.t('error.loadLog'));
   return res;
 }
 
@@ -84,7 +84,7 @@ async function createImmunization(personId, data) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    const err = new Error(body?.message || 'Fehler beim Erfassen der Impfung');
+    const err = new Error(body?.message || I18n.t('error.saveVaccination'));
     err.status = res.status;
     throw err;
   }
@@ -100,7 +100,7 @@ async function createPatient(data) {
     },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Fehler beim Anlegen des Patienten');
+  if (!res.ok) throw new Error(I18n.t('error.createPatient'));
   return res.json();
 }
 
@@ -108,7 +108,7 @@ async function fetchVaccineCodes() {
   const res = await fetch('/api/bff-producer/valuesets/vaccines', {
     headers: { ...authHeaders() },
   });
-  if (!res.ok) throw new Error('Fehler beim Laden der Impfstoff-Codes');
+  if (!res.ok) throw new Error(I18n.t('error.loadVaccineCodes'));
   return res.json();
 }
 
@@ -163,25 +163,25 @@ function routeToApi(route) {
 
 function inferDisease(vaccine) {
   const v = (vaccine || '').toLowerCase();
-  if (v.includes('boostrix polio') || v.includes('infanrix-ipv') || v.includes('pentavac')) return 'Diphtherie, Tetanus, Pertussis, Polio';
-  if (v.includes('infanrix hexa')) return 'Diphtherie, Tetanus, Pertussis, Polio, Hib, Hepatitis B';
-  if (v.includes('boostrix')) return 'Diphtherie, Tetanus, Pertussis';
-  if (v.includes('td-pur')) return 'Diphtherie, Tetanus';
-  if (v.includes('priorix') || v.includes('mmr')) return 'Masern, Mumps, Röteln';
-  if (v.includes('gardasil')) return 'HPV';
-  if (v.includes('fsme') || v.includes('encepur')) return 'FSME';
-  if (v.includes('engerix')) return 'Hepatitis B';
-  if (v.includes('havrix')) return 'Hepatitis A';
-  if (v.includes('twinrix')) return 'Hepatitis A + B';
-  if (v.includes('comirnaty') || v.includes('spikevax') || v.includes('covid')) return 'COVID-19';
-  if (v.includes('influvac') || v.includes('fluarix') || v.includes('efluelda')) return 'Influenza (saisonal)';
-  if (v.includes('prevenar') || v.includes('pneumo')) return 'Pneumokokken';
-  if (v.includes('menveo') || v.includes('nimenrix')) return 'Meningokokken ACWY';
-  if (v.includes('rabipur')) return 'Tollwut';
-  if (v.includes('stamaril')) return 'Gelbfieber';
-  if (v.includes('shingrix')) return 'Herpes Zoster';
-  if (v.includes('varilrix')) return 'Varizellen';
-  return 'Sonstige';
+  if (v.includes('boostrix polio') || v.includes('infanrix-ipv') || v.includes('pentavac')) return 'dtpPolio';
+  if (v.includes('infanrix hexa')) return 'dtpPolioHibHepB';
+  if (v.includes('boostrix')) return 'dtp';
+  if (v.includes('td-pur')) return 'dt';
+  if (v.includes('priorix') || v.includes('mmr')) return 'mmr';
+  if (v.includes('gardasil')) return 'hpv';
+  if (v.includes('fsme') || v.includes('encepur')) return 'tbe';
+  if (v.includes('engerix')) return 'hepB';
+  if (v.includes('havrix')) return 'hepA';
+  if (v.includes('twinrix')) return 'hepAB';
+  if (v.includes('comirnaty') || v.includes('spikevax') || v.includes('covid')) return 'covid';
+  if (v.includes('influvac') || v.includes('fluarix') || v.includes('efluelda')) return 'influenza';
+  if (v.includes('prevenar') || v.includes('pneumo')) return 'pneumococcal';
+  if (v.includes('menveo') || v.includes('nimenrix')) return 'meningococcalAcwy';
+  if (v.includes('rabipur')) return 'rabies';
+  if (v.includes('stamaril')) return 'yellowFever';
+  if (v.includes('shingrix')) return 'herpesZoster';
+  if (v.includes('varilrix')) return 'varicella';
+  return 'other';
 }
 
 

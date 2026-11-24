@@ -1,6 +1,7 @@
 // Root app — routes between PatientList, PatientDetail, VaccinationForm
 
 function App() {
+  const t = useT();
   const [route, setRoute] = useState({ name: "list" });
   const [showForm, setShowForm] = useState(false);
   const [justAdded, setJustAdded] = useState(null);
@@ -23,16 +24,16 @@ function App() {
   }, []);
 
   const crumbs = useMemo(() => {
-    if (route.name === "list") return [{ key: "list", label: "Patient:innen" }];
+    if (route.name === "list") return [{ key: "list", label: t("app.breadcrumbPatients") }];
     if (route.name === "detail") {
       const p = (window.AppData.patients || []).find(x => x.id === route.patientId);
       return [
-        { key: "list", label: "Patient:innen" },
-        { key: "detail", label: p ? p.lastName + ', ' + p.firstName : "Patient:in" },
+        { key: "list", label: t("app.breadcrumbPatients") },
+        { key: "detail", label: p ? p.lastName + ', ' + p.firstName : t("app.breadcrumbPatient") },
       ];
     }
     return [];
-  }, [route, loading]);
+  }, [route, loading, t]);
 
   const onCrumb = (c) => {
     if (c.key === "list") setRoute({ name: "list" });
@@ -56,7 +57,7 @@ function App() {
         <main className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
           <div style={{ textAlign: 'center', color: 'var(--text-3)' }}>
             <div className="spinner" style={{ width: 32, height: 32, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin .6s linear infinite', margin: '0 auto 1rem' }} />
-            <div>Patient:innen werden geladen …</div>
+            <div>{t("app.loadingPatients")}</div>
           </div>
         </main>
       </div>
@@ -69,7 +70,7 @@ function App() {
         <TopBar crumbs={[]} onCrumb={() => {}} />
         <main className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
           <div style={{ textAlign: 'center', color: 'var(--danger)' }}>
-            <div style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '.5rem' }}>Verbindungsfehler</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '.5rem' }}>{t("app.connectionError")}</div>
             <div>{error}</div>
           </div>
         </main>

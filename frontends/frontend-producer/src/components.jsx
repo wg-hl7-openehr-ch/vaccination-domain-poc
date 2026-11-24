@@ -1,6 +1,6 @@
 // Shared UI components for Impfdossier CH
 
-const { useState, useEffect, useRef, useMemo } = React;
+const { useState, useEffect, useRef, useMemo, useSyncExternalStore } = React;
 
 /* ---------------- Icons (inline SVG) ---------------- */
 
@@ -127,6 +127,27 @@ const Icon = {
 
 };
 
+/* ---------------- i18n ---------------- */
+
+function useT() {
+  const language = useSyncExternalStore(I18n.subscribe, I18n.getLanguage);
+  return useMemo(() => (key, params) => I18n.t(key, params), [language]);
+}
+
+function withElements(text, elements) {
+  return text.split(/\{\{\s*(\w+)\s*\}\}/).map((part, i) =>
+    i % 2 === 1 ? <React.Fragment key={i}>{elements[part]}</React.Fragment> : part
+  );
+}
+
+function reasonLabel(t, reason) {
+  if (!reason) return "";
+  if (typeof reason === "string") return reason;
+  return I18n.exists("reason." + reason.code)
+    ? t("reason." + reason.code)
+    : reason.swissLabel || reason.display || "";
+}
+
 /* ---------------- Helpers ---------------- */
 
 function formatDate(iso, opts = {}) {
@@ -134,9 +155,18 @@ function formatDate(iso, opts = {}) {
   const d = new Date(iso);
   if (isNaN(d)) return iso;
   if (opts.short) {
-    return d.toLocaleDateString("de-CH", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return d.toLocaleDateString(I18n.getLocale(), { day: "2-digit", month: "2-digit", year: "numeric" });
   }
-  return d.toLocaleDateString("de-CH", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString(I18n.getLocale(), { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatDateTime(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (isNaN(d)) return value ? formatDate(value) : "-";
+  return d.toLocaleString(I18n.getLocale(), {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit"
+  });
 }
 
 function localIsoToday() {
@@ -170,6 +200,7 @@ function initials(first, last) {
 /* ---------------- TopBar ---------------- */
 
 function TopBar({ crumbs = [], onCrumb }) {
+  const t = useT();
   const d = window.AppData.doctor;
   const logout = () => { sessionStorage.removeItem('auth'); window.location.replace('/'); };
   return (
@@ -198,8 +229,10 @@ function TopBar({ crumbs = [], onCrumb }) {
           </div>
         </div>
 
-        <button className="logout-btn" onClick={logout} title="Abmelden">
-          <Icon.Logout /> <span>Abmelden</span>
+        <LanguageMenu />
+
+        <button className="logout-btn" onClick={logout} title={t("topbar.logout")}>
+          <Icon.Logout /> <span>{t("topbar.logout")}</span>
         </button>
       </div>
     </header>);
@@ -235,4 +268,4 @@ function PatientAvatar({ patient, size = 32 }) {
 
 }
 
-Object.assign(window, { Icon, formatDate, calcAge, normalizeAhv, formatAhv, initials, TopBar, PatientAvatar });
+Object.assign(window, { Icon, useT, withElements, reasonLabel, formatDate, formatDateTime, calcAge, normalizeAhv, formatAhv, initials, TopBar, PatientAvatar });
