@@ -98,8 +98,7 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
         siteOfAdministration: form.site,
         vaccinationReason: {
           code: selectedReason.code,
-          display: selectedReason.display,
-          swissLabel: selectedReason.swissLabel
+          display: selectedReason.display
         },
         doseNumber: doseNum,
         seriesDoses: seriesDoses,

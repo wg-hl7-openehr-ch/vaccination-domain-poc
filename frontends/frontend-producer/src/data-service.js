@@ -131,11 +131,11 @@ function transformPatient(apiPatient, index) {
 
 function transformVaccination(apiImm) {
   const staticReasons = {
-    "3fa85f64-5717-4562-b3fc-2c963f66afa6": { code: "373068000", display: "Not known", swissLabel: "Grundimmunisierung" },
-    "7b921e12-3456-7890-abcd-ef1234567890": { code: "373068000", display: "Not known", swissLabel: "Grundimmunisierung" },
-    "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d": { code: "Booster", display: "Booster", swissLabel: "Auffrischimpfung (Booster)" },
-    "f8e7d6c5-b4a3-9281-7065-5443322110aa": { code: "1237021005", display: "At increased risk of exposure to European tick-borne encephalitis virus", swissLabel: "Risikogruppe: FSME-Exposition (Endemiegebiet)" },
-    "00000000-1111-2222-3333-444455556666": { code: "1237028004", display: "At increased risk of exposure to Influenza virus", swissLabel: "Risikogruppe: Erhöhtes Influenza-Expositionsrisiko" }
+    "3fa85f64-5717-4562-b3fc-2c963f66afa6": { code: "373068000", display: "Not known" },
+    "7b921e12-3456-7890-abcd-ef1234567890": { code: "373068000", display: "Not known" },
+    "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d": { code: "Booster", display: "Booster" },
+    "f8e7d6c5-b4a3-9281-7065-5443322110aa": { code: "1237021005", display: "At increased risk of exposure to European tick-borne encephalitis virus" },
+    "00000000-1111-2222-3333-444455556666": { code: "1237028004", display: "At increased risk of exposure to Influenza virus" }
   };
 
   return {

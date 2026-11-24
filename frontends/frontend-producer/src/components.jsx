@@ -145,7 +145,7 @@ function reasonLabel(t, reason) {
   if (typeof reason === "string") return reason;
   return I18n.exists("reason." + reason.code)
     ? t("reason." + reason.code)
-    : reason.swissLabel || reason.display || "";
+    : reason.display || "";
 }
 
 /* ---------------- Helpers ---------------- */

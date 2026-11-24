@@ -50,24 +50,24 @@ const units = [
 ];
 
 const reasons = [
-  { code: "33879002", display: "Administration of vaccine to produce active immunity (procedure)", swissLabel: "Grundimmunisierung" },
-  { code: "359953009", display: "Booster vaccination (procedure)", swissLabel: "Auffrischimpfung (Booster)" },
-  { code: "308432007", display: "Immunization recall (procedure)", swissLabel: "Nachholimpfung" },
-  { code: "14747002", display: "Elective immunization for international travel (procedure)", swissLabel: "Reiseimpfung" },
-  { code: "409516001", display: "Post-exposure prophylaxis (procedure)", swissLabel: "Postexpositionsprophylaxe" },
+  { code: "33879002", display: "Administration of vaccine to produce active immunity (procedure)" },
+  { code: "359953009", display: "Booster vaccination (procedure)" },
+  { code: "308432007", display: "Immunization recall (procedure)" },
+  { code: "14747002", display: "Elective immunization for international travel (procedure)" },
+  { code: "409516001", display: "Post-exposure prophylaxis (procedure)" },
   
   // Offizielle Schweizer Risikocodes aus dem Risks ValueSet (CH-VACD 6.0.0):
-  { code: "223366009", display: "Healthcare professional", swissLabel: "Risikogruppe: Medizinisches Fachpersonal (beruflich)" },
-  { code: "1237021005", display: "At increased risk of exposure to European tick-borne encephalitis virus", swissLabel: "Risikogruppe: FSME-Exposition (Endemiegebiet)" },
-  { code: "1237028004", display: "At increased risk of exposure to Influenza virus", swissLabel: "Risikogruppe: Erhöhtes Influenza-Expositionsrisiko" },
-  { code: "870577009", display: "At increased risk of exposure to SARS-CoV-2", swissLabel: "Risikogruppe: Erhöhtes COVID-19-Expositionsrisiko" },
-  { code: "77386006", display: "Patient currently pregnant", swissLabel: "Risikogruppe: Schwangere Patientin" },
-  { code: "226034001", display: "Injecting drug user", swissLabel: "Risikogruppe: IV-Drogenkonsum" },
-  { code: "56265001", display: "Heart disease", swissLabel: "Risikogruppe: Chronische Herzerkrankung (medizinisch)" },
-  { code: "19829001", display: "Lung disorder", swissLabel: "Risikogruppe: Chronische Atemwegserkrankung (medizinisch)" },
-  { code: "75934005", display: "Metabolic disease", swissLabel: "Risikogruppe: Stoffwechselerkrankung (z. B. Diabetes)" },
-  { code: "90708001", display: "Kidney disease", swissLabel: "Risikogruppe: Chronische Nierenerkrankung" },
-  { code: "414029004", display: "Disorder of immune function (disorder)", swissLabel: "Risikogruppe: Immundefizienz / Immungeschwächt" }
+  { code: "223366009", display: "Healthcare professional" },
+  { code: "1237021005", display: "At increased risk of exposure to European tick-borne encephalitis virus" },
+  { code: "1237028004", display: "At increased risk of exposure to Influenza virus" },
+  { code: "870577009", display: "At increased risk of exposure to SARS-CoV-2" },
+  { code: "77386006", display: "Patient currently pregnant" },
+  { code: "226034001", display: "Injecting drug user" },
+  { code: "56265001", display: "Heart disease" },
+  { code: "19829001", display: "Lung disorder" },
+  { code: "75934005", display: "Metabolic disease" },
+  { code: "90708001", display: "Kidney disease" },
+  { code: "414029004", display: "Disorder of immune function (disorder)" }
 ];
 
 window.AppData = { doctor, vaccineCatalog, manufacturers, routes, sites, units, reasons };
