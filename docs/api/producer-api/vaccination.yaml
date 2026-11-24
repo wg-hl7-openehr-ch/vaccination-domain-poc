@@ -11,9 +11,8 @@ components:
       properties:
         id:
           type: string
-          format: uuid
           example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-          description: "Eindeutige ID des Impfeintrags (UUID)"
+          description: "Eindeutige ID des Impfeintrags (ID der FHIR-Immunization); adressiert den Eintrag bei einer Korrektur"
         vaccineName:
           type: string
           example: "Priorix"
@@ -79,6 +78,44 @@ components:
           required:
             - code
             - display
+        vaccineSystem:
+          type: string
+          example: "http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs"
+          description: "Code-System, aus dem vaccineCode stammt"
+        administeredDose:
+          type: object
+          description: "Verabreichte Menge"
+          properties:
+            value:
+              type: number
+              example: 0.5
+            unit:
+              type: string
+              example: "ml"
+          required:
+            - value
+            - unit
+        doseNumber:
+          type: integer
+          example: 1
+          description: "Nummer der Dosis in der Impfserie"
+        seriesDoses:
+          type: integer
+          example: 2
+          description: "Vorgesehene Anzahl Dosen der Impfserie; wird derzeit nicht gespeichert und kommt daher leer zurück"
+        version:
+          type: string
+          example: "2"
+          description: "Version des Impfeintrags; bei einer Korrektur unverändert mitzuschicken"
+        lastUpdated:
+          type: string
+          format: date-time
+          example: "2026-11-23T13:24:50.191Z"
+          description: "Zeitpunkt der letzten Änderung des Eintrags; bei einem korrigierten Eintrag der Zeitpunkt der letzten Korrektur"
+        corrected:
+          type: boolean
+          example: true
+          description: "Gibt an, ob der Eintrag nach der Erfassung korrigiert wurde (Version grösser als 1)"
       required:
         - id
         - vaccineName

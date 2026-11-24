@@ -18,6 +18,7 @@ Nginx-Route: `/api/bff-producer/*` → `bff-producer-server:9112`
 | GET | `/patients` | Liste aller Patienten abrufen | `PatientDto` → [patient.yaml](producer-api/patient.yaml) |
 | GET | `/vaccinations?personId=` | Impfungen eines Patienten abrufen | `VaccinationDto[]` → [vaccination.yaml](producer-api/vaccination.yaml) |
 | POST | `/immunizations?personId=` | Neue Impfung erfassen (Body: `ImmunizationCreateDto`) | [immunization.yaml](producer-api/immunization.yaml) |
+| PUT | `/immunizations/{id}?personId=` | Impfung korrigieren (Body: `ImmunizationUpdateDto`) | [immunization.yaml](producer-api/immunization.yaml) |
 
 Felder und Typen sind in den verlinkten OpenAPI-Spezifikationen definiert.
 

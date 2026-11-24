@@ -41,7 +41,11 @@ function Entry({ entry, isLast }: { entry: Vaccination; isLast: boolean }) {
       : entry.dose;
 
   const reasonLabel = entry.vaccinationReason ? `, Impfgrund: ${entry.vaccinationReason.swissLabel}` : '';
-  const label = `${entry.vaccine}, ${doseLabel}, ${formatDate(entry.date)}, Hersteller ${entry.manufacturer}, Charge ${entry.batch}${reasonLabel}`;
+  const correctedText = entry.corrected
+    ? (entry.lastUpdated ? `Korrigiert am ${formatDate(entry.lastUpdated, { short: true })}` : 'Korrigiert')
+    : '';
+  const correctedLabel = correctedText ? `, ${correctedText}` : '';
+  const label = `${entry.vaccine}, ${doseLabel}, ${formatDate(entry.date)}, Hersteller ${entry.manufacturer}, Charge ${entry.batch}${reasonLabel}${correctedLabel}`;
 
   return (
     <View style={styles.entryRow} accessible accessibilityLabel={label}>
@@ -67,6 +71,9 @@ function Entry({ entry, isLast }: { entry: Vaccination; isLast: boolean }) {
           <Text style={styles.reasonText}>
             Impfgrund: {entry.vaccinationReason.swissLabel}
           </Text>
+        ) : null}
+        {correctedText ? (
+          <Text style={styles.correctedText}>{correctedText}</Text>
         ) : null}
       </View>
     </View>
@@ -182,5 +189,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 4,
     fontSize: font.label,
+  },
+  correctedText: {
+    marginTop: 4,
+    fontSize: font.caption,
+    color: colors.textMuted,
   },
 });

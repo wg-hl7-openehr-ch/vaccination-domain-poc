@@ -111,3 +111,65 @@ components:
         - vaccinationDate
         - manufacturer
         - lotNumber
+
+    ImmunizationUpdateDto:
+      type: object
+      description: Korrektur eines Impfeintrags (PUT /immunizations/{id}?personId=). Neben version und reason werden nur die geänderten Felder geschickt; ein nicht geschicktes Feld bleibt unverändert. Die Antwort ist der korrigierte Eintrag als VaccinationDto (vaccination.yaml). Ist die Version veraltet, antwortet der Dienst mit 409; ist der Eintrag unbekannt oder gehört er einer anderen Person, mit 404.
+      properties:
+        version:
+          type: string
+          example: "2"
+          description: Version des Eintrags, wie sie beim Lesen geliefert wurde (VaccinationDto.version)
+        reason:
+          type: string
+          maxLength: 500
+          example: "Lot falsch erfasst"
+          description: Grund der Korrektur
+        marketingAuthorizationHolder:
+          type: string
+          example: "GlaxoSmithKline"
+          description: Hersteller; ein leerer Wert entfernt den Hersteller
+        lotNumber:
+          type: string
+          example: "FLU2425"
+        vaccinationDate:
+          type: string
+          format: date
+          example: "2025-10-14"
+        routeOfAdministration:
+          type: string
+          enum: [IM, SC, ID, ORAL, NASAL]
+          example: "IM"
+        administeredDose:
+          type: object
+          properties:
+            value:
+              type: number
+              example: 0.5
+            unit:
+              type: string
+              example: "ml"
+          required:
+            - value
+            - unit
+        vaccinationReason:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "223366009"
+            display:
+              type: string
+              example: "Healthcare professional"
+            swissLabel:
+              type: string
+              example: "Risikogruppe — beruflich"
+          required:
+            - code
+        doseNumber:
+          type: integer
+          minimum: 1
+          example: 2
+      required:
+        - version
+        - reason
