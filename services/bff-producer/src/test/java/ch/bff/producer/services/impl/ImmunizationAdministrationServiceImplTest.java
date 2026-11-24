@@ -20,14 +20,17 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DateType;
 import org.hl7.fhir.r4.model.Enumerations;
+import org.hl7.fhir.r4.model.Immunization;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.Provenance;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.ValueSet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mapstruct.factory.Mappers;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,9 +43,12 @@ import feign.FeignException;
 import feign.Request;
 import feign.Response;
 import ch.bff.producer.client.TxClient;
+import ch.bff.producer.exception.NotFoundException;
 import ch.bff.producer.exception.ValidationException;
+import ch.bff.producer.mapstruct.VaccinationsMapper;
 import ch.bff.producer.provider.models.AdministeredDose;
 import ch.bff.producer.provider.models.ImmunizationCreateDto;
+import ch.bff.producer.provider.models.ImmunizationUpdateDto;
 import ch.bff.producer.provider.models.RouteOfAdministration;
 import ch.bff.producer.provider.models.VaccinationReason;
 import ch.bff.producer.services.ImmunizationAdministrationService;
@@ -61,7 +67,8 @@ class ImmunizationAdministrationServiceImplTest {
 		fhirClient = new FhirClientStub();
 		fhirClient.patientToReturn = createMockPatient();
 		txClient = new TxClientStub();
-		service = new ImmunizationAdministrationServiceImpl(fhirClient, txClient);
+		service = new ImmunizationAdministrationServiceImpl(fhirClient, txClient,
+				Mappers.getMapper(VaccinationsMapper.class));
 	}
 
 	@Test
@@ -353,6 +360,165 @@ class ImmunizationAdministrationServiceImplTest {
 				.validateVaccinationDate(LocalDate.of(1990, 2, 28), patient, today));
 	}
 
+	// ---- correction ----
+
+	@Test
+	void updateImmunization_changesOnlyTheGivenFields() throws Exception {
+		fhirClient.immunizationToReturn = storedImmunization();
+
+		service.updateImmunization(STORED_PATIENT_ID, STORED_IMMUNIZATION_ID,
+				update("LOT-NEU", LocalDate.of(2026, 5, 20)));
+
+		assertEquals(STORED_IMMUNIZATION_ID, fhirClient.putId);
+		var put = MAPPER.readTree(FHIR_CTX.newJsonParser().encodeResourceToString(fhirClient.putImmunization));
+		assertEquals("LOT-NEU", put.get("lotNumber").asText());
+		assertTrue(put.get("occurrenceDateTime").asText().startsWith("2026-05-20"));
+
+		var expected = (com.fasterxml.jackson.databind.node.ObjectNode) MAPPER
+				.readTree(FHIR_CTX.newJsonParser().encodeResourceToString(storedImmunization()));
+		expected.set("lotNumber", put.get("lotNumber"));
+		expected.set("occurrenceDateTime", put.get("occurrenceDateTime"));
+		assertEquals(expected, put);
+	}
+
+	@Test
+	void updateImmunization_withoutChangedFields_putsTheImmunizationAsRead() throws Exception {
+		fhirClient.immunizationToReturn = storedImmunization();
+
+		service.updateImmunization(STORED_PATIENT_ID, STORED_IMMUNIZATION_ID, update(null, null));
+
+		assertEquals(FHIR_CTX.newJsonParser().encodeResourceToString(storedImmunization()),
+				FHIR_CTX.newJsonParser().encodeResourceToString(fhirClient.putImmunization));
+	}
+
+	@Test
+	void updateImmunization_mapsEveryCorrectableField() throws Exception {
+		fhirClient.immunizationToReturn = storedImmunization();
+		var dto = new ImmunizationUpdateDto("8", "Alles falsch erfasst", "Pfizer AG", "LOT-NEU",
+				LocalDate.of(2026, 5, 20), RouteOfAdministration.SC, new AdministeredDose(0.25, "ml"),
+				new VaccinationReason("281657000", "Travel vaccinations", null), 3);
+
+		service.updateImmunization(STORED_PATIENT_ID, STORED_IMMUNIZATION_ID, dto);
+
+		var put = MAPPER.readTree(FHIR_CTX.newJsonParser().encodeResourceToString(fhirClient.putImmunization));
+		assertEquals("Pfizer AG", put.get("manufacturer").get("display").asText());
+		assertEquals("LOT-NEU", put.get("lotNumber").asText());
+		assertTrue(put.get("occurrenceDateTime").asText().startsWith("2026-05-20"));
+		assertEquals("SC", put.get("route").get("coding").get(0).get("code").asText());
+		assertEquals(0.25, put.get("doseQuantity").get("value").asDouble(), 0.001);
+		assertEquals("ml", put.get("doseQuantity").get("unit").asText());
+		assertEquals(1, put.get("reasonCode").size());
+		assertEquals("281657000", put.get("reasonCode").get(0).get("coding").get(0).get("code").asText());
+		assertEquals("Travel vaccinations", put.get("reasonCode").get(0).get("text").asText());
+		assertEquals(3, put.get("protocolApplied").get(0).get("doseNumberPositiveInt").asInt());
+
+		// vaccine, target diseases, identifiers and patient are not part of a correction
+		var stored = MAPPER.readTree(FHIR_CTX.newJsonParser().encodeResourceToString(storedImmunization()));
+		assertEquals(stored.get("vaccineCode"), put.get("vaccineCode"));
+		assertEquals(stored.get("protocolApplied").get(0).get("targetDisease"),
+				put.get("protocolApplied").get(0).get("targetDisease"));
+		assertEquals(stored.get("identifier"), put.get("identifier"));
+		assertEquals(stored.get("patient"), put.get("patient"));
+		assertEquals("completed", put.get("status").asText());
+	}
+
+	@Test
+	void updateImmunization_blankManufacturer_removesIt() throws Exception {
+		fhirClient.immunizationToReturn = storedImmunization();
+		var dto = new ImmunizationUpdateDto("8", "Hersteller falsch erfasst", "", null, null, null, null, null, null);
+
+		service.updateImmunization(STORED_PATIENT_ID, STORED_IMMUNIZATION_ID, dto);
+
+		assertFalse(fhirClient.putImmunization.hasManufacturer());
+	}
+
+	@Test
+	void updateImmunization_sendsVersionAsIfMatchAndReasonAsProvenance() {
+		fhirClient.immunizationToReturn = storedImmunization();
+		var reason = "Lot falsch erfasst, {Rückfrage} bei Dr. Müller – «geprüft»\nzweite Zeile";
+		var dto = new ImmunizationUpdateDto("8", reason, null, "LOT-NEU", null, null, null, null, null);
+
+		service.updateImmunization(STORED_PATIENT_ID, STORED_IMMUNIZATION_ID, dto);
+
+		assertEquals("W/\"8\"", fhirClient.putIfMatch);
+		// a header value has to be one line of ASCII
+		assertTrue(fhirClient.putProvenance.chars().allMatch(c -> c >= 32 && c <= 126), fhirClient.putProvenance);
+		var provenance = FHIR_CTX.newJsonParser().parseResource(Provenance.class, fhirClient.putProvenance);
+		assertEquals(reason, provenance.getReasonFirstRep().getText());
+	}
+
+	@Test
+	void updateImmunization_returnsTheCorrectedVersion() {
+		fhirClient.immunizationToReturn = storedImmunization();
+
+		var result = service.updateImmunization(STORED_PATIENT_ID, STORED_IMMUNIZATION_ID, update("LOT-NEU", null));
+
+		assertEquals(STORED_IMMUNIZATION_ID, result.id());
+		assertEquals("9", result.version());
+		assertTrue(result.corrected());
+		assertEquals("LOT-NEU", result.lotNumber());
+	}
+
+	@Test
+	void updateImmunization_ofAnotherPatient_throwsNotFoundAndPutsNothing() {
+		fhirClient.immunizationToReturn = storedImmunization();
+
+		var ex = assertThrows(NotFoundException.class,
+				() -> service.updateImmunization("another-patient", STORED_IMMUNIZATION_ID, update("LOT-NEU", null)));
+
+		assertEquals("Impfeintrag nicht gefunden", ex.getMessage());
+		assertNull(fhirClient.putImmunization);
+	}
+
+	@Test
+	void updateImmunization_unknownId_throwsNotFoundAndPutsNothing() {
+		// the FHIR server answers an unknown ID with an empty Immunization
+		fhirClient.immunizationToReturn = new Immunization();
+
+		assertThrows(NotFoundException.class,
+				() -> service.updateImmunization(STORED_PATIENT_ID, "unknown", update("LOT-NEU", null)));
+
+		assertNull(fhirClient.putImmunization);
+	}
+
+	@Test
+	void updateImmunization_vaccinationBeforeBirth_throwsAndPutsNothing() {
+		fhirClient.immunizationToReturn = storedImmunization();
+
+		var ex = assertThrows(ValidationException.class, () -> service.updateImmunization(STORED_PATIENT_ID,
+				STORED_IMMUNIZATION_ID, update(null, LocalDate.of(1990, 1, 14))));
+
+		assertEquals("Impfdatum darf nicht vor dem Geburtsdatum liegen", ex.getMessage());
+		assertNull(fhirClient.putImmunization);
+	}
+
+	@Test
+	void updateImmunization_versionConflict_isPassedOn() {
+		fhirClient.immunizationToReturn = storedImmunization();
+		fhirClient.putError = fhirError(412, "{\"resourceType\":\"OperationOutcome\"}");
+
+		var ex = assertThrows(FeignException.class,
+				() -> service.updateImmunization(STORED_PATIENT_ID, STORED_IMMUNIZATION_ID, update("LOT-NEU", null)));
+
+		assertEquals(412, ex.status());
+	}
+
+	@Test
+	void immunizationUpdateDto_requiresVersionAndReason() {
+		assertThrows(IllegalArgumentException.class,
+				() -> new ImmunizationUpdateDto(null, "Grund", null, "LOT", null, null, null, null, null));
+		assertThrows(IllegalArgumentException.class,
+				() -> new ImmunizationUpdateDto("8\"", "Grund", null, "LOT", null, null, null, null, null));
+		assertThrows(IllegalArgumentException.class,
+				() -> new ImmunizationUpdateDto("8", " ", null, "LOT", null, null, null, null, null));
+		assertThrows(IllegalArgumentException.class,
+				() -> new ImmunizationUpdateDto("8", "x".repeat(501), null, "LOT", null, null, null, null, null));
+		assertThrows(IllegalArgumentException.class,
+				() -> new ImmunizationUpdateDto("8", "Grund", null, " ", null, null, null, null, null));
+		assertThrows(IllegalArgumentException.class,
+				() -> new ImmunizationUpdateDto("8", "Grund", null, null, null, null, null, null, 0));
+	}
+
 	// ---- FHIR server rejections ----
 
 	@Test
@@ -381,9 +547,13 @@ class ImmunizationAdministrationServiceImplTest {
 	}
 
 	private static FeignException unprocessable(String body) {
+		return fhirError(422, body);
+	}
+
+	private static FeignException fhirError(int status, String body) {
 		var request = Request.create(Request.HttpMethod.POST, "http://fhir/Bundle", Map.of(), null,
 				StandardCharsets.UTF_8, null);
-		var response = Response.builder().status(422).reason("Unprocessable Entity").request(request)
+		var response = Response.builder().status(status).reason("Error").request(request)
 				.headers(Map.of()).body(body, StandardCharsets.UTF_8).build();
 		return FeignException.errorStatus("FhirClient#postImmunizationAdministrationBundle", response);
 	}
@@ -400,6 +570,19 @@ class ImmunizationAdministrationServiceImplTest {
 		cal.set(Calendar.MILLISECOND, 0);
 		patient.setBirthDate(cal.getTime());
 		return patient;
+	}
+
+	private static final String STORED_IMMUNIZATION_ID = "0df77a69-3ab1-46de-8d15-3fbe050696ae";
+	private static final String STORED_PATIENT_ID = "20200000-0000-4000-8000-000000000020";
+
+	private static Immunization storedImmunization() {
+		return FHIR_CTX.newJsonParser().parseResource(Immunization.class,
+				ImmunizationAdministrationServiceImplTest.class.getResourceAsStream("/immunization-read.json"));
+	}
+
+	private static ImmunizationUpdateDto update(String lotNumber, LocalDate vaccinationDate) {
+		return new ImmunizationUpdateDto("8", "Falsch erfasst", null, lotNumber, vaccinationDate, null, null, null,
+				null);
 	}
 
 	private static ImmunizationCreateDto createDefaultDto() {
@@ -426,6 +609,12 @@ class ImmunizationAdministrationServiceImplTest {
 		Bundle postedBundle;
 		String capturedPatientId;
 		RuntimeException postError;
+		Immunization immunizationToReturn;
+		String putId;
+		Immunization putImmunization;
+		String putIfMatch;
+		String putProvenance;
+		RuntimeException putError;
 
 		@Override
 		public Bundle getPatient() {
@@ -464,6 +653,25 @@ class ImmunizationAdministrationServiceImplTest {
 		public Bundle getPatientLogEntries(String personId) {
 			// TODO Auto-generated method stub
 			return null;
+		}
+
+		@Override
+		public Immunization getImmunizationById(String id) {
+			return immunizationToReturn;
+		}
+
+		@Override
+		public Immunization putImmunization(String id, Immunization immunization, String ifMatch,
+				String provenance) {
+			if (putError != null)
+				throw putError;
+			putId = id;
+			putImmunization = immunization;
+			putIfMatch = ifMatch;
+			putProvenance = provenance;
+			var response = immunization.copy();
+			response.getMeta().setVersionId(String.valueOf(Integer.parseInt(ifMatch.replaceAll("\\D", "")) + 1));
+			return response;
 		}
 	}
 

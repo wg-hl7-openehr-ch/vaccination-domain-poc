@@ -1,11 +1,11 @@
 package ch.bff.producer.provider.models;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 
 public record VaccinationDto(
-        UUID id,
+        String id,
         String vaccineName,
         String vaccineCode,
         String doseSequence,
@@ -16,7 +16,14 @@ public record VaccinationDto(
         String siteOfAdministration,
         PractitionerDto practitioner,
         VaccinationReason vaccinationReason,
-        List<CodingDto> targetDiseases
+        List<CodingDto> targetDiseases,
+        String vaccineSystem,
+        AdministeredDose administeredDose,
+        Integer doseNumber,
+        Integer seriesDoses,
+        String version,
+        Instant lastUpdated,
+        boolean corrected
 ) {
     public VaccinationDto {
         if (id == null) {

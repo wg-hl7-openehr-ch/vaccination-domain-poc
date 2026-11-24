@@ -322,6 +322,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   box-shadow: 0 0 0 3px rgba(11, 74, 122, 0.12);
 }
 .input::placeholder { color: var(--text-3); }
+.input:disabled { background: var(--surface-2); color: var(--text-2); }
 .textarea { resize: vertical; min-height: 76px; }
 
 .field {

@@ -320,8 +320,32 @@ public class AbstractBusinessService {
 		return null;
 	}
 
+	/**
+	 * Copies an Immunization into the document under a random id, together with
+	 * its performers and its medication.
+	 *
+	 * @see #copyImmunization(Immunization, Patient, Map, ChVacdAbstractDocument,
+	 *      String)
+	 */
 	protected ChVacdImmunization copyImmunization(Immunization immunization, Patient patient,
 			Map<String, Medication> medEntries, ChVacdAbstractDocument document) {
+		return copyImmunization(immunization, patient, medEntries, document, null);
+	}
+
+	/**
+	 * Copies an Immunization into the document, together with its performers and
+	 * its medication.
+	 *
+	 * @param immunization   the Immunization to copy; its performers are cleared
+	 * @param patient        the patient the copy references
+	 * @param medEntries     the available Medications by id
+	 * @param document       the document the copy is added to
+	 * @param immunizationId the id the copy gets in the document, or null for a
+	 *                       random id
+	 * @return the copy in the document
+	 */
+	protected ChVacdImmunization copyImmunization(Immunization immunization, Patient patient,
+			Map<String, Medication> medEntries, ChVacdAbstractDocument document, String immunizationId) {
 
 		// fill up the recorder
 		// TODO: recorder
@@ -342,7 +366,14 @@ public class AbstractBusinessService {
 		immunization.getPerformer().clear();
 
 		log.info("Performer IDs for immunization {}: {}", immunization.getId(), perfomerIds);
-		ChVacdImmunization immun = document.addImmunization();
+		ChVacdImmunization immun;
+		if (immunizationId != null) {
+			immun = new ChVacdImmunization();
+			immun.setId(RessourceUtil.addUuidUrn(immunizationId));
+			document.addImmunization(immun);
+		} else {
+			immun = document.addImmunization();
+		}
 
 		String id = immun.getIdElement().getIdPart();
 		immunization.copyValues(immun);

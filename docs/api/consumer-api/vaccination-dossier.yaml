@@ -115,6 +115,15 @@ components:
           type: string
           example: "2"
           description: Die Gesamtzahl der vorgesehenen Dosen in der Impfserie (z. B. "2", "3"). Bei einer Booster-Impfung kann dieses Feld leer gelassen werden.
+        corrected:
+          type: boolean
+          example: true
+          description: Gibt an, ob der Eintrag nach der Erfassung korrigiert wurde
+        lastUpdated:
+          type: string
+          format: date-time
+          example: "2026-11-23T13:24:50.191+00:00"
+          description: Zeitpunkt der letzten Änderung des Eintrags; bei einem korrigierten Eintrag der Zeitpunkt der letzten Korrektur
       required:
         - targetDisease
         - vaccineName

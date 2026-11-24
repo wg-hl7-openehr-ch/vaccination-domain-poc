@@ -4,6 +4,9 @@ function App() {
   const [route, setRoute] = useState({ name: "list" });
   const [showForm, setShowForm] = useState(false);
   const [justAdded, setJustAdded] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [justCorrected, setJustCorrected] = useState(null);
+  const [vaccinationsStamp, setVaccinationsStamp] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -40,6 +43,7 @@ function App() {
 
   const openPatient = (id) => {
     setJustAdded(null);
+    setJustCorrected(null);
     setRoute({ name: "detail", patientId: id });
   };
 
@@ -47,6 +51,15 @@ function App() {
     setShowForm(false);
     setJustAdded({ ...record, _addedId: record.id });
     setTimeout(() => setJustAdded(j => j && { ...j, _addedId: null }), 4500);
+  };
+
+  const reloadVaccinations = () => setVaccinationsStamp((s) => s + 1);
+
+  const handleVaccinationCorrected = (record) => {
+    setEditing(null);
+    setJustCorrected(record);
+    reloadVaccinations();
+    setTimeout(() => setJustCorrected((j) => (j === record ? null : j)), 4500);
   };
 
   if (loading) {
@@ -92,6 +105,9 @@ function App() {
           onAddVaccination={() => setShowForm(true)}
           justAdded={justAdded}
           onVaccinationCreated={handleVaccinationCreated}
+          onEditVaccination={setEditing}
+          justCorrected={justCorrected}
+          vaccinationsStamp={vaccinationsStamp}
         />
       )}
 
@@ -100,6 +116,16 @@ function App() {
           patient={(window.AppData.patients || []).find(p => p.id === route.patientId)}
           onCancel={() => setShowForm(false)}
           onVaccinationCreated={handleVaccinationCreated}
+        />
+      )}
+
+      {editing && route.name === "detail" && (
+        <VaccinationForm
+          patient={(window.AppData.patients || []).find(p => p.id === route.patientId)}
+          initial={editing}
+          onCancel={() => setEditing(null)}
+          onVaccinationCorrected={handleVaccinationCorrected}
+          onStale={reloadVaccinations}
         />
       )}
     </div>

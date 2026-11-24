@@ -196,6 +196,12 @@ def _expand_vaccinations(imm: dict[str, Any]) -> list[dict[str, Any]]:
     if not target_diseases:
         target_diseases = [vaccine_name or ""]
 
+    # Every correction writes a new version, so anything above 1 was corrected.
+    meta = imm.get("meta") or {}
+    version = str(meta.get("versionId") or "")
+    corrected = version.isdigit() and int(version) > 1
+    last_updated = meta.get("lastUpdated") or ""
+
     return [
         {
             "targetDisease": disease,
@@ -208,6 +214,8 @@ def _expand_vaccinations(imm: dict[str, Any]) -> list[dict[str, Any]]:
             "lotNumber": lot_number,
             "administrationRoute": administration_route,
             "siteOfAdministration": site_of_administration,
+            "corrected": corrected,
+            "lastUpdated": last_updated,
         }
         for disease in target_diseases
     ]

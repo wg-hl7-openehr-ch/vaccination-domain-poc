@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.Composition;
 import org.hl7.fhir.r4.model.Enumeration;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Immunization;
@@ -39,7 +40,9 @@ import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.rest.param.StringParam;
 import ch.hl7.vacd.api.client.EhrbaseClient;
 import ch.hl7.vacd.api.client.OpenFhirClient;
+import ch.hl7.vacd.api.domain.CompositionVersion;
 import ch.hl7.vacd.api.entity.ResourceEntity;
+import ch.hl7.vacd.api.entity.ResourceIdentifierEntity;
 import ch.hl7.vacd.api.exceptions.PatientNotFoundException;
 import ch.hl7.vacd.api.openehr.ChVacdOpenEhrConstants;
 import ch.hl7.vacd.api.repo.ArtefactRepository;
@@ -282,6 +285,162 @@ class PatientBusinessServiceImplTest {
 		verify(openFhirClient, times(1)).toFhir(anyString(), eq(ChVacdOpenEhrConstants.VACC_TEMPLATE));
 		LoggerFactory.getLogger(PatientBusinessServiceImplTest.class).info("Exported FHIR Bundle:\n{}",
 				fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(result));
+	}
+
+	// -------------------------------------------------------------------------
+	// exportDocument: stored id and version of the Immunization entries
+	// -------------------------------------------------------------------------
+
+	private static final String RFC_3986 = "urn:ietf:rfc:3986";
+
+	@Test
+	void testExportDocument_entryOfStoredImmunization_getsStoredIdAndVersion() throws PatientNotFoundException {
+		String patientId = UUID.randomUUID().toString();
+		String ehrId = UUID.randomUUID().toString();
+		String storedId = UUID.randomUUID().toString();
+		String compositionUid = UUID.randomUUID().toString();
+		String identifier = "urn:uuid:" + UUID.randomUUID();
+		Date committed = new Date(1794000000000L);
+
+		stubExport(patientId, ehrId, immunizationFromEhr(identifier, ehrId));
+		when(ehrbaseClient.getCompositionVersions(ehrId)).thenReturn(
+				Map.of(compositionUid, new CompositionVersion(compositionUid + "::local.ehrbase.org::2", committed)));
+		// the stored composition-uid still carries the version of the create
+		when(store.findByResourceTypeAndIdentifier("Immunization", RFC_3986, identifier))
+				.thenReturn(List.of(storedImmunization(storedId, compositionUid + "::local.ehrbase.org::1")));
+
+		Bundle first = reparse(service.exportDocument(new IdType("Patient", patientId), new Parameters()));
+		Bundle second = reparse(service.exportDocument(new IdType("Patient", patientId), new Parameters()));
+
+		Bundle.BundleEntryComponent entry = immunizationEntries(first).get(0);
+		assertEquals("urn:uuid:" + storedId, entry.getFullUrl());
+		assertEquals("2", entry.getResource().getMeta().getVersionId());
+		assertEquals(committed, entry.getResource().getMeta().getLastUpdated());
+		assertEquals(List.of("urn:uuid:" + storedId), sectionEntryReferences(first),
+				"The Composition section should reference the entry by its stored id");
+		assertEquals(entry.getFullUrl(), immunizationEntries(second).get(0).getFullUrl(),
+				"The id should be the same in every export");
+		// the ehr-id is shared by all Immunizations of the patient and identifies none
+		verify(store, never()).findByResourceTypeAndIdentifier(anyString(), eq("urn:che:epr:ch-vacd:ehr-id"),
+				anyString());
+	}
+
+	@Test
+	void testExportDocument_entryWithoutStoredImmunization_keepsRandomId() throws PatientNotFoundException {
+		String patientId = UUID.randomUUID().toString();
+		String ehrId = UUID.randomUUID().toString();
+
+		stubExport(patientId, ehrId, immunizationFromEhr("urn:uuid:" + UUID.randomUUID(), ehrId));
+
+		Bundle first = reparse(service.exportDocument(new IdType("Patient", patientId), new Parameters()));
+		Bundle second = reparse(service.exportDocument(new IdType("Patient", patientId), new Parameters()));
+
+		Bundle.BundleEntryComponent entry = immunizationEntries(first).get(0);
+		assertTrue(entry.getFullUrl().startsWith("urn:uuid:"));
+		assertNotEquals(entry.getFullUrl(), immunizationEntries(second).get(0).getFullUrl());
+		assertFalse(entry.getResource().getMeta().hasVersionId());
+		assertFalse(entry.getResource().getMeta().hasLastUpdated());
+	}
+
+	@Test
+	void testExportDocument_storedImmunizationOfAnotherEhr_keepsRandomId() throws PatientNotFoundException {
+		String patientId = UUID.randomUUID().toString();
+		String ehrId = UUID.randomUUID().toString();
+		String storedId = UUID.randomUUID().toString();
+		String identifier = "urn:uuid:" + UUID.randomUUID();
+		String compositionUid = UUID.randomUUID().toString();
+
+		stubExport(patientId, ehrId, immunizationFromEhr(identifier, ehrId));
+		when(ehrbaseClient.getCompositionVersions(ehrId)).thenReturn(
+				Map.of(compositionUid, new CompositionVersion(compositionUid + "::local.ehrbase.org::1", new Date())));
+		// same identifier, but its Composition is not in this EHR
+		when(store.findByResourceTypeAndIdentifier("Immunization", RFC_3986, identifier)).thenReturn(
+				List.of(storedImmunization(storedId, UUID.randomUUID() + "::local.ehrbase.org::1")));
+
+		Bundle result = reparse(service.exportDocument(new IdType("Patient", patientId), new Parameters()));
+
+		Bundle.BundleEntryComponent entry = immunizationEntries(result).get(0);
+		assertNotEquals("urn:uuid:" + storedId, entry.getFullUrl());
+		assertFalse(entry.getResource().getMeta().hasVersionId());
+	}
+
+	@Test
+	void testExportDocument_twoEntriesOfSameStoredImmunization_keepRandomIds() throws PatientNotFoundException {
+		String patientId = UUID.randomUUID().toString();
+		String ehrId = UUID.randomUUID().toString();
+		String storedId = UUID.randomUUID().toString();
+		String identifier = "urn:uuid:" + UUID.randomUUID();
+		String compositionUid = UUID.randomUUID().toString();
+
+		stubExport(patientId, ehrId, immunizationFromEhr(identifier, ehrId), immunizationFromEhr(identifier, ehrId));
+		when(ehrbaseClient.getCompositionVersions(ehrId)).thenReturn(
+				Map.of(compositionUid, new CompositionVersion(compositionUid + "::local.ehrbase.org::1", new Date())));
+		when(store.findByResourceTypeAndIdentifier("Immunization", RFC_3986, identifier))
+				.thenReturn(List.of(storedImmunization(storedId, compositionUid + "::local.ehrbase.org::1")));
+
+		Bundle result = reparse(service.exportDocument(new IdType("Patient", patientId), new Parameters()));
+
+		List<Bundle.BundleEntryComponent> entries = immunizationEntries(result);
+		assertEquals(2, entries.size());
+		for (Bundle.BundleEntryComponent entry : entries) {
+			assertNotEquals("urn:uuid:" + storedId, entry.getFullUrl());
+			assertFalse(entry.getResource().getMeta().hasVersionId());
+		}
+		assertNotEquals(entries.get(0).getFullUrl(), entries.get(1).getFullUrl());
+	}
+
+	/** Stubs everything exportDocument needs to return {@code immunizations} from the EHR. */
+	private void stubExport(String patientId, String ehrId, Immunization... immunizations) {
+		Patient storedPatient = buildPatient(patientId, "Weber", "Greta");
+		Bundle fhirBundle = new Bundle();
+		fhirBundle.setType(Bundle.BundleType.COLLECTION);
+		for (Immunization immunization : immunizations) {
+			fhirBundle.addEntry().setResource(immunization);
+		}
+
+		when(store.findByResourceTypeAndResourceId("Patient", patientId)).thenReturn(List.of(
+				toEntity("Patient", patientId, fhirContext.newJsonParser().encodeResourceToString(storedPatient))));
+		when(ehrbaseClient.findEhrByPatient(patientId)).thenReturn(ehrId);
+		when(ehrbaseClient.getImmunizations(ehrId)).thenReturn("{\"someOpenEhrFlat\":true}");
+		when(openFhirClient.toFhir("{\"someOpenEhrFlat\":true}", ChVacdOpenEhrConstants.VACC_TEMPLATE))
+				.thenReturn(fhirContext.newJsonParser().encodeResourceToString(fhirBundle));
+	}
+
+	/** Immunization as openFHIR returns it from the EHR, with the identifiers it was created with. */
+	private Immunization immunizationFromEhr(String identifier, String ehrId) {
+		Immunization immunization = new Immunization();
+		immunization.setId(UUID.randomUUID().toString());
+		immunization.setStatus(Immunization.ImmunizationStatus.COMPLETED);
+		immunization.setOccurrence(new org.hl7.fhir.r4.model.DateTimeType(new Date()));
+		immunization.setVaccineCode(new CodeableConcept().addCoding(
+				new Coding("http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs", "637", "Boostrix")));
+		immunization.addIdentifier().setSystem(RFC_3986).setValue(identifier);
+		immunization.addIdentifier().setSystem("urn:che:epr:ch-vacd:ehr-id").setValue("urn:uuid:" + ehrId);
+		return immunization;
+	}
+
+	private ResourceEntity storedImmunization(String id, String compositionUid) {
+		ResourceEntity entity = toEntity("Immunization", id, "{}");
+		entity.addIdentifier(new ResourceIdentifierEntity().setIdSystem("urn:che:epr:ch-vacd:composition-uid")
+				.setIdValue(compositionUid).setResourceEntity(entity));
+		return entity;
+	}
+
+	/** The document as a client receives it. */
+	private Bundle reparse(Bundle document) {
+		return fhirContext.newJsonParser().parseResource(Bundle.class,
+				fhirContext.newJsonParser().encodeResourceToString(document));
+	}
+
+	private List<Bundle.BundleEntryComponent> immunizationEntries(Bundle document) {
+		return document.getEntry().stream().filter(e -> e.getResource() instanceof Immunization)
+				.collect(Collectors.toList());
+	}
+
+	private List<String> sectionEntryReferences(Bundle document) {
+		Composition composition = (Composition) document.getEntryFirstRep().getResource();
+		return composition.getSection().stream().flatMap(section -> section.getEntry().stream())
+				.map(Reference::getReference).collect(Collectors.toList());
 	}
 
 	// -------------------------------------------------------------------------

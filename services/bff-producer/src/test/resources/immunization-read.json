@@ -1,0 +1,130 @@
+{
+    "resourceType": "Immunization",
+    "id": "0df77a69-3ab1-46de-8d15-3fbe050696ae",
+    "meta": {
+        "versionId": "8",
+        "lastUpdated": "2026-11-17T14:00:59.889+00:00",
+        "profile": [
+            "http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-immunization"
+        ]
+    },
+    "extension": [
+        {
+            "url": "http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-immunization-medication-reference",
+            "valueReference": {
+                "reference": "urn:uuid:12a7abf3-090f-4caf-827e-283cb0861725"
+            }
+        },
+        {
+            "url": "http://fhir.ch/ig/ch-vacd/StructureDefinition/ch-vacd-ext-verification-status",
+            "valueCoding": {
+                "system": "http://snomed.info/sct",
+                "code": "59156000",
+                "display": "Confirmed by"
+            }
+        }
+    ],
+    "identifier": [
+        {
+            "system": "urn:ietf:rfc:3986",
+            "value": "urn:uuid:011136a8-6ac6-4a45-948f-4506e1fd5936"
+        },
+        {
+            "system": "urn:che:epr:ch-vacd:ehr-id",
+            "value": "urn:uuid:1ffd329e-b53f-46d2-bdd4-40cd477ef55d"
+        }
+    ],
+    "status": "completed",
+    "vaccineCode": {
+        "coding": [
+            {
+                "system": "http://fhir.ch/ig/ch-vacd/CodeSystem/ch-vacd-swissmedic-cs",
+                "code": "681",
+                "display": "Boostrix Polio"
+            }
+        ],
+        "text": "Boostrix Polio"
+    },
+    "patient": {
+        "reference": "Patient/20200000-0000-4000-8000-000000000020"
+    },
+    "occurrenceDateTime": "2026-05-28T00:00:00+00:00",
+    "manufacturer": {
+        "display": "GlaxoSmithKline"
+    },
+    "lotNumber": "A1B2C3",
+    "route": {
+        "coding": [
+            {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration",
+                "code": "IM",
+                "display": "IM"
+            }
+        ],
+        "text": "IM"
+    },
+    "doseQuantity": {
+        "value": 0.5,
+        "unit": "ml",
+        "system": "http://unitsofmeasure.org",
+        "code": "ml"
+    },
+    "performer": [
+        {
+            "function": {
+                "text": "performer"
+            },
+            "actor": {
+                "identifier": {
+                    "system": "http://hl7.org/fhir",
+                    "value": "PractitionerRole/b652f8df-c81a-4edf-bf10-93c38ac714d2"
+                },
+                "display": "performer"
+            }
+        }
+    ],
+    "reasonCode": [
+        {
+            "coding": [
+                {
+                    "system": "http://snomed.info/sct",
+                    "code": "33879002",
+                    "display": "Administration of vaccine to produce active immunity (procedure)"
+                }
+            ],
+            "text": "Administration of vaccine to produce active immunity (procedure)"
+        }
+    ],
+    "protocolApplied": [
+        {
+            "targetDisease": [
+                {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "398102009",
+                            "display": "Acute poliomyelitis"
+                        },
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "76902006",
+                            "display": "Tetanus"
+                        },
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "27836007",
+                            "display": "Pertussis"
+                        },
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "397430003",
+                            "display": "Diphtheria caused by Corynebacterium diphtheriae"
+                        }
+                    ],
+                    "text": "Acute poliomyelitis"
+                }
+            ],
+            "doseNumberPositiveInt": 2
+        }
+    ]
+}

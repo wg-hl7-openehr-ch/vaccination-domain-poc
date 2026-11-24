@@ -22,6 +22,8 @@ export interface Vaccination {
   readonly route: string;        // administrationRoute
   readonly site: string;         // siteOfAdministration
   readonly season?: string;      // season (optional)
+  readonly corrected: boolean;   // corrected
+  readonly lastUpdated?: string; // lastUpdated
 }
 
 /** The complete patient dossier matching PatientDossierDto from the OpenAPI spec. */

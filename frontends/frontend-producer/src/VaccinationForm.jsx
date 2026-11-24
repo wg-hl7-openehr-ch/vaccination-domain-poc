@@ -1,7 +1,8 @@
 // Screen 3 — New vaccination form (modal-style sheet)
 
-function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
+function VaccinationForm({ patient, initial, onCancel, onVaccinationCreated, onVaccinationCorrected, onStale }) {
   const { manufacturers, routes, sites, reasons } = window.AppData;
+  const isEdit = !!initial;
 
   const formatIsoDateToEuropean = (iso) => {
     const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -14,12 +15,13 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
   const [vaccineCatalog, setVaccineCatalog] = useState(window.AppData.vaccineCatalog);
 
   useEffect(() => {
+    if (isEdit) return;
     DataService.fetchVaccineCodes()
       .then(setVaccineCatalog)
       .catch(() => {/* keep fallback */});
   }, []);
 
-  const [form, setForm] = useState({
+  const [initialForm] = useState(() => ({
     vaccine: "",
     vaccineCode: "",
     date: todayIso,
@@ -35,12 +37,26 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
     doseNumber: "",
     doseTotal: "",
     hasAdverse: false,
-    adverseText: ""
-  });
+    adverseText: "",
+    correctionReason: "",
+    ...(isEdit ? {
+      vaccine: initial.vaccine,
+      date: initial.date,
+      manufacturer: initial.manufacturer,
+      batch: initial.batch,
+      route: DataService.routeFromApi(initial.route),
+      amount: initial.administeredDose ? String(initial.administeredDose.value) : "",
+      unit: initial.administeredDose?.unit || "ml",
+      reason: initial.vaccinationReason?.code || "",
+      doseNumber: initial.doseNumber ? String(initial.doseNumber) : ""
+    } : {})
+  }));
+  const [form, setForm] = useState(initialForm);
 
   const [touched, setTouched] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState(null);
+  const [staleError, setStaleError] = useState(null);
   const SUPPRESS_ERROR_ON_SUBMIT = true;
   const set = (k, v) => {
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -71,20 +87,66 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
     dateErrorIsLive = true;
   }
   if (incompleteDates.expiry) errors.expiry = "Ungültiges Datum";
-  if (!form.batch) errors.batch = "Pflichtfeld";
-  if (!form.amount) errors.amount = "Pflichtfeld";
+  // In der Korrektur ist ein Feld nur Pflicht, wenn der Eintrag es schon hat (Importe haben Lücken).
+  const required = (k) => !isEdit || !!initialForm[k];
+  if (!form.batch && required("batch")) errors.batch = "Pflichtfeld";
+  if (!form.amount && required("amount")) errors.amount = "Pflichtfeld";
+  if (isEdit) {
+    if (form.amount && !(Number(form.amount) > 0)) errors.amount = "Ungültige Menge";
+    if (!form.doseNumber && required("doseNumber")) errors.doseNumber = "Pflichtfeld";
+    else if (form.doseNumber && parseInt(form.doseNumber, 10) < 1) errors.doseNumber = "Mindestens 1";
+    if (!form.correctionReason.trim()) errors.correctionReason = "Pflichtfeld";
+  }
 
   const isValid = Object.keys(errors).length === 0;
 
+  const changes = {};
+  if (isEdit) {
+    if (form.batch !== initialForm.batch) changes.lotNumber = form.batch;
+    if (form.manufacturer.trim() !== initialForm.manufacturer.trim()) changes.marketingAuthorizationHolder = form.manufacturer.trim();
+    if (form.date !== initialForm.date) changes.vaccinationDate = form.date;
+    if (form.route !== initialForm.route) changes.routeOfAdministration = DataService.routeToApi(form.route);
+    const amountChanged = initialForm.amount === "" ? form.amount !== "" : Number(form.amount) !== Number(initialForm.amount);
+    if (amountChanged || form.unit !== initialForm.unit) changes.administeredDose = { value: Number(form.amount), unit: form.unit };
+    if (form.reason !== initialForm.reason) {
+      const selectedReason = reasons.find(r => r.code === form.reason);
+      changes.vaccinationReason = { code: selectedReason.code, display: selectedReason.display, swissLabel: selectedReason.swissLabel };
+    }
+    if (form.doseNumber !== initialForm.doseNumber) changes.doseNumber = parseInt(form.doseNumber, 10);
+  }
+  const hasChanges = Object.keys(changes).length > 0;
+  const canSubmit = isValid && (!isEdit || (hasChanges && !staleError));
+  const onlyReasonPending = isEdit && Object.keys(errors).length === 1 && errors.correctionReason && !touched.correctionReason;
+  const showsInputError = !isValid && Object.keys(touched).length > 0 && !onlyReasonPending;
+  const editHint = !isEdit || staleError || serverError || showsInputError ? null
+    : !hasChanges ? "Noch nichts geändert."
+    : errors.correctionReason ? "Bitte Grund der Korrektur angeben."
+    : null;
+
+  const units = [...new Set(["ml", "Dosis", "Tropfen", initialForm.unit])];
+  const reasonOptions = isEdit && !reasons.some(r => r.code === initialForm.reason)
+    ? [{ code: initialForm.reason, swissLabel: initial.vaccinationReason?.display || initialForm.reason || "— nicht erfasst —" }, ...reasons]
+    : reasons;
+
   const submit = async () => {
     if (!isValid) {
-      setTouched({ vaccine: 1, date: 1, expiry: 1, batch: 1, amount: 1 });
+      setTouched({ vaccine: 1, date: 1, expiry: 1, batch: 1, amount: 1, doseNumber: 1, correctionReason: 1 });
       return;
     }
 
     setSubmitting(true);
     setServerError(null);
     try {
+      if (isEdit) {
+        const updated = await DataService.updateImmunization(patient.id, initial.id, {
+          version: initial.version,
+          reason: form.correctionReason.trim(),
+          ...changes
+        });
+        onVaccinationCorrected(DataService.transformVaccination(updated));
+        return;
+      }
+
       const doseNum = parseInt(form.doseNumber, 10) || 1;
       const seriesDoses = form.doseTotal ? parseInt(form.doseTotal, 10) : null;
       const amountVal = parseFloat(form.amount) || 0;
@@ -116,7 +178,15 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
       onVaccinationCreated(record);
     } catch (err) {
       console.error('Fehler beim Speichern der Impfung:', err);
-      if (err.status === 400) {
+      if (isEdit) {
+        if (err.status === 409) {
+          // inzwischen von jemand anderem geändert: Liste neu laden, dieser Stand ist nicht mehr speicherbar
+          setStaleError(err.message);
+          onStale();
+        } else {
+          setServerError(err.status ? err.message : 'Fehler beim Speichern der Korrektur');
+        }
+      } else if (err.status === 400) {
         setServerError(err.message);
       } else if (SUPPRESS_ERROR_ON_SUBMIT) {
         onCancel();
@@ -130,11 +200,11 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
 
   return (
     <div className="sheet-backdrop" onClick={onCancel}>
-      <aside className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Neue Impfung erfassen">
+      <aside className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={isEdit ? "Impfung korrigieren" : "Neue Impfung erfassen"}>
         <header className="sheet-head">
           <div>
-            <div className="sheet-eyebrow">Neue Impfung</div>
-            <h2 className="sheet-title">Impfeintrag erfassen</h2>
+            <div className="sheet-eyebrow">{isEdit ? "Korrektur" : "Neue Impfung"}</div>
+            <h2 className="sheet-title">{isEdit ? "Impfung korrigieren" : "Impfeintrag erfassen"}</h2>
             <div className="sheet-sub">
               für <b>{patient.lastName}, {patient.firstName}</b>
               <span className="muted"> · {formatDate(patient.dob, { short: true })}</span>
@@ -148,19 +218,26 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
         <div className="sheet-body">
           <FormGroup title="Impfstoff" eyebrow="1">
             <div className="grid-2">
+              {isEdit ?
+              <Field label="Impfstoff" hint="Kann hier nicht korrigiert werden.">
+                <input className="input" value={form.vaccine} disabled />
+              </Field> :
               <Field label="Impfstoff" required>
                 <select className="select" value={form.vaccine} onChange={(e) => set("vaccine", e.target.value)}>
                   {vaccineCatalog.map((r) => <option key={r.combined} value={r.combined}>{r.display}</option>)}
                 </select>
               </Field>
+              }
               <Field label="Chargennummer" required hint="Auf der Impfstoffpackung — z. B. EW0150" error={touched.batch && errors.batch}>
                 <input className="input mono" placeholder="A1B2C3" value={form.batch}
                 onChange={(e) => set("batch", e.target.value.toUpperCase())} onBlur={() => touch("batch")} />
               </Field>
+              {!isEdit &&
               <Field label="Produktnummer" hint="z. B.GTIN-Code">
                 <input className="input mono" placeholder="7680006810037" value={form.vaccineCode}
                 onChange={(e) => set("vaccineCode", e.target.value)} />
               </Field>
+              }
               <Autocomplete
                 label="Zulassungsinhaberin / Hersteller"
                 placeholder="z. B. GlaxoSmithKline"
@@ -171,10 +248,12 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
                 error={touched.manufacturer && errors.manufacturer}
               />
              
+              {!isEdit &&
               <Field label="Verfallsdatum" hint="laut Packung" error={touched.expiry && errors.expiry}>
                 <input className="input tnum" type="date" max="9999-12-31"
                 value={form.expiry} onChange={(e) => setDateField("expiry", e.target)} onBlur={(e) => blurDateField("expiry", e.target)} />
               </Field>
+              }
             </div>
           </FormGroup>
 
@@ -205,18 +284,18 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
                   <input className="input tnum" inputMode="decimal" placeholder="0.5" value={form.amount}
                   onChange={(e) => set("amount", e.target.value)} onBlur={() => touch("amount")} />
                   <select className="select affix-select" value={form.unit} onChange={(e) => set("unit", e.target.value)}>
-                    <option>ml</option>
-                    <option>Dosis</option>
-                    <option>Tropfen</option>
+                    {units.map((u) => <option key={u}>{u}</option>)}
                   </select>
                 </div>
               </Field>
 
+              {!isEdit &&
               <Field label="Applikationsort" required style={{ gridColumn: "1 / -1" }}>
                 <select className="select" value={form.site} onChange={(e) => set("site", e.target.value)}>
                   {sites.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </Field>
+              }
             </div>
           </FormGroup>
 
@@ -224,24 +303,29 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
             <div className="grid-2">
               <Field label="Impfgrund" required>
                 <select className="select" value={form.reason} onChange={(e) => set("reason", e.target.value)}>
-                  {reasons.map((r) => <option key={r.code} value={r.code}>{r.swissLabel}</option>)}
+                  {reasonOptions.map((r) => <option key={r.code} value={r.code}>{r.swissLabel}</option>)}
                 </select>
               </Field>
 
-              <Field label="Dosisnummer in Impfserie">
+              <Field label="Dosisnummer in Impfserie" error={touched.doseNumber && errors.doseNumber}>
                 <div className="dose-row">
                   <input className="input tnum" placeholder="2" value={form.doseNumber}
-                  onChange={(e) => set("doseNumber", e.target.value.replace(/[^\d]/g, ""))} />
+                  onChange={(e) => set("doseNumber", e.target.value.replace(/[^\d]/g, ""))} onBlur={() => touch("doseNumber")} />
+                  {!isEdit &&
+                  <>
                   <span className="dose-sep">von</span>
                   <input className="input tnum" placeholder="3" value={form.doseTotal}
                   onChange={(e) => set("doseTotal", e.target.value.replace(/[^\d]/g, ""))} />
                   <span className="field-hint" style={{ marginLeft: 8 }}>
                     {form.doseNumber && form.doseTotal ? "Dosis " + form.doseNumber + " von " + form.doseTotal : "Booster? Leer lassen."}
                   </span>
+                  </>
+                  }
                 </div>
               </Field>
             </div>
 
+            {!isEdit &&
             <Field label="Unerwünschte Reaktion nach Impfung (UAW)" hint="Nur ausfüllen, falls eine Reaktion beobachtet wurde — meldepflichtig an Swissmedic.">
               <label className="toggle-row">
                 <input type="checkbox" checked={form.hasAdverse} onChange={(e) => set("hasAdverse", e.target.checked)} />
@@ -262,8 +346,23 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
                 </>
               }
             </Field>
+            }
           </FormGroup>
 
+          {isEdit &&
+          <FormGroup title="Korrektur" eyebrow="4">
+            <Field label="Grund der Korrektur" required hint="Wird zusammen mit der Korrektur gespeichert." error={touched.correctionReason && errors.correctionReason}>
+              <textarea
+              className="textarea"
+              maxLength={500}
+              placeholder="z. B. Chargennummer falsch abgelesen"
+              value={form.correctionReason}
+              onChange={(e) => set("correctionReason", e.target.value)} onBlur={() => touch("correctionReason")} />
+            </Field>
+          </FormGroup>
+          }
+
+          {!isEdit &&
           <div className="audit-trail">
             <div className="audit-icon"><Icon.Info /></div>
             <div className="audit-text">
@@ -271,22 +370,27 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
               <br />Zeitstempel: <span className="tnum">{new Date().toLocaleString("de-CH")}</span>
             </div>
           </div>
+          }
         </div>
 
         <footer className="sheet-foot">
           <div className="foot-left">
-            {!isValid && Object.keys(touched).length > 0 &&
+            {showsInputError &&
             <span className="foot-error"><Icon.Alert /> {Object.values(errors).includes("Pflichtfeld") ? "Bitte alle Pflichtfelder ausfüllen." : "Bitte Eingaben prüfen."}</span>
             }
             {serverError && <span className="foot-error"><Icon.Alert /> {serverError}</span>}
+            {staleError && <span className="foot-error"><Icon.Alert /> {staleError}</span>}
+            {editHint && <span className="field-hint">{editHint}</span>}
           </div>
           <div className="foot-right">
-            <button className="btn" onClick={onCancel} disabled={submitting}>Abbrechen</button>
+            <button className="btn" onClick={onCancel} disabled={submitting}>{staleError ? 'Schliessen' : 'Abbrechen'}</button>
+            {!isEdit &&
             <button className="btn" onClick={submit} disabled={!isValid || submitting} style={(!isValid || submitting) ? { opacity: 0.5 } : null}>
               {submitting ? 'Speichert …' : 'Speichern & weiter erfassen'}
             </button>
-            <button className="btn btn-primary" onClick={submit} disabled={!isValid || submitting} style={(!isValid || submitting) ? { opacity: 0.5 } : null}>
-              <Icon.Check /> {submitting ? 'Speichert …' : 'Impfung speichern'}
+            }
+            <button className="btn btn-primary" onClick={submit} disabled={!canSubmit || submitting} style={(!canSubmit || submitting) ? { opacity: 0.5 } : null}>
+              <Icon.Check /> {submitting ? 'Speichert …' : isEdit ? 'Korrektur speichern' : 'Impfung speichern'}
             </button>
           </div>
         </footer>

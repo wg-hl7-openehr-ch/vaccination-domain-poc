@@ -1,5 +1,6 @@
 package ch.bff.producer.mapstruct;
 
+import ch.bff.producer.provider.models.AdministeredDose;
 import ch.bff.producer.provider.models.PractitionerDto;
 import ch.bff.producer.provider.models.VaccinationDto;
 import ch.bff.producer.provider.models.VaccinationReason;
@@ -16,13 +17,13 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
-import java.util.UUID;
 
-@Mapper(componentModel = "spring", imports = { LocalDate.class, ZoneId.class, UUID.class })
+@Mapper(componentModel = "spring", imports = { LocalDate.class, ZoneId.class })
 public interface VaccinationsMapper {
 
 	@Mapping(target = "id", expression = "java(parseId(immunization))")
@@ -36,6 +37,13 @@ public interface VaccinationsMapper {
 	@Mapping(target = "siteOfAdministration", source = "site", qualifiedByName = "conceptDisplay")
 	@Mapping(target = "practitioner", expression = "java(mapPractitioner(immunization))")
 	@Mapping(target = "vaccinationReason", expression = "java(mapVaccinationReason(immunization))")
+	@Mapping(target = "vaccineSystem", source = "vaccineCode", qualifiedByName = "vaccineSystem")
+	@Mapping(target = "administeredDose", expression = "java(administeredDose(immunization))")
+	@Mapping(target = "doseNumber", expression = "java(doseNumber(immunization))")
+	@Mapping(target = "seriesDoses", expression = "java(seriesDoses(immunization))")
+	@Mapping(target = "version", expression = "java(immunization.getMeta().getVersionId())")
+	@Mapping(target = "lastUpdated", expression = "java(lastUpdated(immunization))")
+	@Mapping(target = "corrected", expression = "java(corrected(immunization))")
 	VaccinationDto toVaccinationDto(Immunization immunization);
 
 	@Named("vaccineName")
@@ -58,6 +66,16 @@ public interface VaccinationsMapper {
 		return null;
 	}
 
+	@Named("vaccineSystem")
+	default String vaccineSystem(CodeableConcept vaccineCode) {
+		if (vaccineCode == null)
+			return null;
+		if (vaccineCode.hasCoding()) {
+			return vaccineCode.getCodingFirstRep().getSystem();
+		}
+		return null;
+	}
+
 	@Named("toLocalDate")
 	default LocalDate toLocalDate(DateTimeType dateTimeType) {
 		if (dateTimeType == null)
@@ -75,13 +93,48 @@ public interface VaccinationsMapper {
 		return LocalDate.parse(str.substring(0, tIndex > 0 ? tIndex : str.length()));
 	}
 
-	default UUID parseId(Immunization immunization) {
+	default String parseId(Immunization immunization) {
 		String idPart = immunization.getIdElement().getIdPart();
-		try {
-			return UUID.fromString(idPart);
-		} catch (IllegalArgumentException e) {
-			return UUID.nameUUIDFromBytes(idPart.getBytes());
+		if (idPart != null && idPart.startsWith("urn:uuid:")) {
+			return idPart.substring("urn:uuid:".length());
 		}
+		return idPart;
+	}
+
+	default Instant lastUpdated(Immunization immunization) {
+		var lastUpdated = immunization.getMeta().getLastUpdated();
+		return lastUpdated != null ? lastUpdated.toInstant() : null;
+	}
+
+	default boolean corrected(Immunization immunization) {
+		try {
+			return Integer.parseInt(immunization.getMeta().getVersionId()) > 1;
+		} catch (NumberFormatException e) {
+			return false;
+		}
+	}
+
+	default AdministeredDose administeredDose(Immunization immunization) {
+		if (!immunization.hasDoseQuantity())
+			return null;
+		var quantity = immunization.getDoseQuantity();
+		if (!quantity.hasValue() || !quantity.hasUnit() || quantity.getUnit().isBlank())
+			return null;
+		return new AdministeredDose(quantity.getValue().doubleValue(), quantity.getUnit());
+	}
+
+	default Integer doseNumber(Immunization immunization) {
+		if (!immunization.hasProtocolApplied())
+			return null;
+		var pa = immunization.getProtocolAppliedFirstRep();
+		return pa.hasDoseNumberPositiveIntType() ? pa.getDoseNumberPositiveIntType().getValue() : null;
+	}
+
+	default Integer seriesDoses(Immunization immunization) {
+		if (!immunization.hasProtocolApplied())
+			return null;
+		var pa = immunization.getProtocolAppliedFirstRep();
+		return pa.hasSeriesDosesPositiveIntType() ? pa.getSeriesDosesPositiveIntType().getValue() : null;
 	}
 
 	default String manufacturerName(Immunization immunization) {
@@ -160,6 +213,8 @@ public interface VaccinationsMapper {
 		} else {
 			name = actor.getReference();
 		}
+		if (name == null)
+			return null;
 
 		if (actor.hasIdentifier()) {
 			gln = actor.getIdentifier().getValue();

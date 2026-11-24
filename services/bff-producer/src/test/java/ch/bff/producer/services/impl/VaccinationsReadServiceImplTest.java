@@ -1,7 +1,6 @@
 package ch.bff.producer.services.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -10,6 +9,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Immunization;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Patient;
 import org.junit.jupiter.api.BeforeEach;
@@ -85,13 +85,32 @@ class VaccinationsReadServiceImplTest {
 	}
 
 	@Test
-	void getVaccinationList_idIsDeterministicUuid() {
+	void getVaccinationList_idIsTheFhirId() {
 		var result = service.getVaccinationList("test-patient");
 
-		var imm = findByIdPart(result, "7-2-Immunization");
-		assertNotNull(imm);
-		assertNotNull(imm.id());
-		assertInstanceOf(java.util.UUID.class, imm.id());
+		assertEquals(List.of("7-2-Immunization", "7-5-Immunization"),
+				result.stream().map(VaccinationDto::id).toList());
+	}
+
+	@Test
+	void getVaccinationList_takesIdAndVersionOfAnEntryWithoutResourceId() {
+		// $export-document carries the Immunization id only in the fullUrl
+		var json = FHIR_CTX.newJsonParser().encodeResourceToString(fhirClient.bundleToReturn)
+				.replace("http://test.fhir.ch/r4/Immunization/7-2-Immunization",
+						"urn:uuid:0df77a69-3ab1-46de-8d15-3fbe050696ae")
+				.replace("Immunization/7-2-Immunization", "urn:uuid:0df77a69-3ab1-46de-8d15-3fbe050696ae")
+				.replace("\"id\":\"7-2-Immunization\",",
+						"\"meta\":{\"versionId\":\"2\",\"lastUpdated\":\"2026-11-17T14:00:59.889+00:00\"},");
+		fhirClient.bundleToReturn = FHIR_CTX.newJsonParser().parseResource(Bundle.class, json);
+
+		var result = service.getVaccinationList("test-patient");
+
+		assertEquals(2, result.size());
+		var imm = result.stream().filter(dto -> "Boostrix".equals(dto.vaccineName())).findFirst().orElseThrow();
+		assertEquals("0df77a69-3ab1-46de-8d15-3fbe050696ae", imm.id());
+		assertEquals("2", imm.version());
+		assertEquals(java.time.Instant.parse("2026-11-17T14:00:59.889Z"), imm.lastUpdated());
+		assertTrue(imm.corrected());
 	}
 
 	@Test
@@ -126,8 +145,7 @@ class VaccinationsReadServiceImplTest {
 	// ---- helpers ----
 
 	private VaccinationDto findByIdPart(List<VaccinationDto> list, String idPart) {
-		var expectedUuid = java.util.UUID.nameUUIDFromBytes(idPart.getBytes());
-		return list.stream().filter(dto -> dto.id().equals(expectedUuid)).findFirst().orElse(null);
+		return list.stream().filter(dto -> dto.id().equals(idPart)).findFirst().orElse(null);
 	}
 
 	// ---- manual stub ----
@@ -166,6 +184,17 @@ class VaccinationsReadServiceImplTest {
 		@Override
 		public Bundle getPatientLogEntries(String personId) {
 			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public Immunization getImmunizationById(String id) {
+			return null;
+		}
+
+		@Override
+		public Immunization putImmunization(String id, Immunization immunization, String ifMatch,
+				String provenance) {
 			return null;
 		}
 	}

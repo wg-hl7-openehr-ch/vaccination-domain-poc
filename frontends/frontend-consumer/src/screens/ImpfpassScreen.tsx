@@ -107,6 +107,8 @@ export function ImpfpassScreen() {
           route: v.administrationRoute || '',
           site: v.siteOfAdministration || '',
           season: v.season || undefined,
+          corrected: !!v.corrected,
+          lastUpdated: v.lastUpdated || undefined,
         }));
         setDossier({
           firstName: data.firstName,

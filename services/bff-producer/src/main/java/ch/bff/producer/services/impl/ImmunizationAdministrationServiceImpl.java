@@ -3,6 +3,7 @@ package ch.bff.producer.services.impl;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -22,6 +23,7 @@ import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.PositiveIntType;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.PractitionerRole;
+import org.hl7.fhir.r4.model.Provenance;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.SimpleQuantity;
 import org.hl7.fhir.r4.model.UriType;
@@ -43,13 +45,18 @@ import ca.uhn.fhir.parser.IParser;
 import ch.bff.producer.client.FhirClient;
 import ch.bff.producer.client.TxClient;
 import ch.bff.producer.exception.FhirErrorMessages;
+import ch.bff.producer.exception.NotFoundException;
 import ch.bff.producer.exception.ValidationException;
 import feign.FeignException;
+import ch.bff.producer.mapstruct.VaccinationsMapper;
+import ch.bff.producer.provider.models.AdministeredDose;
 import ch.bff.producer.provider.models.CodingDto;
 import ch.bff.producer.provider.models.ImmunizationCreateDto;
+import ch.bff.producer.provider.models.ImmunizationUpdateDto;
 import ch.bff.producer.provider.models.PractitionerDto;
 import ch.bff.producer.provider.models.RouteOfAdministration;
 import ch.bff.producer.provider.models.VaccinationDto;
+import ch.bff.producer.provider.models.VaccinationReason;
 import ch.bff.producer.services.ImmunizationAdministrationService;
 
 @Service
@@ -60,11 +67,14 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 	private static final ZoneId CH_ZONE = ZoneId.of("Europe/Zurich");
 
 	private final TxClient txClient;
+	private final VaccinationsMapper vaccinationsMapper;
 	private final FhirContext fhirContext;
 
-	public ImmunizationAdministrationServiceImpl(FhirClient fhirClient, TxClient txClient) {
+	public ImmunizationAdministrationServiceImpl(FhirClient fhirClient, TxClient txClient,
+			VaccinationsMapper vaccinationsMapper) {
 		super(fhirClient);
 		this.txClient = txClient;
+		this.vaccinationsMapper = vaccinationsMapper;
 		this.fhirContext = FhirContext.forR4();
 		this.fhirContext.setNarrativeGenerator(new ChVacdThymeleafNarrativeGenerator());
 	}
@@ -138,6 +148,78 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 						&& immunization.getProtocolAppliedFirstRep().getTargetDisease() != null)
 								? immunization.getProtocolAppliedFirstRep().getTargetDiseaseFirstRep().getCoding()
 								: List.of());
+	}
+
+	/**
+	 * Corrects a stored Immunization: reads it at its latest version, applies the
+	 * fields set in the DTO and writes it back. The FHIR server stores the result
+	 * as a new version and rejects it (412) if the entry was changed since
+	 * {@code updateDto.version()}.
+	 */
+	@Override
+	public VaccinationDto updateImmunization(String patientIamId, String immunizationId,
+			ImmunizationUpdateDto updateDto) {
+
+		log.info("Correcting Immunization {} for patient IAM ID: {}\n{}", immunizationId, patientIamId, updateDto);
+
+		var immunization = fhirClient.getImmunizationById(immunizationId);
+		if (immunization == null
+				|| !patientIamId.equals(immunization.getPatient().getReferenceElement().getIdPart())) {
+			throw new NotFoundException("Impfeintrag nicht gefunden");
+		}
+
+		if (updateDto.vaccinationDate() != null) {
+			validateVaccinationDate(updateDto.vaccinationDate(), fhirClient.getPatientById(patientIamId),
+					LocalDate.now(CH_ZONE));
+			immunization.setOccurrence(toOccurrence(updateDto.vaccinationDate()));
+		}
+		if (updateDto.lotNumber() != null) {
+			immunization.setLotNumber(updateDto.lotNumber());
+		}
+		if (updateDto.routeOfAdministration() != null) {
+			immunization.setRoute(routeToConcept(updateDto.routeOfAdministration()));
+		}
+		if (updateDto.administeredDose() != null) {
+			immunization.setDoseQuantity(doseToQuantity(updateDto.administeredDose()));
+		}
+		if (updateDto.vaccinationReason() != null) {
+			immunization.setReasonCode(new ArrayList<>(List.of(reasonToConcept(updateDto.vaccinationReason()))));
+		}
+		if (updateDto.doseNumber() != null) {
+			immunization.getProtocolAppliedFirstRep().setDoseNumber(new PositiveIntType(updateDto.doseNumber()));
+		}
+		if (updateDto.marketingAuthorizationHolder() != null) {
+			immunization.setManufacturer(StringUtils.hasText(updateDto.marketingAuthorizationHolder())
+					? new Reference().setDisplay(updateDto.marketingAuthorizationHolder())
+					: null);
+		}
+
+		var corrected = fhirClient.putImmunization(immunizationId, immunization,
+				"W/\"" + updateDto.version() + "\"", toProvenanceHeader(updateDto.reason()));
+		log.info("Corrected Immunization {}, now at version {}", immunizationId, corrected.getMeta().getVersionId());
+
+		return vaccinationsMapper.toVaccinationDto(corrected);
+	}
+
+	/**
+	 * The reason of a correction as the Provenance the FHIR server expects in the
+	 * X-Provenance header. Non-ASCII characters are written as JSON escapes,
+	 * header values are not safe beyond ASCII.
+	 */
+	private static String toProvenanceHeader(String reason) {
+		var provenance = new Provenance();
+		provenance.addReason().setText(reason);
+		String json = FhirContext.forR4Cached().newJsonParser().encodeResourceToString(provenance);
+
+		var header = new StringBuilder();
+		for (char c : json.toCharArray()) {
+			if (c > 126) {
+				header.append(String.format("\\u%04x", (int) c));
+			} else {
+				header.append(c);
+			}
+		}
+		return header.toString();
 	}
 
 	// ---- Validation ----
@@ -218,8 +300,7 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 			imm.setMedication(medication);
 		}
 
-		imm.setOccurrence(new DateTimeType(
-				Date.from(dto.vaccinationDate().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant())));
+		imm.setOccurrence(toOccurrence(dto.vaccinationDate()));
 
 		imm.setLotNumber(dto.lotNumber());
 
@@ -229,10 +310,7 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 		site.setText(dto.siteOfAdministration());
 		imm.setSite(site);
 
-		var doseQty = new SimpleQuantity();
-		doseQty.setValue(dto.administeredDose().value());
-		doseQty.setUnit(dto.administeredDose().unit());
-		imm.setDoseQuantity(doseQty);
+		imm.setDoseQuantity(doseToQuantity(dto.administeredDose()));
 
 //		imm.getPatient().setReference("urn:uuid:" + patientUuid);
 
@@ -249,10 +327,7 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 		}
 
 		if (dto.vaccinationReason() != null) {
-			var reason = new CodeableConcept();
-			reason.addCoding(new Coding().setSystem("http://snomed.info/sct").setCode(dto.vaccinationReason().code()));
-			reason.setText(dto.vaccinationReason().display());
-			imm.addReasonCode(reason);
+			imm.addReasonCode(reasonToConcept(dto.vaccinationReason()));
 		}
 
 		List<CodeableConcept> targetDieseases = lookupTargetDiseasesForVaccine(imm, vaccineCode);
@@ -364,12 +439,13 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 
 	private VaccinationDto buildVaccinationDto(ImmunizationCreateDto dto, UUID immunizationUuid,
 			List<Coding> targetDiseases) {
-		return new VaccinationDto(immunizationUuid, dto.vaccineName(), dto.vaccineCode(),
+		return new VaccinationDto(immunizationUuid.toString(), dto.vaccineName(), dto.vaccineCode(),
 				dto.doseNumber() + "/" + (dto.seriesDoses() != null ? dto.seriesDoses() : "-"), dto.vaccinationDate(),
 				dto.marketingAuthorizationHolder(), dto.lotNumber(),
 				dto.routeOfAdministration().toString().toLowerCase(), dto.siteOfAdministration(),
 				new PractitionerDto("Dr. med. Sarah Müller", "7601000123456"), dto.vaccinationReason(),
-				toCodingDtos(targetDiseases));
+				toCodingDtos(targetDiseases), null, dto.administeredDose(), dto.doseNumber(), dto.seriesDoses(), null,
+				null, false);
 	}
 
 	private List<CodingDto> toCodingDtos(List<Coding> targetDiseases) {
@@ -380,6 +456,26 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 						c.getDisplay()))
 				.toList();
 		return list;
+	}
+
+	// The field mappings below are shared by create and correction.
+
+	private static DateTimeType toOccurrence(LocalDate vaccinationDate) {
+		return new DateTimeType(Date.from(vaccinationDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()));
+	}
+
+	private static SimpleQuantity doseToQuantity(AdministeredDose dose) {
+		var doseQty = new SimpleQuantity();
+		doseQty.setValue(dose.value());
+		doseQty.setUnit(dose.unit());
+		return doseQty;
+	}
+
+	private static CodeableConcept reasonToConcept(VaccinationReason vaccinationReason) {
+		var reason = new CodeableConcept();
+		reason.addCoding(new Coding().setSystem("http://snomed.info/sct").setCode(vaccinationReason.code()));
+		reason.setText(vaccinationReason.display());
+		return reason;
 	}
 
 	private static CodeableConcept routeToConcept(RouteOfAdministration route) {

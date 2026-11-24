@@ -6,7 +6,10 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.PreconditionFailedException;
 import ch.hl7.vacd.api.client.EhrbaseClient;
+import ch.hl7.vacd.api.domain.CompositionVersion;
+import ch.hl7.vacd.api.domain.FlatComposition;
 import ch.hl7.vacd.api.openehr.ChVacdOpenEhrConstants;
 
 import org.slf4j.Logger;
@@ -19,14 +22,19 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -264,6 +272,105 @@ public class EhrbaseClientImpl implements EhrbaseClient {
 		} catch (Exception e) {
 			throw new RuntimeException("EHRbase GET composition failed", e);
 		}
+	}
+
+	/**
+	 * GET the latest version of a Composition in FLAT format. EHRbase returns the
+	 * latest version when the uid carries no version; the version uid is in the
+	 * ETag header.
+	 */
+	@Override
+	public FlatComposition getLatestCompositionFlat(String ehrId, String versionedObjectUid) {
+		try {
+			String url = baseUrl + "/ehr/" + ehrId + "/composition/" + versionedObjectUid + "?format=FLAT";
+			HttpEntity<Void> request = new HttpEntity<>(headers(MediaType.APPLICATION_JSON));
+			ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+			String etag = response.getHeaders().getFirst("ETag");
+			if (etag == null) {
+				throw new RuntimeException("EHRbase GET composition: no ETag in response for " + versionedObjectUid);
+			}
+			return new FlatComposition(etag.replace("\"", "").trim(), response.getBody());
+		} catch (HttpClientErrorException e) {
+			throw new RuntimeException(
+					"EHRbase GET composition " + e.getStatusCode() + ": " + e.getResponseBodyAsString(), e);
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new RuntimeException("EHRbase GET composition failed", e);
+		}
+	}
+
+	/**
+	 * PUT a FLAT-format Composition as the new version of an existing one. Returns
+	 * the new version uid. EHRbase takes the preceding version uid unquoted in
+	 * If-Match and answers 412 if it is not the latest version. It parses the body
+	 * first, so any other error means the body is not a valid Composition.
+	 */
+	@Override
+	public String updateCompositionFlat(String ehrId, String precedingVersionUid, String flatBody,
+			String templateId) {
+		try {
+			String url = baseUrl + "/ehr/" + ehrId + "/composition/"
+					+ CompositionVersion.versionedObjectUid(precedingVersionUid) + "?format=FLAT&templateId="
+					+ templateId;
+
+			HttpHeaders hdrs = headers(MediaType.APPLICATION_JSON);
+			hdrs.set("If-Match", precedingVersionUid);
+			HttpEntity<String> request = new HttpEntity<>(flatBody, hdrs);
+
+			ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PUT, request, String.class);
+			String etag = response.getHeaders().getFirst("ETag");
+			if (etag == null) {
+				throw new RuntimeException("EHRbase PUT composition: no ETag in response for " + precedingVersionUid);
+			}
+			return etag.replace("\"", "").trim();
+		} catch (HttpStatusCodeException e) {
+			log.error("EHRbase PUT composition {} returned {}: {}", precedingVersionUid, e.getStatusCode(),
+					e.getResponseBodyAsString());
+			if (e.getStatusCode().value() == 412) {
+				throw new PreconditionFailedException(
+						"Composition " + precedingVersionUid + " is not the latest version anymore");
+			}
+			throw new RuntimeException(
+					"EHRbase PUT composition " + e.getStatusCode() + ": " + e.getResponseBodyAsString(), e);
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new RuntimeException("EHRbase PUT composition failed", e);
+		}
+	}
+
+	@Override
+	public CompositionVersion getCompositionVersion(String ehrId, String versionedObjectUid) {
+		return fetchCompositionVersions(ehrId, versionedObjectUid).stream().findFirst().orElse(null);
+	}
+
+	@Override
+	public Map<String, CompositionVersion> getCompositionVersions(String ehrId) {
+		Map<String, CompositionVersion> versions = new LinkedHashMap<>();
+		for (CompositionVersion version : fetchCompositionVersions(ehrId, null)) {
+			versions.put(CompositionVersion.versionedObjectUid(version.versionUid()), version);
+		}
+		return versions;
+	}
+
+	/**
+	 * ONE AQL query returns a row of [version uid, commit time] per admin
+	 * composition. AQL only sees the latest version of a composition.
+	 */
+	private List<CompositionVersion> fetchCompositionVersions(String ehrId, String versionedObjectUid) {
+		String aql = "SELECT c/uid/value, v/commit_audit/time_committed/value "
+				+ "FROM EHR e CONTAINS VERSION v CONTAINS COMPOSITION c "
+				+ "WHERE c/archetype_details/template_id/value = '" + ChVacdOpenEhrConstants.ADMIN_TEMPLATE + "' "
+				+ "AND e/ehr_id/value = '" + ehrId + "'";
+		if (versionedObjectUid != null) {
+			aql += " AND c/uid/value = '" + versionedObjectUid + "'";
+		}
+
+		return executeAql(aql).stream()
+				.map(row -> new CompositionVersion(row.get(0).asText(),
+						Date.from(OffsetDateTime.parse(row.get(1).asText()).toInstant())))
+				.collect(Collectors.toList());
 	}
 
 	/**
