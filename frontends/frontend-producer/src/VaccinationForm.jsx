@@ -112,11 +112,11 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
     } catch (err) {
       console.error('Fehler beim Speichern der Impfung:', err);
       if (err.status === 400) {
-        setServerError(err.message);
+        setServerError(err);
       } else if (SUPPRESS_ERROR_ON_SUBMIT) {
         onCancel();
       } else {
-        alert(t("form.saveFailed", { message: err.message }));
+        alert(t("form.saveFailed", { message: err.serverMessage || t("detail.tryAgainLater") }));
       }
     } finally {
       setSubmitting(false);
@@ -271,7 +271,10 @@ function VaccinationForm({ patient, onCancel, onVaccinationCreated }) {
             {!isValid && Object.keys(touched).length > 0 &&
             <span className="foot-error"><Icon.Alert /> {Object.values(errors).includes(requiredText) ? t("form.fillRequired") : t("form.checkInput")}</span>
             }
-            {serverError && <span className="foot-error"><Icon.Alert /> {serverError}</span>}
+            {serverError &&
+              <span className="foot-error" role="alert">
+                <Icon.Alert /> {t("form.saveFailed", { message: serverError.serverMessage || t("detail.tryAgainLater") })}
+              </span>}
           </div>
           <div className="foot-right">
             <button className="btn" onClick={onCancel} disabled={submitting}>{t("common.cancel")}</button>

@@ -6,7 +6,6 @@ window.I18N_RESOURCES.de = {
     "required": "Pflichtfeld",
     "invalidDate": "Ungültiges Datum",
     "saving": "Speichert …",
-    "errorTitle": "Fehler",
     "years_one": "{{count}} Jahr",
     "years_other": "{{count}} Jahre",
     "example": "z. B. {{value}}"
@@ -76,9 +75,10 @@ window.I18N_RESOURCES.de = {
   "detail": {
     "notFound": "Patient:in nicht gefunden.",
     "back": "Zurück zur Patient:innenliste",
-    "exportFailed": "Export fehlgeschlagen: {{message}}",
-    "patientExportFailed": "Patienten-Export fehlgeschlagen: {{message}}",
-    "importFailed": "Import fehlgeschlagen: {{message}}",
+    "exportFailed": "Export fehlgeschlagen",
+    "patientExportFailed": "Patienten-Export fehlgeschlagen",
+    "importFailed": "Import fehlgeschlagen",
+    "tryAgainLater": "Bitte später erneut versuchen.",
     "importedTitle": "Impfausweis importiert",
     "importedText": "Die Impfungen wurden erfolgreich importiert.",
     "addedTitle": "Impfung erfasst",
@@ -211,16 +211,5 @@ window.I18N_RESOURCES.de = {
     "herpesZoster": "Herpes Zoster",
     "varicella": "Varizellen",
     "other": "Sonstige"
-  },
-  "error": {
-    "loadPatients": "Fehler beim Laden der Patienten",
-    "loadVaccinations": "Fehler beim Laden der Impfungen",
-    "importRecord": "Fehler beim Importieren des Impfausweises",
-    "exportRecord": "Fehler beim Exportieren des Impfausweises",
-    "exportPatient": "Fehler beim Exportieren des Patienten",
-    "loadLog": "Fehler beim Holen der Log-Einträge des Patienten",
-    "saveVaccination": "Fehler beim Erfassen der Impfung",
-    "createPatient": "Fehler beim Anlegen des Patienten",
-    "loadVaccineCodes": "Fehler beim Laden der Impfstoff-Codes"
   }
 };

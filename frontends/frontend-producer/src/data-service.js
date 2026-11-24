@@ -14,11 +14,25 @@ function authHeaders() {
   return auth?.token ? { 'Authorization': 'Bearer ' + auth.token } : {};
 }
 
+// Error from the BFF; serverMessage is its English developer text (for FHIR rejections the diagnostics).
+class ApiError extends Error {
+  constructor(status, body) {
+    super(body?.message || 'HTTP ' + status);
+    this.status = status;
+    this.serverMessage = body?.message || null;
+  }
+}
+
+async function apiError(res) {
+  const body = await res.json().catch(() => null);
+  return new ApiError(res.status, body);
+}
+
 async function fetchPatients() {
   const res = await fetch('/api/bff-producer/patients', {
     headers: { ...authHeaders() },
   });
-  if (!res.ok) throw new Error(I18n.t('error.loadPatients'));
+  if (!res.ok) throw await apiError(res);
   return res.json();
 }
 
@@ -26,7 +40,7 @@ async function fetchVaccinations(personId) {
   const res = await fetch('/api/bff-producer/vaccinations?personId=' + encodeURIComponent(personId), {
     headers: { ...authHeaders() },
   });
-  if (!res.ok) throw new Error(I18n.t('error.loadVaccinations'));
+  if (!res.ok) throw await apiError(res);
   return res.json();
 }
 
@@ -39,10 +53,7 @@ async function importVaccinations(personId, file) {
     headers: { ...authHeaders() },
     body: formData,
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.message || I18n.t('error.importRecord'));
-  }
+  if (!res.ok) throw await apiError(res);
   return res.json();
 }
 
@@ -51,7 +62,7 @@ async function exportVaccinationRecord(personId, format) {
   const res = await fetch(url, {
     headers: { ...authHeaders() },
   });
-  if (!res.ok) throw new Error(I18n.t('error.exportRecord'));
+  if (!res.ok) throw await apiError(res);
   return res;
 }
 
@@ -60,7 +71,7 @@ async function exportPatient(personId, format) {
   const res = await fetch(url, {
     headers: { ...authHeaders() },
   });
-  if (!res.ok) throw new Error(I18n.t('error.exportPatient'));
+  if (!res.ok) throw await apiError(res);
   return res;
 }
 
@@ -69,7 +80,7 @@ async function patientLog(personId) {
   const res = await fetch(url, {
     headers: { ...authHeaders() },
   });
-  if (!res.ok) throw new Error(I18n.t('error.loadLog'));
+  if (!res.ok) throw await apiError(res);
   return res;
 }
 
@@ -82,12 +93,7 @@ async function createImmunization(personId, data) {
     },
     body: JSON.stringify(data),
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    const err = new Error(body?.message || I18n.t('error.saveVaccination'));
-    err.status = res.status;
-    throw err;
-  }
+  if (!res.ok) throw await apiError(res);
   return res.json();
 }
 
@@ -100,7 +106,7 @@ async function createPatient(data) {
     },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error(I18n.t('error.createPatient'));
+  if (!res.ok) throw await apiError(res);
   return res.json();
 }
 
@@ -108,7 +114,7 @@ async function fetchVaccineCodes() {
   const res = await fetch('/api/bff-producer/valuesets/vaccines', {
     headers: { ...authHeaders() },
   });
-  if (!res.ok) throw new Error(I18n.t('error.loadVaccineCodes'));
+  if (!res.ok) throw await apiError(res);
   return res.json();
 }
 

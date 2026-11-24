@@ -9,9 +9,9 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
   const [logLoading, setLogLoading] = useState(true);
   const [vaxLoading, setVaxLoading] = useState(true);
   const [importDone, setImportDone] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(null);
+  const [failure, setFailure] = useState(null);
 
-  const showError = (msg) => setErrorMsg(msg);
+  const showFailure = (titleKey, error) => setFailure({ titleKey, error });
   const formatArtefact = (artefact) => {
     if (artefact == null || artefact === '') return '-';
     try {
@@ -83,10 +83,10 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
   }, [importDone]);
 
   useEffect(() => {
-    if (!errorMsg) return;
-    const timer = setTimeout(() => setErrorMsg(null), 5000);
+    if (!failure) return;
+    const timer = setTimeout(() => setFailure(null), failure.error?.serverMessage ? 10000 : 5000);
     return () => clearTimeout(timer);
-  }, [errorMsg]);
+  }, [failure]);
 
   const handleExportVaccination = async () => {
     try {
@@ -104,7 +104,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
       if (onExportVaccination) onExportVaccination(jsonContent);
     } catch (err) {
       console.error('Export fehlgeschlagen:', err);
-      showError(t('detail.exportFailed', { message: err.message || err }));
+      showFailure('detail.exportFailed', err);
     }
   };
 
@@ -123,7 +123,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Patienten-Export fehlgeschlagen:', err);
-      showError(t('detail.patientExportFailed', { message: err.message || err }));
+      showFailure('detail.patientExportFailed', err);
     }
   };
 
@@ -140,7 +140,7 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
         setImportDone(true);
       } catch (err) {
         console.error('Import fehlgeschlagen:', err);
-        showError(t('detail.importFailed', { message: err.message || err }));
+        showFailure('detail.importFailed', err);
       }
     };
     input.click();
@@ -178,12 +178,14 @@ function PatientDetail({ patientId, onBack, onAddVaccination, justAdded, onVacci
         <Icon.Back /> {t("detail.back")}
       </button>
 
-      {errorMsg &&
-      <div className="toast-error">
+      {failure &&
+      <div className="toast-error" role="alert">
           <div className="toast-icon"><Icon.Close /></div>
           <div>
-            <div className="toast-title">{t("common.errorTitle")}</div>
-            <div className="toast-sub">{errorMsg}</div>
+            <div className="toast-title">{t(failure.titleKey)}</div>
+            <div className="toast-sub">
+              {failure.error?.serverMessage || t("detail.tryAgainLater")}
+            </div>
           </div>
         </div>
       }

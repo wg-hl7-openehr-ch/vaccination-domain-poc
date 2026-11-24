@@ -15,13 +15,13 @@ public record PatientDto(
 ) {
     public PatientDto {
         if (lastName == null || lastName.isBlank()) {
-            throw new IllegalArgumentException("Nachname darf nicht leer sein");
+            throw new IllegalArgumentException("lastName must not be blank");
         }
         if (firstName == null || firstName.isBlank()) {
-            throw new IllegalArgumentException("Vorname darf nicht leer sein");
+            throw new IllegalArgumentException("firstName must not be blank");
         }
         if (ahvNumber != null && !ahvNumber.matches("^756\\d{10}$")) {
-            throw new IllegalArgumentException("Ungültiges AHV-Format");
+            throw new IllegalArgumentException("ahvNumber must be 13 digits starting with 756");
         }
     }
 }

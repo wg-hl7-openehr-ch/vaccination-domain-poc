@@ -274,7 +274,7 @@ class ImmunizationAdministrationServiceImplTest {
 		var ex = assertThrows(ValidationException.class,
 				() -> service.createImmunizationAdministration("test-patient", dto));
 
-		assertEquals("Impfdatum darf nicht vor dem Geburtsdatum liegen", ex.getMessage());
+		assertEquals("vaccinationDate (1990-01-14) must not be before the patient's birth date (1990-01-15)", ex.getMessage());
 		assertNull(fhirClient.postedBundle);
 	}
 
@@ -294,7 +294,7 @@ class ImmunizationAdministrationServiceImplTest {
 		var ex = assertThrows(ValidationException.class,
 				() -> service.createImmunizationAdministration("test-patient", dto));
 
-		assertEquals("Impfdatum darf nicht in der Zukunft liegen", ex.getMessage());
+		assertEquals("vaccinationDate (" + dto.vaccinationDate() + ") must not be in the future", ex.getMessage());
 		assertNull(fhirClient.postedBundle);
 	}
 

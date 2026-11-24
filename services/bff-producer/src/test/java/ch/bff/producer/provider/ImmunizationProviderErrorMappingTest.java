@@ -54,11 +54,30 @@ class ImmunizationProviderErrorMappingTest {
 
 	@Test
 	void create_validationException_returns400WithMessage() throws Exception {
-		mvcThrowing(new ValidationException("Impfdatum darf nicht vor dem Geburtsdatum liegen"))
+		mvcThrowing(new ValidationException("vaccinationDate (2020-05-09) must not be before the patient's birth date (2020-05-10)"))
 				.perform(post("/api/immunizations").param("personId", "p1").contentType(MediaType.APPLICATION_JSON)
 						.content(CREATE_BODY))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.message").value("Impfdatum darf nicht vor dem Geburtsdatum liegen"));
+				.andExpect(jsonPath("$.message")
+						.value("vaccinationDate (2020-05-09) must not be before the patient's birth date (2020-05-10)"));
+	}
+
+	@Test
+	void create_missingRequiredField_returns400WithFieldMessage() throws Exception {
+		mvcThrowing(new IllegalStateException("service must not be called"))
+				.perform(post("/api/immunizations").param("personId", "p1").contentType(MediaType.APPLICATION_JSON)
+						.content(CREATE_BODY.replace("\"lotNumber\":\"LOT1\",", "")))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("lotNumber is required"));
+	}
+
+	@Test
+	void create_missingNestedField_returns400WithFieldMessage() throws Exception {
+		mvcThrowing(new IllegalStateException("service must not be called"))
+				.perform(post("/api/immunizations").param("personId", "p1").contentType(MediaType.APPLICATION_JSON)
+						.content(CREATE_BODY.replace("\"unit\":\"ml\"", "\"unit\":\"\"")))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("administeredDose.unit is required"));
 	}
 
 	@Test

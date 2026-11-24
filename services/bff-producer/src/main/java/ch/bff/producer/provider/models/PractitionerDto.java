@@ -7,10 +7,10 @@ public record PractitionerDto(
 ) {
     public PractitionerDto {
         if (doctorName == null || doctorName.isBlank()) {
-            throw new IllegalArgumentException("Arztname darf nicht leer sein");
+            throw new IllegalArgumentException("doctorName must not be blank");
         }
         if (gln != null && !gln.matches("^7601\\d{9}$")) {
-            throw new IllegalArgumentException("Ungültiges GLN-Format (muss eine 13-stellige Zahl beginnend mit 7601 sein)");
+            throw new IllegalArgumentException("gln must be 13 digits starting with 7601");
         }
     }
 }

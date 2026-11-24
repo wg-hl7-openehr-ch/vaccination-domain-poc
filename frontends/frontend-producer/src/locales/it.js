@@ -6,7 +6,6 @@ window.I18N_RESOURCES.it = {
     "required": "Campo obbligatorio",
     "invalidDate": "Data non valida",
     "saving": "Salvataggio …",
-    "errorTitle": "Errore",
     "years_one": "{{count}} anno",
     "years_many": "{{count}} anni",
     "years_other": "{{count}} anni",
@@ -78,9 +77,10 @@ window.I18N_RESOURCES.it = {
   "detail": {
     "notFound": "Paziente non trovato.",
     "back": "Torna all'elenco pazienti",
-    "exportFailed": "Esportazione non riuscita: {{message}}",
-    "patientExportFailed": "Esportazione del paziente non riuscita: {{message}}",
-    "importFailed": "Importazione non riuscita: {{message}}",
+    "exportFailed": "Esportazione non riuscita",
+    "patientExportFailed": "Esportazione del paziente non riuscita",
+    "importFailed": "Importazione non riuscita",
+    "tryAgainLater": "Riprovare più tardi.",
     "importedTitle": "Libretto delle vaccinazioni importato",
     "importedText": "Le vaccinazioni sono state importate correttamente.",
     "addedTitle": "Vaccinazione registrata",
@@ -214,16 +214,5 @@ window.I18N_RESOURCES.it = {
     "herpesZoster": "Herpes zoster",
     "varicella": "Varicella",
     "other": "Altro"
-  },
-  "error": {
-    "loadPatients": "Errore durante il caricamento dei pazienti",
-    "loadVaccinations": "Errore durante il caricamento delle vaccinazioni",
-    "importRecord": "Errore durante l'importazione del libretto delle vaccinazioni",
-    "exportRecord": "Errore durante l'esportazione del libretto delle vaccinazioni",
-    "exportPatient": "Errore durante l'esportazione del paziente",
-    "loadLog": "Errore durante il caricamento del log del paziente",
-    "saveVaccination": "Errore durante la registrazione della vaccinazione",
-    "createPatient": "Errore durante la creazione del paziente",
-    "loadVaccineCodes": "Errore durante il caricamento dei codici dei vaccini"
   }
 };

@@ -6,7 +6,6 @@ window.I18N_RESOURCES.en = {
     "required": "Required",
     "invalidDate": "Invalid date",
     "saving": "Saving …",
-    "errorTitle": "Error",
     "years_one": "{{count}} year",
     "years_other": "{{count}} years",
     "example": "e.g. {{value}}"
@@ -76,9 +75,10 @@ window.I18N_RESOURCES.en = {
   "detail": {
     "notFound": "Patient not found.",
     "back": "Back to the patient list",
-    "exportFailed": "Export failed: {{message}}",
-    "patientExportFailed": "Patient export failed: {{message}}",
-    "importFailed": "Import failed: {{message}}",
+    "exportFailed": "Export failed",
+    "patientExportFailed": "Patient export failed",
+    "importFailed": "Import failed",
+    "tryAgainLater": "Please try again later.",
     "importedTitle": "Vaccination record imported",
     "importedText": "The vaccinations were imported successfully.",
     "addedTitle": "Vaccination recorded",
@@ -211,16 +211,5 @@ window.I18N_RESOURCES.en = {
     "herpesZoster": "Shingles (herpes zoster)",
     "varicella": "Varicella",
     "other": "Other"
-  },
-  "error": {
-    "loadPatients": "Error loading patients",
-    "loadVaccinations": "Error loading vaccinations",
-    "importRecord": "Error importing the vaccination record",
-    "exportRecord": "Error exporting the vaccination record",
-    "exportPatient": "Error exporting the patient",
-    "loadLog": "Error loading the patient's log entries",
-    "saveVaccination": "Error recording the vaccination",
-    "createPatient": "Error creating the patient",
-    "loadVaccineCodes": "Error loading vaccine codes"
   }
 };

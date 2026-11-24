@@ -158,11 +158,12 @@ public class ImmunizationAdministrationServiceImpl extends AbstractReadService
 			int day = precision >= TemporalPrecisionEnum.DAY.ordinal() ? bd.getDay() : 1;
 			LocalDate birthDate = LocalDate.of(bd.getYear(), month, day);
 			if (vaccinationDate.isBefore(birthDate)) {
-				throw new ValidationException("Impfdatum darf nicht vor dem Geburtsdatum liegen");
+				throw new ValidationException(
+						"vaccinationDate (" + vaccinationDate + ") must not be before the patient's birth date (" + birthDate + ")");
 			}
 		}
 		if (vaccinationDate.isAfter(today)) {
-			throw new ValidationException("Impfdatum darf nicht in der Zukunft liegen");
+			throw new ValidationException("vaccinationDate (" + vaccinationDate + ") must not be in the future");
 		}
 	}
 

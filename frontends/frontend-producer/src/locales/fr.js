@@ -6,7 +6,6 @@ window.I18N_RESOURCES.fr = {
     "required": "Champ obligatoire",
     "invalidDate": "Date invalide",
     "saving": "Enregistrement …",
-    "errorTitle": "Erreur",
     "years_one": "{{count}} an",
     "years_many": "{{count}} ans",
     "years_other": "{{count}} ans",
@@ -78,9 +77,10 @@ window.I18N_RESOURCES.fr = {
   "detail": {
     "notFound": "Patient·e introuvable.",
     "back": "Retour à la liste des patient·e·s",
-    "exportFailed": "Échec de l'export : {{message}}",
-    "patientExportFailed": "Échec de l'export du patient : {{message}}",
-    "importFailed": "Échec de l'import : {{message}}",
+    "exportFailed": "Échec de l'export",
+    "patientExportFailed": "Échec de l'export du patient",
+    "importFailed": "Échec de l'import",
+    "tryAgainLater": "Veuillez réessayer plus tard.",
     "importedTitle": "Carnet de vaccination importé",
     "importedText": "Les vaccinations ont été importées avec succès.",
     "addedTitle": "Vaccination saisie",
@@ -214,16 +214,5 @@ window.I18N_RESOURCES.fr = {
     "herpesZoster": "Zona (herpès zoster)",
     "varicella": "Varicelle",
     "other": "Autres"
-  },
-  "error": {
-    "loadPatients": "Erreur lors du chargement des patients",
-    "loadVaccinations": "Erreur lors du chargement des vaccinations",
-    "importRecord": "Erreur lors de l'import du carnet de vaccination",
-    "exportRecord": "Erreur lors de l'export du carnet de vaccination",
-    "exportPatient": "Erreur lors de l'export du patient",
-    "loadLog": "Erreur lors du chargement du journal du patient",
-    "saveVaccination": "Erreur lors de la saisie de la vaccination",
-    "createPatient": "Erreur lors de la création du patient",
-    "loadVaccineCodes": "Erreur lors du chargement des codes de vaccins"
   }
 };
