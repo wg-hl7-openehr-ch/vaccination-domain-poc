@@ -170,19 +170,19 @@
 <body>
   <div class="login-card">
     <h1>Impfdossier CH - Demo Showcase</h1>
-    <p class="subtitle">Bitte melden Sie sich an</p>
+    <p class="subtitle" data-i18n="subtitle">Bitte melden Sie sich an</p>
 
     <div id="error" class="error-msg" role="alert"></div>
 
     <form id="login-form" autocomplete="off">
       <div class="form-group">
-        <label for="username">Benutzername</label>
+        <label for="username" data-i18n="username">Benutzername</label>
         <select id="username" required autofocus disabled>
-          <option value="">Lade Benutzer…</option>
+          <option value="" data-i18n="loadingUsers">Lade Benutzer…</option>
         </select>
       </div>
       <div class="form-group">
-        <label for="password">Passwort</label>
+        <label for="password" data-i18n="password">Passwort</label>
         <input type="password" id="password" placeholder="pass123" required />
       </div>
       <button type="submit" id="submit-btn">
@@ -197,9 +197,7 @@
   </div>
 
   <div class="info-card">
-    <p class="org-p">
-    A Joint Project of
-    </p>
+    <p class="org-p" data-i18n="jointProject">Ein gemeinsames Projekt von</p>
     <p class="org-p">
 <a href="https://www.openehr.ch"><img class="org-logo-ehr" src="https://i0.wp.com/openehr.ch/wp-content/uploads/2023/07/Openehr_ch_klein.webp?w=1759&ssl=1"></a>
 </p>
@@ -208,8 +206,44 @@
 </p>
   </div>
 
+  <script src="https://unpkg.com/i18next@27.1.5/dist/umd/i18next.min.js"
+          integrity="sha384-BLZL6o1oyfrrKYI/aHurjGG/8/AjrBbmj2UEDweVf08DEUszfKhPCp2yycidG6RQ"
+          crossorigin="anonymous"></script>
+  <script src="locales/de.js"></script>
+  <script src="locales/fr.js"></script>
+  <script src="locales/it.js"></script>
+  <script src="locales/en.js"></script>
+
   <script>
     (function () {
+      const SUPPORTED_LANGS = ['de', 'fr', 'it', 'en'];
+      const FALLBACK_LANG = 'de';
+
+      function supportedLanguageOf(tag) {
+        const base = String(tag || '').toLowerCase().split(/[-_]/)[0];
+        return SUPPORTED_LANGS.includes(base) ? base : null;
+      }
+
+      function storedLanguage() {
+        try {
+          return localStorage.getItem('lang');
+        } catch (err) {
+          return null;
+        }
+      }
+
+      function browserLanguages() {
+        return navigator.languages && navigator.languages.length
+          ? navigator.languages
+          : [navigator.language];
+      }
+
+      function detectLanguage() {
+        return supportedLanguageOf(storedLanguage())
+          || browserLanguages().map(supportedLanguageOf).find(Boolean)
+          || FALLBACK_LANG;
+      }
+
       const form = document.getElementById('login-form');
       const username = document.getElementById('username');
       const password = document.getElementById('password');
@@ -222,21 +256,42 @@
         patient: '/consumer/',
       };
 
-      function showError(msg) {
-        errorEl.textContent = msg;
-        errorEl.classList.add('visible');
+      let errorKey = null;
+      let loading = false;
+
+      const t = (key) => i18next.t(key);
+
+      function render() {
+        document.title = t('pageTitle');
+        document.querySelectorAll('[data-i18n]').forEach(function (el) {
+          el.textContent = t(el.dataset.i18n);
+        });
+        errorEl.textContent = errorKey ? t(errorKey) : '';
+        errorEl.classList.toggle('visible', Boolean(errorKey));
+        btnLabel.replaceChildren();
+        if (loading) {
+          const spinner = document.createElement('span');
+          spinner.className = 'spinner';
+          btnLabel.append(spinner, t('submitting'));
+        } else {
+          btnLabel.append(t('submit'));
+        }
+      }
+
+      function showError(key) {
+        errorKey = key;
+        render();
       }
 
       function hideError() {
-        errorEl.classList.remove('visible');
-        errorEl.textContent = '';
+        errorKey = null;
+        render();
       }
 
-      function setLoading(loading) {
-        btn.disabled = loading;
-        btnLabel.innerHTML = loading
-          ? '<span class="spinner"></span>Wird angemeldet …'
-          : 'Anmelden';
+      function setLoading(value) {
+        loading = value;
+        btn.disabled = value;
+        render();
       }
 
       function base64(str) {
@@ -266,12 +321,12 @@
             ? payload
             : [];
 
-        username.innerHTML = '';
+        username.replaceChildren();
 
         if (!users.length) {
           username.disabled = true;
           btn.disabled = true;
-          showError('Keine Benutzer vom IAM-Service geladen.');
+          showError('error.noUsers');
           return;
         }
 
@@ -295,7 +350,7 @@
         const user = username.value.trim();
         const pass = password.value;
         if (!user || !pass) {
-          showError('Bitte Benutzername und Passwort eingeben.');
+          showError('error.missingCredentials');
           return;
         }
 
@@ -310,8 +365,7 @@
           });
 
           if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            showError(body.error || 'Anmeldung fehlgeschlagen.');
+            showError(res.status === 401 ? 'error.invalidCredentials' : 'error.loginFailed');
             setLoading(false);
             return;
           }
@@ -322,9 +376,37 @@
           const target = REDIRECTS[data.role] || 'http://localhost:3003/login.html';
           window.location.replace(target);
         } catch (err) {
-          showError('Verbindungsfehler – konnte den IAM-Service nicht erreichen.');
+          showError('error.connection');
           setLoading(false);
         }
+      });
+
+      i18next.on('languageChanged', function (lng) {
+        document.documentElement.lang = lng + '-CH';
+        render();
+      });
+
+      const resources = {};
+      for (const lng of SUPPORTED_LANGS) {
+        resources[lng] = { translation: (window.I18N_RESOURCES || {})[lng] || {} };
+      }
+
+      i18next.init({
+        lng: detectLanguage(),
+        fallbackLng: FALLBACK_LANG,
+        supportedLngs: SUPPORTED_LANGS,
+        load: 'languageOnly',
+        resources: resources,
+        initAsync: false,
+        // Output only ever goes to textContent, so HTML-escaping would double-escape.
+        interpolation: { escapeValue: false },
+        // No backend: saveMissing only routes missing keys to this handler.
+        saveMissing: true,
+        missingKeyHandler: function (lngs, ns, key) {
+          console.warn('[i18n] missing key "' + key + '" for ' + [].concat(lngs).join(','));
+        },
+      }).then(function () {
+        render();
       });
     })();
   </script>
