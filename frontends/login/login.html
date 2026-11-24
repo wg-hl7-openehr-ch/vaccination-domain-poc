@@ -165,10 +165,47 @@
       padding: .125rem .375rem;
       border-radius: 3px;
     }
+
+    .lang-switch {
+      display: flex;
+      justify-content: flex-end;
+      gap: .25rem;
+      margin: -1.25rem -.75rem 1rem 0;
+    }
+
+    .lang-switch button {
+      width: auto;
+      padding: .25rem .5rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .75rem;
+      font-weight: 600;
+      color: #6b7280;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+    }
+
+    .lang-switch button:hover {
+      color: #1a1f36;
+      background: #f3f4f6;
+    }
+
+    .lang-switch button[aria-pressed="true"] {
+      color: #2563eb;
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
   </style>
 </head>
 <body>
   <div class="login-card">
+    <div class="lang-switch" role="group" data-i18n-aria-label="languageSwitcher">
+      <button type="button" data-lang="de" lang="de" aria-label="Deutsch">DE</button>
+      <button type="button" data-lang="fr" lang="fr" aria-label="Français">FR</button>
+      <button type="button" data-lang="it" lang="it" aria-label="Italiano">IT</button>
+      <button type="button" data-lang="en" lang="en" aria-label="English">EN</button>
+    </div>
+
     <h1>Impfdossier CH - Demo Showcase</h1>
     <p class="subtitle" data-i18n="subtitle">Bitte melden Sie sich an</p>
 
@@ -206,9 +243,6 @@
 </p>
   </div>
 
-  <script src="https://unpkg.com/i18next@27.1.5/dist/umd/i18next.min.js"
-          integrity="sha384-BLZL6o1oyfrrKYI/aHurjGG/8/AjrBbmj2UEDweVf08DEUszfKhPCp2yycidG6RQ"
-          crossorigin="anonymous"></script>
   <script src="locales/de.js"></script>
   <script src="locales/fr.js"></script>
   <script src="locales/it.js"></script>
@@ -244,12 +278,31 @@
           || FALLBACK_LANG;
       }
 
+      const RESOURCES = window.I18N_RESOURCES || {};
+      let currentLanguage = detectLanguage();
+
+      function lookup(lng, key) {
+        const value = key.split('.').reduce(function (node, part) {
+          return node ? node[part] : undefined;
+        }, RESOURCES[lng]);
+        return typeof value === 'string' ? value : undefined;
+      }
+
+      function t(key) {
+        const text = lookup(currentLanguage, key) ?? lookup(FALLBACK_LANG, key);
+        if (text === undefined) {
+          console.warn('[i18n] missing key "' + key + '"');
+        }
+        return text ?? key;
+      }
+
       const form = document.getElementById('login-form');
       const username = document.getElementById('username');
       const password = document.getElementById('password');
       const errorEl = document.getElementById('error');
       const btn = document.getElementById('submit-btn');
       const btnLabel = document.getElementById('btn-label');
+      const languageButtons = document.querySelectorAll('.lang-switch button');
 
       const REDIRECTS = {
         doctor:  '/producer/',
@@ -259,12 +312,16 @@
       let errorKey = null;
       let loading = false;
 
-      const t = (key) => i18next.t(key);
-
       function render() {
         document.title = t('pageTitle');
         document.querySelectorAll('[data-i18n]').forEach(function (el) {
           el.textContent = t(el.dataset.i18n);
+        });
+        document.querySelectorAll('[data-i18n-aria-label]').forEach(function (el) {
+          el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
+        });
+        languageButtons.forEach(function (button) {
+          button.setAttribute('aria-pressed', String(button.dataset.lang === currentLanguage));
         });
         errorEl.textContent = errorKey ? t(errorKey) : '';
         errorEl.classList.toggle('visible', Boolean(errorKey));
@@ -381,33 +438,32 @@
         }
       });
 
-      i18next.on('languageChanged', function (lng) {
-        document.documentElement.lang = lng + '-CH';
-        render();
-      });
-
-      const resources = {};
-      for (const lng of SUPPORTED_LANGS) {
-        resources[lng] = { translation: (window.I18N_RESOURCES || {})[lng] || {} };
+      function rememberLanguage(lng) {
+        try {
+          localStorage.setItem('lang', lng);
+        } catch (err) {
+          return;
+        }
       }
 
-      i18next.init({
-        lng: detectLanguage(),
-        fallbackLng: FALLBACK_LANG,
-        supportedLngs: SUPPORTED_LANGS,
-        load: 'languageOnly',
-        resources: resources,
-        initAsync: false,
-        // Output only ever goes to textContent, so HTML-escaping would double-escape.
-        interpolation: { escapeValue: false },
-        // No backend: saveMissing only routes missing keys to this handler.
-        saveMissing: true,
-        missingKeyHandler: function (lngs, ns, key) {
-          console.warn('[i18n] missing key "' + key + '" for ' + [].concat(lngs).join(','));
-        },
-      }).then(function () {
+      function applyLanguage(lng) {
+        currentLanguage = lng;
+        document.documentElement.lang = lng + '-CH';
         render();
+      }
+
+      function chooseLanguage(lng) {
+        rememberLanguage(lng);
+        applyLanguage(lng);
+      }
+
+      languageButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          chooseLanguage(button.dataset.lang);
+        });
       });
+
+      applyLanguage(currentLanguage);
     })();
   </script>
 </body>

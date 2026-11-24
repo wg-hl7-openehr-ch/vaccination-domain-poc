@@ -7,6 +7,7 @@ window.I18N_RESOURCES.fr = {
   "loadingUsers": "Chargement des utilisateurs…",
   "submit": "Se connecter",
   "submitting": "Connexion en cours…",
+  "languageSwitcher": "Langue",
   "jointProject": "Un projet commun de",
   "error": {
     "noUsers": "Aucun utilisateur n'a pu être chargé depuis le service IAM.",

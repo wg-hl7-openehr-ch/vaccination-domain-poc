@@ -7,6 +7,7 @@ window.I18N_RESOURCES.en = {
   "loadingUsers": "Loading users…",
   "submit": "Sign in",
   "submitting": "Signing in…",
+  "languageSwitcher": "Language",
   "jointProject": "A joint project of",
   "error": {
     "noUsers": "No users were loaded from the IAM service.",

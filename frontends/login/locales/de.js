@@ -7,6 +7,7 @@ window.I18N_RESOURCES.de = {
   "loadingUsers": "Lade Benutzer…",
   "submit": "Anmelden",
   "submitting": "Wird angemeldet …",
+  "languageSwitcher": "Sprache",
   "jointProject": "Ein gemeinsames Projekt von",
   "error": {
     "noUsers": "Keine Benutzer vom IAM-Service geladen.",
