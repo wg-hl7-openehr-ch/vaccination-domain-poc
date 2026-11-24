@@ -4,7 +4,6 @@
 export interface VaccinationReason {
   readonly code: string;
   readonly display: string;
-  readonly swissLabel: string;
 }
 
 export interface Vaccination {

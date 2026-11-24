@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import type { DiseaseGroup, Vaccination } from '../types';
 import { colors, font, radius, spacing } from '../theme';
@@ -10,6 +11,7 @@ interface VaccinationGroupProps {
 
 /** One card per target disease, with a dated timeline of the doses given. */
 export function VaccinationGroup({ group }: VaccinationGroupProps) {
+  const { t } = useTranslation();
   const count = group.entries.length;
   return (
     <View style={styles.card}>
@@ -19,7 +21,7 @@ export function VaccinationGroup({ group }: VaccinationGroupProps) {
             {group.disease}
           </Text>
           <Text style={styles.meta}>
-            {count} {count === 1 ? 'Eintrag' : 'Einträge'} · zuletzt {formatDate(group.latest, { short: true })}
+            {t('group.entries', { count })} · {t('group.lastDose', { date: formatDate(group.latest, { short: true }) })}
           </Text>
         </View>
       </View>
@@ -34,14 +36,24 @@ export function VaccinationGroup({ group }: VaccinationGroupProps) {
 }
 
 function Entry({ entry, isLast }: { entry: Vaccination; isLast: boolean }) {
+  const { t } = useTranslation();
   const doseLabel = entry.doseNumber === 'Booster'
-    ? 'Booster'
+    ? t('group.booster')
     : (entry.doseNumber && entry.seriesDoses)
-      ? `Dosis ${entry.doseNumber} / ${entry.seriesDoses}`
+      ? t('group.doseOfSeries', { number: entry.doseNumber, total: entry.seriesDoses })
       : entry.dose;
 
-  const reasonLabel = entry.vaccinationReason ? `, Impfgrund: ${entry.vaccinationReason.swissLabel}` : '';
-  const label = `${entry.vaccine}, ${doseLabel}, ${formatDate(entry.date)}, Hersteller ${entry.manufacturer}, Charge ${entry.batch}${reasonLabel}`;
+  const labelParams = {
+    vaccine: entry.vaccine,
+    dose: doseLabel,
+    date: formatDate(entry.date),
+    manufacturer: entry.manufacturer,
+    batch: entry.batch,
+    reason: entry.vaccinationReason?.display,
+  };
+  const label = entry.vaccinationReason
+    ? t('group.entryLabelWithReason', labelParams)
+    : t('group.entryLabel', labelParams);
 
   return (
     <View style={styles.entryRow} accessible accessibilityLabel={label}>
@@ -58,14 +70,14 @@ function Entry({ entry, isLast }: { entry: Vaccination; isLast: boolean }) {
         </View>
         <Text style={styles.entryDate}>{formatDate(entry.date)}</Text>
         <Text style={styles.entrySub}>
-          {entry.manufacturer} · Charge {entry.batch}
+          {entry.manufacturer} · {t('group.batch', { batch: entry.batch })}
         </Text>
         <Text style={styles.entrySub}>
           {entry.route} · {entry.site}
         </Text>
         {entry.vaccinationReason ? (
           <Text style={styles.reasonText}>
-            Impfgrund: {entry.vaccinationReason.swissLabel}
+            {t('group.reason', { reason: entry.vaccinationReason.display })}
           </Text>
         ) : null}
       </View>

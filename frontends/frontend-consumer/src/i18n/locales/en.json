@@ -1,0 +1,65 @@
+{
+  "common": {
+    "close": "Close",
+    "logout": "Sign out",
+    "retry": "Try again",
+    "years_one": "{{count}} year",
+    "years_other": "{{count}} years"
+  },
+  "appBar": {
+    "subtitle": "Electronic vaccination record"
+  },
+  "language": {
+    "button": "Language: {{language}}",
+    "title": "Choose language"
+  },
+  "error": {
+    "network": {
+      "title": "Connection error",
+      "message": "The server could not be reached. Please check your connection and try again."
+    },
+    "notFound": {
+      "title": "No vaccination record found",
+      "message": "No patient is registered in the system for your account. Please contact your doctor."
+    },
+    "unavailable": {
+      "title": "Service unavailable",
+      "message": "The vaccination record cannot be loaded at the moment. Please try again later."
+    },
+    "unexpected": {
+      "title": "The vaccination record could not be loaded",
+      "message": "Unexpected response from the server (status {{status}})."
+    }
+  },
+  "dossier": {
+    "loading": "Loading vaccination record...",
+    "emptyTitle": "No vaccinations recorded",
+    "emptyText": "There are no entries for {{name}} yet.",
+    "self": "Me",
+    "vaccinations_one": "vaccination",
+    "vaccinations_other": "vaccinations",
+    "vaccinationsRecorded_one": "{{count}} vaccination recorded",
+    "vaccinationsRecorded_other": "{{count}} vaccinations recorded",
+    "summaryLabel": "{{name}}, {{age}}, {{vaccinations}}",
+    "record": "Vaccination record",
+    "diseasesCovered_one": "{{count}} disease covered",
+    "diseasesCovered_other": "{{count}} diseases covered"
+  },
+  "gender": {
+    "male": "male",
+    "female": "female",
+    "other": "other",
+    "unknown": "unknown"
+  },
+  "group": {
+    "entries_one": "{{count}} entry",
+    "entries_other": "{{count}} entries",
+    "lastDose": "last on {{date}}",
+    "booster": "Booster",
+    "doseOfSeries": "Dose {{number}} / {{total}}",
+    "batch": "Batch {{batch}}",
+    "reason": "Reason for vaccination: {{reason}}",
+    "entryLabel": "{{vaccine}}, {{dose}}, {{date}}, manufacturer {{manufacturer}}, batch {{batch}}",
+    "entryLabelWithReason": "{{vaccine}}, {{dose}}, {{date}}, manufacturer {{manufacturer}}, batch {{batch}}, reason for vaccination: {{reason}}"
+  }
+}

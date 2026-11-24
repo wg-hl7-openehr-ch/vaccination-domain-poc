@@ -1,0 +1,70 @@
+{
+  "common": {
+    "close": "Chiudi",
+    "logout": "Esci",
+    "retry": "Riprova",
+    "years_one": "{{count}} anno",
+    "years_many": "{{count}} anni",
+    "years_other": "{{count}} anni"
+  },
+  "appBar": {
+    "subtitle": "Dossier elettronico delle vaccinazioni"
+  },
+  "language": {
+    "button": "Lingua: {{language}}",
+    "title": "Scegliere la lingua"
+  },
+  "error": {
+    "network": {
+      "title": "Errore di connessione",
+      "message": "Impossibile raggiungere il server. Verifichi la connessione e riprovi."
+    },
+    "notFound": {
+      "title": "Nessun dossier delle vaccinazioni trovato",
+      "message": "Per il Suo account non è registrato alcun paziente nel sistema. Si rivolga al Suo medico."
+    },
+    "unavailable": {
+      "title": "Servizio non disponibile",
+      "message": "Al momento il dossier delle vaccinazioni non può essere caricato. Riprovi più tardi."
+    },
+    "unexpected": {
+      "title": "Impossibile caricare il dossier delle vaccinazioni",
+      "message": "Risposta inattesa dal server (stato {{status}})."
+    }
+  },
+  "dossier": {
+    "loading": "Caricamento del dossier delle vaccinazioni...",
+    "emptyTitle": "Nessuna vaccinazione registrata",
+    "emptyText": "Per {{name}} non è ancora disponibile alcuna voce.",
+    "self": "Io",
+    "vaccinations_one": "vaccinazione",
+    "vaccinations_many": "vaccinazioni",
+    "vaccinations_other": "vaccinazioni",
+    "vaccinationsRecorded_one": "{{count}} vaccinazione registrata",
+    "vaccinationsRecorded_many": "{{count}} vaccinazioni registrate",
+    "vaccinationsRecorded_other": "{{count}} vaccinazioni registrate",
+    "summaryLabel": "{{name}}, {{age}}, {{vaccinations}}",
+    "record": "Libretto delle vaccinazioni",
+    "diseasesCovered_one": "{{count}} malattia coperta",
+    "diseasesCovered_many": "{{count}} malattie coperte",
+    "diseasesCovered_other": "{{count}} malattie coperte"
+  },
+  "gender": {
+    "male": "maschile",
+    "female": "femminile",
+    "other": "altro",
+    "unknown": "sconosciuto"
+  },
+  "group": {
+    "entries_one": "{{count}} voce",
+    "entries_many": "{{count}} voci",
+    "entries_other": "{{count}} voci",
+    "lastDose": "ultima il {{date}}",
+    "booster": "Richiamo",
+    "doseOfSeries": "Dose {{number}} / {{total}}",
+    "batch": "Lotto {{batch}}",
+    "reason": "Motivo della vaccinazione: {{reason}}",
+    "entryLabel": "{{vaccine}}, {{dose}}, {{date}}, produttore {{manufacturer}}, lotto {{batch}}",
+    "entryLabelWithReason": "{{vaccine}}, {{dose}}, {{date}}, produttore {{manufacturer}}, lotto {{batch}}, motivo della vaccinazione: {{reason}}"
+  }
+}

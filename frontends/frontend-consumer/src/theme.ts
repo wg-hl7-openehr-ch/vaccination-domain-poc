@@ -37,6 +37,9 @@ export const radius = {
   pill: 999,
 } as const;
 
+/** Below this window width the app bar switches to its compact (phone) layout. */
+export const WIDE_LAYOUT_MIN_WIDTH = 600;
+
 export const font = {
   display: 24,
   title: 19,

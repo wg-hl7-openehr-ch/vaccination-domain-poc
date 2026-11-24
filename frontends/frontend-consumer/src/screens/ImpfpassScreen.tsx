@@ -1,48 +1,33 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import type { DiseaseGroup, PatientDossier } from '../types';
-import { colors, font, radius, spacing } from '../theme';
+import { WIDE_LAYOUT_MIN_WIDTH, colors, font, radius, spacing } from '../theme';
 import { groupByDisease } from '../utils';
 import { Avatar } from '../components/Avatar';
 import { VaccinationGroup } from '../components/VaccinationGroup';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import i18n from '../i18n';
 
 type LoadError = {
-  title: string;
-  message: string;
+  key: 'network' | 'notFound' | 'unavailable' | 'unexpected';
+  status: number | null;
   retryable: boolean;
 };
 
-/** Maps an HTTP status (or a network failure) to a user-facing message. */
+/** Maps an HTTP status (or a network failure) to a translatable error. */
 function describeError(status: number | null): LoadError {
-  if (status === null) {
-    return {
-      title: 'Verbindungsfehler',
-      message: 'Der Server konnte nicht erreicht werden. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.',
-      retryable: true,
-    };
-  }
-  if (status === 404) {
-    return {
-      title: 'Kein Impfdossier gefunden',
-      message: 'Für Ihr Konto ist im System kein Patient registriert. Bitte wenden Sie sich an Ihre Ärztin oder Ihren Arzt.',
-      retryable: false,
-    };
-  }
-  if (status >= 500) {
-    return {
-      title: 'Dienst nicht erreichbar',
-      message: 'Das Impfdossier kann momentan nicht geladen werden. Bitte versuchen Sie es später erneut.',
-      retryable: true,
-    };
-  }
-  return {
-    title: 'Impfdossier konnte nicht geladen werden',
-    message: `Unerwartete Antwort vom Server (Status ${status}).`,
-    retryable: true,
-  };
+  if (status === null) return { key: 'network', status, retryable: true };
+  if (status === 404) return { key: 'notFound', status, retryable: false };
+  if (status >= 500) return { key: 'unavailable', status, retryable: true };
+  return { key: 'unexpected', status, retryable: true };
+}
+
+function genderLabel(gender: string): string {
+  return i18n.exists(`gender.${gender}`) ? i18n.t(`gender.${gender}`) : gender;
 }
 
 class HttpError extends Error {
@@ -55,6 +40,7 @@ class HttpError extends Error {
 }
 
 export function ImpfpassScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [dossier, setDossier] = useState<PatientDossier | null>(null);
   const [loading, setLoading] = useState(true);
@@ -140,7 +126,7 @@ export function ImpfpassScreen() {
         <AppBar topInset={insets.top} onLogout={logout} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.messageText, { marginTop: spacing.md }]}>Lade Impfdossier...</Text>
+          <Text style={[styles.messageText, { marginTop: spacing.md }]}>{t('dossier.loading')}</Text>
         </View>
       </View>
     );
@@ -154,16 +140,16 @@ export function ImpfpassScreen() {
         <AppBar topInset={insets.top} onLogout={logout} />
         <View style={styles.center}>
           <View style={styles.errorCard} accessibilityRole="alert">
-            <Text style={styles.emptyTitle}>{shown.title}</Text>
-            <Text style={styles.errorMessage}>{shown.message}</Text>
+            <Text style={styles.emptyTitle}>{t(`error.${shown.key}.title`)}</Text>
+            <Text style={styles.errorMessage}>{t(`error.${shown.key}.message`, { status: shown.status })}</Text>
             <View style={styles.errorActions}>
               {shown.retryable && (
                 <Pressable style={styles.primaryBtn} onPress={load} accessibilityRole="button">
-                  <Text style={styles.primaryBtnText}>Erneut versuchen</Text>
+                  <Text style={styles.primaryBtnText}>{t('common.retry')}</Text>
                 </Pressable>
               )}
               <Pressable style={styles.secondaryBtn} onPress={logout} accessibilityRole="button">
-                <Text style={styles.secondaryBtnText}>Abmelden</Text>
+                <Text style={styles.secondaryBtnText}>{t('common.logout')}</Text>
               </Pressable>
             </View>
           </View>
@@ -185,8 +171,8 @@ export function ImpfpassScreen() {
         ListHeaderComponent={<ProfileSummary dossier={dossier} groupCount={groups.length} />}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Keine Impfungen erfasst</Text>
-            <Text style={styles.emptySub}>Für {dossier.firstName} liegen noch keine Einträge vor.</Text>
+            <Text style={styles.emptyTitle}>{t('dossier.emptyTitle')}</Text>
+            <Text style={styles.emptySub}>{t('dossier.emptyText', { name: dossier.firstName })}</Text>
           </View>
         }
         contentContainerStyle={[
@@ -200,19 +186,26 @@ export function ImpfpassScreen() {
 }
 
 function AppBar({ topInset, onLogout }: { topInset: number; onLogout: () => void }) {
+  const { t } = useTranslation();
+  const compact = useWindowDimensions().width < WIDE_LAYOUT_MIN_WIDTH;
   return (
     <View style={[styles.appBar, { paddingTop: topInset + spacing.sm }]}>
-      <View style={styles.brand}>
+      <View style={[styles.brand, compact && styles.brandCompact]}>
         <SwissCross />
-        <View>
-          <Text accessibilityRole="header" style={styles.brandTitle}>
+        <View style={styles.brandText}>
+          <Text accessibilityRole="header" style={[styles.brandTitle, compact && styles.brandTitleCompact]} numberOfLines={1}>
             Impfdossier <Text style={styles.brandAccent}>CH</Text>
           </Text>
-          <Text style={styles.brandSub}>Elektronisches Impfdossier</Text>
+          <Text style={styles.brandSub} numberOfLines={1}>{t('appBar.subtitle')}</Text>
         </View>
-        <View style={{ flex: 1 }} />
-        <Pressable style={styles.logoutBtn} onPress={onLogout} accessibilityLabel="Abmelden" accessibilityRole="button">
-          <Text style={styles.logoutText}>Abmelden</Text>
+        <LanguageSwitcher compact={compact} />
+        <Pressable
+          style={({ pressed }) => [styles.logoutBtn, compact && styles.logoutIconBtn, pressed && styles.pressed]}
+          onPress={onLogout}
+          accessibilityLabel={t('common.logout')}
+          accessibilityRole="button">
+          <LogoutIcon />
+          {!compact && <Text style={styles.logoutText} numberOfLines={1}>{t('common.logout')}</Text>}
         </Pressable>
       </View>
     </View>
@@ -226,35 +219,52 @@ function ProfileSummary({
   dossier: PatientDossier;
   groupCount: number;
 }) {
+  const { t } = useTranslation();
   const total = dossier.vaccinations.length;
+  const age = t('common.years', { count: dossier.age });
   return (
     <>
       <View
         style={styles.summary}
         accessible
-        accessibilityLabel={`${dossier.firstName} ${dossier.lastName}, ${dossier.age} Jahre, ${total} Impfungen erfasst`}>
+        accessibilityLabel={t('dossier.summaryLabel', {
+          name: `${dossier.firstName} ${dossier.lastName}`,
+          age,
+          vaccinations: t('dossier.vaccinationsRecorded', { count: total }),
+        })}>
         <Avatar firstName={dossier.firstName} lastName={dossier.lastName} size={56} />
         <View style={styles.summaryText}>
           <Text style={styles.summaryName}>
             {dossier.lastName}, {dossier.firstName}
           </Text>
           <Text style={styles.summaryMeta}>
-            Ich · {dossier.age} Jahre · {dossier.gender}
+            {t('dossier.self')} · {age} · {genderLabel(dossier.gender)}
           </Text>
         </View>
         <View style={styles.summaryStat}>
           <Text style={styles.summaryStatValue}>{total}</Text>
-          <Text style={styles.summaryStatLabel}>Impfungen</Text>
+          <Text style={styles.summaryStatLabel}>{t('dossier.vaccinations', { count: total })}</Text>
         </View>
       </View>
 
       <Text accessibilityRole="header" style={styles.sectionTitle}>
-        Impfausweis
+        {t('dossier.record')}
       </Text>
       <Text style={styles.sectionSub}>
-        {groupCount} {groupCount === 1 ? 'Krankheit' : 'Krankheiten'} abgedeckt
+        {t('dossier.diseasesCovered', { count: groupCount })}
       </Text>
     </>
+  );
+}
+
+/** Door-with-arrow sign-out mark built from plain views — no icon library needed. */
+function LogoutIcon() {
+  return (
+    <View style={styles.logoutIcon} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View style={styles.logoutIconDoor} />
+      <View style={styles.logoutIconShaft} />
+      <View style={styles.logoutIconHead} />
+    </View>
   );
 }
 
@@ -339,14 +349,24 @@ const styles = StyleSheet.create({
   brand: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
+  },
+  brandCompact: {
+    paddingHorizontal: spacing.md,
+  },
+  brandText: {
+    flex: 1,
+    minWidth: 0,
   },
   brandTitle: {
     fontSize: font.display,
     fontWeight: '700',
     color: colors.text,
+  },
+  brandTitleCompact: {
+    fontSize: font.title,
   },
   brandAccent: {
     color: colors.swissRed,
@@ -430,9 +450,55 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   logoutBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginRight: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 44,
+    paddingHorizontal: spacing.sm,
+    flexShrink: 0,
+  },
+  logoutIconBtn: {
+    width: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+  },
+  logoutIcon: {
+    width: 20,
+    height: 20,
+  },
+  logoutIconDoor: {
+    position: 'absolute',
+    left: 1,
+    top: 2,
+    width: 10,
+    height: 16,
+    borderWidth: 2,
+    borderRightWidth: 0,
+    borderColor: colors.textMuted,
+    borderTopLeftRadius: 2,
+    borderBottomLeftRadius: 2,
+  },
+  logoutIconShaft: {
+    position: 'absolute',
+    left: 7,
+    top: 9,
+    width: 11,
+    height: 2,
+    backgroundColor: colors.textMuted,
+  },
+  logoutIconHead: {
+    position: 'absolute',
+    left: 10,
+    top: 6,
+    width: 8,
+    height: 8,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+    borderColor: colors.textMuted,
+    transform: [{ rotate: '45deg' }],
+  },
+  pressed: {
+    opacity: 0.7,
   },
   logoutText: {
     fontSize: font.label,

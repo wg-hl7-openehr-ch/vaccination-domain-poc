@@ -1,0 +1,65 @@
+{
+  "common": {
+    "close": "Schliessen",
+    "logout": "Abmelden",
+    "retry": "Erneut versuchen",
+    "years_one": "{{count}} Jahr",
+    "years_other": "{{count}} Jahre"
+  },
+  "appBar": {
+    "subtitle": "Elektronisches Impfdossier"
+  },
+  "language": {
+    "button": "Sprache: {{language}}",
+    "title": "Sprache wählen"
+  },
+  "error": {
+    "network": {
+      "title": "Verbindungsfehler",
+      "message": "Der Server konnte nicht erreicht werden. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
+    },
+    "notFound": {
+      "title": "Kein Impfdossier gefunden",
+      "message": "Für Ihr Konto ist im System kein Patient registriert. Bitte wenden Sie sich an Ihre Ärztin oder Ihren Arzt."
+    },
+    "unavailable": {
+      "title": "Dienst nicht erreichbar",
+      "message": "Das Impfdossier kann momentan nicht geladen werden. Bitte versuchen Sie es später erneut."
+    },
+    "unexpected": {
+      "title": "Impfdossier konnte nicht geladen werden",
+      "message": "Unerwartete Antwort vom Server (Status {{status}})."
+    }
+  },
+  "dossier": {
+    "loading": "Lade Impfdossier...",
+    "emptyTitle": "Keine Impfungen erfasst",
+    "emptyText": "Für {{name}} liegen noch keine Einträge vor.",
+    "self": "Ich",
+    "vaccinations_one": "Impfung",
+    "vaccinations_other": "Impfungen",
+    "vaccinationsRecorded_one": "{{count}} Impfung erfasst",
+    "vaccinationsRecorded_other": "{{count}} Impfungen erfasst",
+    "summaryLabel": "{{name}}, {{age}}, {{vaccinations}}",
+    "record": "Impfausweis",
+    "diseasesCovered_one": "{{count}} Krankheit abgedeckt",
+    "diseasesCovered_other": "{{count}} Krankheiten abgedeckt"
+  },
+  "gender": {
+    "male": "männlich",
+    "female": "weiblich",
+    "other": "andere",
+    "unknown": "unbekannt"
+  },
+  "group": {
+    "entries_one": "{{count}} Eintrag",
+    "entries_other": "{{count}} Einträge",
+    "lastDose": "zuletzt {{date}}",
+    "booster": "Booster",
+    "doseOfSeries": "Dosis {{number}} / {{total}}",
+    "batch": "Charge {{batch}}",
+    "reason": "Impfgrund: {{reason}}",
+    "entryLabel": "{{vaccine}}, {{dose}}, {{date}}, Hersteller {{manufacturer}}, Charge {{batch}}",
+    "entryLabelWithReason": "{{vaccine}}, {{dose}}, {{date}}, Hersteller {{manufacturer}}, Charge {{batch}}, Impfgrund: {{reason}}"
+  }
+}

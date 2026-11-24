@@ -1,14 +1,15 @@
+import { currentLocale } from './i18n';
 import type { DiseaseGroup, Vaccination } from './types';
 
 const FULL_DATE: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
 const SHORT_DATE: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
 
-/** Format an ISO date for Swiss-German display. Falls back to the raw string if unparseable. */
+/** Format an ISO date in the current language (Swiss region). Falls back to the raw string if unparseable. */
 export function formatDate(iso: string, opts: { short?: boolean } = {}): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('de-CH', opts.short ? SHORT_DATE : FULL_DATE);
+  return d.toLocaleDateString(currentLocale(), opts.short ? SHORT_DATE : FULL_DATE);
 }
 
 /** Whole years between a date of birth and today. */
